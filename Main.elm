@@ -43,15 +43,17 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    div [ class "nada" ]
+    div []
         [ textarea [ onInput TextAreaInput, value model.textarea ] []
         , br [] []
         --, text (toString (String.lines model.textarea))
         --, br [] []
         --, p []
-        --    [ text <| toString <| (List.map Markdown.typeOfLine (String.lines model.textarea)) ]
-        --, div [] <| Markdown.view model.textarea
-        , pre [] [ code [] [ text (toString model.textarea) ] ]
+        --      [ text <| toString <| (List.map Markdown.typeOfLine (String.lines model.textarea)) ]
+        --, div [] <| Markdown.toHtml model.textarea
+        , input
+            [ value <| String.dropRight 1 <| String.dropLeft 1 <| toString model.textarea
+            , style [ ("font-size", "16px"), ("width", "90%") ] ] []
         , Test.View.view
         ]
 

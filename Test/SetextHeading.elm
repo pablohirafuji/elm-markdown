@@ -43,7 +43,7 @@ run =
     , testEq 54
         [ p [] [ text "Four spaces indent is too much:" ] ]
         "    Foo\n    ---\n\n    Foo\n---"
-        [ pre [] [ code [] [ text "Foo\n---\n\nFoo" ] ], hr [] [] ]
+        [ pre [] [ code [] [ text "Foo\n---\n\nFoo\n" ] ], hr [] [] ]
 
 
     , testEq 55
@@ -129,7 +129,7 @@ run =
     , testEq 69
         []
         "    foo\n---"
-        [ pre [] [ code [] [ text "foo" ] ], hr [] [] ]
+        [ pre [] [ code [] [ text "foo\n" ] ], hr [] [] ]
 
     , testEq 70
         []

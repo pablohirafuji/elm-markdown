@@ -44,7 +44,7 @@ run =
     , testEq 18
         [ p [] [ text "Four spaces is too many:" ] ]
         "    ***"
-        [ pre [] [ code [] [ text "***" ] ] ]
+        [ pre [] [ code [] [ text "***\n" ] ] ]
 
     , testEq 19
         []

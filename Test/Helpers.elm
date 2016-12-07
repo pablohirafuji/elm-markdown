@@ -17,7 +17,7 @@ testEq number description input expectedResult =
             Markdown.toHtml input
 
         isValid =
-            result == expectedResult
+            toString result == toString expectedResult
 
         backgroundColor =
             if isValid then

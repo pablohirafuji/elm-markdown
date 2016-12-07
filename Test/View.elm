@@ -12,6 +12,9 @@ import Test.FencedCode
 --import Test.LinkReferenceDefinitions
 import Test.Paragraph
 import Test.BlankLine
+import Test.BlockQuote
+import Test.ListItem
+import Test.List
 
 
 
@@ -28,7 +31,10 @@ tests =
     --, ( "HTML Blocks", Test.HTMLBlock.run )
     --, ( "Link reference definitions", Test.LinkReferenceDefinition.run )
     , ( "Paragraphs", Test.Paragraph.run )
-    , ( "BlankLine", Test.BlankLine.run )
+    , ( "Blank lines", Test.BlankLine.run )
+    , ( "Block quotes", Test.BlockQuote.run )
+    , ( "List Items", Test.ListItem.run )
+    , ( "Lists", Test.List.run )
     ]
 
 

@@ -57,7 +57,7 @@ run =
     , testEq 186
         []
         "    aaa\nbbb"
-        [ pre [] [ code [] [ text "aaa" ] ], p [] [ text "bbb" ] ]
+        [ pre [] [ code [] [ text "aaa\n" ] ], p [] [ text "bbb" ] ]
 
 
     , testEq 187

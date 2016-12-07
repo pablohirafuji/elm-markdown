@@ -16,7 +16,7 @@ run =
         , p [] [ text "An indented code block cannot interrupt a paragraph, so there must be a blank line between a paragraph and a following indented code block. (A blank line is not needed, however, between a code block and a following paragraph.)" ]
         ]
         "    a simple\n      indented code block"
-        [ pre [] [ code [] [ text "a simple\n  indented code block" ] ] ]
+        [ pre [] [ code [] [ text "a simple\n  indented code block\n" ] ] ]
 
 
     , testEq 77
@@ -35,19 +35,19 @@ run =
     , testEq 79
         [ p [] [ text "The contents of a code block are literal text, and do not get parsed as Markdown:" ] ]
         "    <a/>\n    *hi*\n\n    - one"
-        [ pre [] [ code [] [ text "<a/>\n*hi*\n\n- one" ] ] ]
+        [ pre [] [ code [] [ text "<a/>\n*hi*\n\n- one\n" ] ] ]
 
 
     , testEq 80
         [ p [] [ text "Here we have three chunks separated by blank lines:" ] ]
         "    chunk1\n\n    chunk2\n  \n \n \n    chunk3"
-        [ pre [] [ code [] [ text "chunk1\n\nchunk2\n\n\n\nchunk3" ] ] ]
+        [ pre [] [ code [] [ text "chunk1\n\nchunk2\n\n\n\nchunk3\n" ] ] ]
 
 
     , testEq 81
         [ p [] [ text "Any initial spaces beyond four will be included in the content, even in interior blank lines:" ] ]
         "    chunk1\n      \n      chunk2"
-        [ pre [] [ code [] [ text "chunk1\n  \n  chunk2" ] ] ]
+        [ pre [] [ code [] [ text "chunk1\n  \n  chunk2\n" ] ] ]
 
 
     , testEq 82
@@ -59,31 +59,31 @@ run =
     , testEq 83
         [ p [] [ text "However, any non-blank line with fewer than four leading spaces ends the code block immediately. So a paragraph may occur immediately after indented code:" ] ]
         "    foo\nbar"
-        [ pre [] [ code [] [ text "foo" ] ], p [] [ text "bar" ] ]
+        [ pre [] [ code [] [ text "foo\n" ] ], p [] [ text "bar" ] ]
 
 
     , testEq 84
         [ p [] [ text "And indented code can occur immediately before and after other kinds of blocks:" ] ]
         "# Heading\n    foo\nHeading\n------\n    foo\n----"
-        [ h1 [] [ text "Heading" ], pre [] [ code [] [ text "foo" ] ], h2 [] [ text "Heading"], pre [] [ code [] [ text "foo" ] ], hr [] [] ]
+        [ h1 [] [ text "Heading" ], pre [] [ code [] [ text "foo\n" ] ], h2 [] [ text "Heading" ], pre [] [ code [] [ text "foo\n" ] ], hr [] [] ]
 
 
     , testEq 85
         [ p [] [ text "The first line can be indented more than four spaces:" ] ]
         "        foo\n    bar"
-        [ pre [] [ code [] [ text "    foo\nbar" ] ] ]
+        [ pre [] [ code [] [ text "    foo\nbar\n" ] ] ]
 
 
     , testEq 86
         [ p [] [ text "Blank lines preceding or following an indented code block are not included in it:" ] ]
         "\n    \n    foo\n    "
-        [ pre [] [ code [] [ text "foo" ] ] ]
+        [ pre [] [ code [] [ text "foo\n" ] ] ]
 
 
     , testEq 87
         [ p [] [ text "Trailing spaces are included in the code block’s content:" ] ]
         "    foo  "
-        [ pre [] [ code [] [ text "foo  " ] ] ]
+        [ pre [] [ code [] [ text "foo  \n" ] ] ]
 
     ]
 
