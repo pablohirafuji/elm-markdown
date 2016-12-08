@@ -18,6 +18,7 @@ type Line
     | CodeLine CodeFenceState String
     | ClosingCodeFenceLine
     | BlockQuoteLine String
+    | ListLine (Maybe Int) String
 
 
 type alias CodeFenceState =
@@ -46,6 +47,7 @@ lineRegex =
     , ( CodeFenceLine emptyCodeFenceState, Regex.regex "^( {0,3})(`{3,}(?!.*`)|~{3,}(?!.*~))(.*)$" )
     , ( ThematicBreakLine, Regex.regex "^ {0,3}(?:(?:\\*[ \\t]*){3,}|(?:_[ \\t]*){3,}|(?:-[ \\t]*){3,})[ \\t]*$" )
     , ( BlockQuoteLine "", Regex.regex "^ {0,3}(?:>[ ]?)(.*)$" )
+    , ( ListLine Nothing "", Regex.regex "^ {0,3}(\\d{1,9})[.)](?: (.*))?$" )
     , ( TextLine "", Regex.regex "^.*$" )
     ]
 
@@ -173,6 +175,9 @@ matchToLine matchs line =
         BlockQuoteLine _ ->
             matchsToLine matchs matchToBlockQuoteLine
 
+        ListLine _ _ ->
+            matchsToLine matchs matchToListLine
+
 
 matchsToLine : List Regex.Match -> (Regex.Match -> Line) -> Line
 matchsToLine matchs matchToLine =
@@ -248,6 +253,24 @@ matchToBlockQuoteLine match =
     case match.submatches of
         Just quote :: _ ->
             BlockQuoteLine quote
+
+        _ ->
+            TextLine match.match
+
+
+matchToListLine : Regex.Match -> Line
+matchToListLine match =
+    case match.submatches of
+        Just number :: Just rawText :: _ ->
+            case String.toInt number of
+                Result.Ok int ->
+                    ListLine (Just int) rawText
+
+                Result.Err _ ->
+                    ListLine Nothing rawText
+
+        Just rawText :: [] ->
+            ListLine Nothing rawText
 
         _ ->
             TextLine match.match

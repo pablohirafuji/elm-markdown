@@ -38,46 +38,144 @@ run =
 
 
     , testEq 265
-        [ p [] [ text "" ]
+        [ p [] [ text "In order to solve of unwanted lists in paragraphs with hard-wrapped numerals, we allow only lists starting with 1 to interrupt paragraphs. Thus," ]
         ]
-        ""
-        [ ul [] [ li [] [  ] ] ]
+        "The number of windows in my house is\n14.  The number of doors is 6."
+        [ p [] [ text "The number of windows in my house is\n14.  The number of doors is 6." ] ]
 
 
     , testEq 266
-        [ p [] [ text "" ]
+        [ p [] [ text "We may still get an unintended result in cases like" ]
         ]
-        ""
-        [ ul [] [ li [] [  ] ] ]
+        "The number of windows in my house is\n1.  The number of doors is 6."
+        [ p [] [ text "The number of windows in my house is" ], ol [] [ li [] [ text "The number of doors is 6." ] ] ]
 
 
     , testEq 267
-        [ p [] [ text "" ]
+        [ p [] [ text "There can be any number of blank lines between items:" ]
         ]
-        ""
-        [ ul [] [ li [] [  ] ] ]
+        "- foo\n\n- bar\n\n\n- baz"
+        [ ul [] [ li [] [ p [] [ text "foo" ] ], li [] [ p [] [ text "bar" ] ], li [] [ p [] [ text "baz" ] ] ] ]
 
 
     , testEq 268
-        [ p [] [ text "" ]
-        ]
-        ""
-        [ ul [] [ li [] [  ] ] ]
+        []
+        "- foo\n  - bar\n    - baz\n\n\n      bim"
+        [ ul [] [ li [] [ text "foo", ul [] [ li [] [ text "bar", ul [] [ li [] [ p [] [ text "baz" ], p [] [ text "bim" ] ] ] ] ] ] ] ]
 
 
     , testEq 269
-        [ p [] [ text "" ]
+        [ p [] [ text "To separate consecutive lists of the same type, or to separate a list from an indented code block that would otherwise be parsed as a subparagraph of the final list item, you can insert a blank HTML comment:" ]
         ]
-        ""
-        [ ul [] [ li [] [  ] ] ]
+        "- foo\n- bar\n\n<!-- -->\n\n- baz\n- bim"
+        [ ul [] [ li [] [ text "foo" ], li [] [ text "bar" ] ] , text "<!-- -->", ul [] [ li [] [ text "baz" ], li [] [ text "bim" ] ] ]
 
 
-    , testEq 27
-        [ p [] [ text "" ]
+    , testEq 270
+        []
+        "-   foo\n\n    notcode\n\n-   foo\n\n<!-- -->\n\n    code"
+        [ ul [] [ li [] [ p [] [ text "foo" ], p [] [ text "notcode" ] ], li [] [ p [] [ text "foo" ] ] ], text "<!-- -->", pre [] [ code [] [ text "code\n" ] ] ]
+
+
+    , testEq 271
+        [ p [] [ text "List items need not be indented to the same level. The following list items will be treated as items at the same list level, since none is indented enough to belong to the previous list item:" ]
         ]
-        ""
-        [ ul [] [ li [] [  ] ] ]
+        "- a\n - b\n  - c\n   - d\n    - e\n   - f\n  - g\n - h\n- i"
+        [ ul [] [ li [] [ text "a" ], li [] [ text "b" ], li [] [ text "c" ], li [] [ text "d" ], li [] [ text "e" ], li [] [ text "f" ], li [] [ text "g" ], li [] [ text "h" ], li [] [ text "i" ] ] ]
 
+
+    , testEq 272
+        []
+        "1. a\n\n  2. b\n\n    3. c"
+        [ ol [] [ li [] [ p [] [ text "a" ] ], li [] [ p [] [ text "b" ] ], li [] [ p [] [ text "c" ] ] ] ]
+
+
+    , testEq 273
+        [ p [] [ text "This is a loose list, because there is a blank line between two of the list items:" ]
+        ]
+        "- a\n- b\n\n- c"
+        [ ul [] [ li [] [ p [] [ text "a" ] ], li [] [ p [] [ text "b" ] ], li [] [ p [] [ text "c" ] ] ] ]
+
+
+    , testEq 274
+        [ p [] [ text "So is this, with a empty second item:" ]
+        ]
+        "* a\n*\n\n* c"
+        [ ul [] [ li [] [ p [] [ text "a" ] ], li [] [], li [] [ p [] [ text "c" ] ] ] ]
+
+
+    , testEq 275
+        [ p [] [ text "These are loose lists, even though there is no space between the items, because one of the items directly contains two block-level elements with a blank line between them:" ]
+        ]
+        "- a\n- b\n\n  c\n- d"
+        [ ul [] [ li [] [ p [] [ text "a" ] ], li [] [ p [] [ text "b" ], p [] [ text "c" ] ], li [] [ p [] [ text "d" ] ] ] ]
+
+
+    , testEq 276
+        []
+        "- a\n- b\n\n  [ref]: /url\n- d"
+        [ ul [] [ li [] [ p [] [ text "a" ] ], li [] [ p [] [ text "b" ] ], li [] [ p [] [ text "d" ] ] ] ]
+
+
+    , testEq 277
+        [ p [] [ text "This is a tight list, because the blank lines are in a code block:" ]
+        ]
+        "- a\n- ```\n  b\n\n\n  ```\n- c"
+        [ ul [] [ li [] [ text "a" ], li [] [ pre [] [ code [] [ text "b\n\n\n" ] ] ] ], li [] [ text "c" ] ]
+
+
+    , testEq 278
+        [ p [] [ text "This is a tight list, because the blank line is between two paragraphs of a sublist. So the sublist is loose while the outer list is tight:" ]
+        ]
+        "- a\n  - b\n\n    c\n- d"
+        [ ul [] [ li [] [ text "a", ul [] [ li [] [ p [] [ text "b" ], p [] [ text "c" ] ] ] ], li [] [ text "d" ] ] ]
+
+
+    , testEq 279
+        [ p [] [ text "This is a tight list, because the blank line is inside the block quote:" ]
+        ]
+        "* a\n  > b\n  >\n* c"
+        [ ul [] [ li [] [ text "a", blockquote [] [ p [] [ text "b" ] ] ], li [] [ text "c" ] ] ]
+
+
+    , testEq 280
+        [ p [] [ text "This list is tight, because the consecutive block elements are not separated by blank lines:" ]
+        ]
+        "- a\n  > b\n  ```\n  c\n  ```\n- d"
+        [ ul [] [ li [] [ text "a", blockquote [] [ p [] [ text "b" ] ], pre [] [ code [] [ text "c\n" ] ] ], li [] [ text "d" ] ] ]
+
+
+    , testEq 281
+        [ p [] [ text "A single-paragraph list is tight:" ]
+        ]
+        "- a"
+        [ ul [] [ li [] [ text "a" ] ] ]
+
+
+    , testEq 282
+        []
+        "- a\n  - b"
+        [ ul [] [ li [] [ text "a", ul [] [ li [] [ text "b" ] ] ] ] ]
+
+
+    , testEq 283
+        [ p [] [ text "This list is loose, because of the blank line between the two block elements in the list item:" ]
+        ]
+        "1. ```\n   foo\n   ```\n\n   bar"
+        [ ol [] [ li [] [ pre [] [ code [] [ text "foo\n" ] ], p [] [ text "bar" ] ] ] ]
+
+
+    , testEq 284
+        [ p [] [ text "Here the outer list is loose, the inner list tight:" ]
+        ]
+        "* foo\n  * bar\n\n  baz"
+        [ ul [] [ li [] [ p [] [ text "foo" ], ul [] [ li [] [ text "bar" ] ], p [] [ text "baz" ] ] ] ]
+
+
+    , testEq 285
+        []
+        "- a\n  - b\n  - c\n\n- d\n  - e\n  - f"
+        [ ul [] [ li [] [ p [] [ text "a" ], ul [] [ li [] [ text "b" ], li [] [ text "c" ] ] ], li [] [ p [] [ text "d" ], ul [] [ li [] [ text "e" ], li [] [ text "f" ] ] ] ] ]
 
     ]
 
