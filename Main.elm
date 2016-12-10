@@ -51,7 +51,7 @@ view model =
         --, p []
         --      [ text <| toString <| (List.map Markdown.typeOfLine (String.lines model.textarea)) ]
         --, div [] <| Markdown.toHtml model.textarea
-        , input
+        , textarea
             [ value <| String.dropRight 1 <| String.dropLeft 1 <| toString model.textarea
             , style [ ("font-size", "16px"), ("width", "90%") ] ] []
         , Test.View.view
