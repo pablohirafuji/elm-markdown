@@ -2,8 +2,9 @@ module Markdown exposing (..)
 
 
 import Html exposing (..)
-import Html.Attributes exposing (class)
+import Html.Attributes exposing (class, start)
 import Regex exposing (Regex)
+import Code
 
 
 
@@ -18,7 +19,7 @@ type Line
     | CodeLine CodeFenceState String
     | ClosingCodeFenceLine
     | BlockQuoteLine String
-    | ListLine (Maybe Int) String
+    | ListLine ListState String -- Ordered Number -> Delimiter -> RawText
 
 
 type alias CodeFenceState =
@@ -38,6 +39,23 @@ emptyCodeFenceState =
     }
 
 
+type alias ListState =
+    { indentSize : Int
+    , delimiter : String
+    , start : String
+    , isLoose : Maybe Bool
+    }
+
+
+emptyListState : ListState
+emptyListState =
+    { indentSize = 0
+    , delimiter = ""
+    , start = ""
+    , isLoose = Nothing
+    }
+
+
 lineRegex : List (Line, Regex)
 lineRegex =
     [ ( IndentedCodeLine "", Regex.regex "^ {4,4}(.*)$" )
@@ -45,9 +63,10 @@ lineRegex =
     , ( SetextHeadingLine 0 "", Regex.regex "^ {0,3}(=+|-+)[ \\t]*$")
     , ( ATXHeadingLine 0 "", Regex.regex "^ {0,3}(#{1,6})(?:[ \\t]+[ \\t#]+$|[ \\t]+|$)(.*?)(?:\\s+[ \\t#]*)?$" )
     , ( CodeFenceLine emptyCodeFenceState, Regex.regex "^( {0,3})(`{3,}(?!.*`)|~{3,}(?!.*~))(.*)$" )
-    , ( ThematicBreakLine, Regex.regex "^ {0,3}(?:(?:\\*[ \\t]*){3,}|(?:_[ \\t]*){3,}|(?:-[ \\t]*){3,})[ \\t]*$" )
+    , ( ThematicBreakLine, thematicBreakLineRegex )
     , ( BlockQuoteLine "", Regex.regex "^ {0,3}(?:>[ ]?)(.*)$" )
-    , ( ListLine Nothing "", Regex.regex "^ {0,3}(\\d{1,9})[.)](?: (.*))?$" )
+    , ( ListLine emptyListState "", Regex.regex "^( {0,3}(\\d{1,9})([.)]))(?: (.*))?$" )
+    , ( ListLine emptyListState "", Regex.regex "^( {0,3}([\\*\\-\\+]))(?: (.*))?$" )
     , ( TextLine "", Regex.regex "^.*$" )
     ]
 
@@ -55,6 +74,10 @@ lineRegex =
 closingFenceLineRegex : Regex
 closingFenceLineRegex =
     Regex.regex "^ {0,3}(`{3,}|~{3,})[ \\t]*$"
+
+thematicBreakLineRegex : Regex
+thematicBreakLineRegex =
+    Regex.regex "^ {0,3}(?:(?:\\*[ \\t]*){3,}|(?:_[ \\t]*){3,}|(?:-[ \\t]*){3,})[ \\t]*$"
 
 
 typifyLines : ( List String, List Line ) -> ( List String, List Line )
@@ -66,17 +89,26 @@ typifyLines ( rawLines, typedLines ) =
 
         rawLine :: rawLinesRest ->
             case typedLines of
-                CodeFenceLine fenceState :: typedLinesRest ->
+                -- If last typed line is CodeLine, continue or close
+                -- the fence based on fenceState
+                CodeFenceLine fenceState :: _ ->
                     ( rawLinesRest
                     , continueOrCloseCodeFence fenceState rawLine
                         :: typedLines
                     ) |> typifyLines
 
-                CodeLine fenceState _ :: restTypedLines ->
+                -- If last typed line is CodeLine, continue or close
+                -- the fence based on fenceState
+                CodeLine fenceState _ :: _ ->
                     ( rawLinesRest
                     , continueOrCloseCodeFence fenceState rawLine
                         :: typedLines
                     ) |> typifyLines
+
+-- Se abrir listLine, verificar ident, se for maior que o da
+--lista, faz parte da lista
+--Checar indent logo depois de ListLine lá em cima, se for
+--maior que o indent da listLine, faz parte da listline
 
                 _ ->
                     ( rawLinesRest
@@ -102,7 +134,11 @@ isClosingCodeFenceLine fenceState rawLine =
                 case match.submatches of
                     Just fence :: _ ->
                         String.length fence >= fenceState.fenceSize
-                            && (Maybe.withDefault (' ', "") (String.uncons fence) |> Tuple.first) == fenceState.fenceChar
+                            && (Maybe.withDefault
+                                    (' ', "")
+                                    (String.uncons fence)
+                                        |> Tuple.first
+                                ) == fenceState.fenceChar
 
                     _ ->
                         False
@@ -261,16 +297,23 @@ matchToBlockQuoteLine match =
 matchToListLine : Regex.Match -> Line
 matchToListLine match =
     case match.submatches of
-        Just number :: Just rawText :: _ ->
-            case String.toInt number of
-                Result.Ok int ->
-                    ListLine (Just int) rawText
+        Just indentString :: Just number :: Just delimiter :: Just rawText :: _ ->
+            ListLine
+                { indentSize = String.length indentString + 1
+                , delimiter = delimiter
+                , start = number
+                , isLoose = Nothing
+                }
+                rawText
 
-                Result.Err _ ->
-                    ListLine Nothing rawText
-
-        Just rawText :: [] ->
-            ListLine Nothing rawText
+        Just indentString :: Just delimiter :: Just rawText :: [] ->
+            ListLine
+                { indentSize = String.length indentString + 1
+                , delimiter = delimiter
+                , start = ""
+                , isLoose = Nothing
+                }
+                rawText
 
         _ ->
             TextLine match.match
@@ -282,6 +325,7 @@ type Block
     | ParagraphBlock String
     | CodeBlock (Maybe CodeFenceState) String
     | BlockQuote String
+    | ListBlock ListState (List String)
 
 
 type alias ParseState =
@@ -363,14 +407,19 @@ linesToBlocks ( blocks, lines, ({isCodeBlockOpen} as parseState) ) =
             ) |> linesToBlocks
 
 
-        SetextHeadingLine 2 _ :: rest ->
-            -- TODO Testar para ver se cai no regex do ThematicBreak
-            -- porque SetextHeadingLine 2 não precisa de 3 para confirmar
-            -- ThematicBreak sim!
-            ( ThematicBreakBlock :: blocks
-            , rest
-            , parseState
-            ) |> linesToBlocks
+        SetextHeadingLine 2 maybeParagraph :: rest ->
+            if Regex.contains thematicBreakLineRegex maybeParagraph then
+                ( ThematicBreakBlock :: blocks
+                , rest
+                , parseState
+                ) |> linesToBlocks
+
+            else
+                ( blocks
+                , TextLine (String.trim maybeParagraph)
+                    :: rest
+                , parseState
+                ) |> linesToBlocks
 
 
         IndentedCodeLine code :: rest ->
@@ -415,7 +464,7 @@ linesToBlocks ( blocks, lines, ({isCodeBlockOpen} as parseState) ) =
                     ) |> linesToBlocks
 
 
-        -- TODO Só quando o último block do blockquote for parágrafo!
+        -- TODO Só quando o último block do blockquote for parágrafo ou lista?
         BlockQuoteLine rawText
             :: TextLine paragraph
             :: rest ->
@@ -437,10 +486,79 @@ linesToBlocks ( blocks, lines, ({isCodeBlockOpen} as parseState) ) =
 
 
         BlockQuoteLine rawText :: rest ->
-                ( BlockQuote rawText :: blocks
-                , rest
+            ( BlockQuote rawText :: blocks
+            , rest
+            , parseState
+            ) |> linesToBlocks
+
+
+        -- List cases
+        -- In order to solve of unwanted lists in paragraphs with hard-wrapped numerals, we allow only lists starting with 1 to interrupt paragraphs. Thus,
+        --TextLine paragraph
+        --    :: ListLine listState rawText
+        --    :: rest ->
+        --        if listState
+
+        ListLine listState rawText
+            :: TextLine line
+            :: rest ->
+                ( blocks
+                , ListLine listState (rawText ++ "\n" ++ String.trim line)
+                    :: rest
                 , parseState
                 ) |> linesToBlocks
+
+
+        ListLine listState rawText
+            :: IndentedCodeLine line
+            :: rest ->
+                ( blocks
+                , ListLine listState (rawText ++ "\n" ++ String.trim line)
+                    :: rest
+                , parseState
+                ) |> linesToBlocks
+
+
+        ListLine listState rawText
+            :: BlankLine
+            :: rest ->
+                ( blocks
+                , ListLine { listState | isLoose = Just False } rawText
+                    :: rest
+                , parseState
+                ) |> linesToBlocks
+
+
+        ListLine listState rawText :: rest ->
+            let
+                verifyLoose : ListState -> ListState
+                verifyLoose listState =
+                    { listState |
+                        isLoose = Just (listState.isLoose /= Nothing)
+                    }
+
+            in case blocks of
+                ListBlock listBlockState rawTextList :: restBlocks ->
+                    if listState.delimiter == listBlockState.delimiter then
+                        ( ListBlock listBlockState (rawTextList ++ [ rawText ])
+                            :: restBlocks
+                        , rest
+                        , parseState
+                        ) |> linesToBlocks
+
+                    else
+                        ( ListBlock listState [ rawText ]
+                            :: blocks
+                        , rest
+                        , parseState
+                        ) |> linesToBlocks
+
+                _ ->
+                    ( ListBlock listState [ rawText ]
+                        :: blocks
+                    , rest
+                    , parseState
+                    ) |> linesToBlocks
 
 
         BlankLine :: rest ->
@@ -502,8 +620,9 @@ blockToHtml block =
         ParagraphBlock paragraph ->
             p [] [ text paragraph ]
 
-        CodeBlock maybeCodeFenceState codeStr ->
-            case maybeCodeFenceState of
+        CodeBlock maybeFence codeStr ->
+            --Code.view codeBlock
+            case maybeFence of
                 Just { language } ->
                     if String.length language > 0 then
                         pre []
@@ -520,3 +639,23 @@ blockToHtml block =
 
         BlockQuote rawText ->
             blockquote [] (toHtml rawText)
+
+        ListBlock listState rawTextList ->
+            let
+                listItems =
+                    List.map toHtml rawTextList
+                        |> List.map (li [])
+
+            in
+            if listState.delimiter == "*"
+                || listState.delimiter == "+"
+                || listState.delimiter == "-" then
+                    ul [] listItems
+            else
+                case String.toInt listState.start of
+                    Result.Ok int ->
+                        ol [ start int ] listItems
+
+                    Result.Err _ ->
+                        ul [] listItems
+                        
