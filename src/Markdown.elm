@@ -2,82 +2,59 @@ module Markdown exposing (..)
 
 
 import Html exposing (..)
-import Html.Attributes exposing (class, start)
 import Regex exposing (Regex)
 import Code
+import BlockQuote
+import Lists
 
 
 
 type Line
-    = BlankLine
+    = BlankLine String
     | TextLine String
     | ATXHeadingLine Int String
     | SetextHeadingLine Int String
     | ThematicBreakLine
-    | IndentedCodeLine String
-    | CodeFenceLine CodeFenceState
-    | CodeLine CodeFenceState String
-    | ClosingCodeFenceLine
-    | BlockQuoteLine String
-    | ListLine ListState String -- Ordered Number -> Delimiter -> RawText
-
-
-type alias CodeFenceState =
-    { indentSize : Int
-    , fenceChar : Char
-    , fenceSize : Int
-    , language : String
-    }
-
-
-emptyCodeFenceState : CodeFenceState
-emptyCodeFenceState =
-    { indentSize = 0
-    , fenceChar = ' '
-    , fenceSize = 0
-    , language = ""
-    }
-
-
-type alias ListState =
-    { indentSize : Int
-    , delimiter : String
-    , start : String
-    , isLoose : Maybe Bool
-    }
-
-
-emptyListState : ListState
-emptyListState =
-    { indentSize = 0
-    , delimiter = ""
-    , start = ""
-    , isLoose = Nothing
-    }
+    | BlockQuoteLine BlockQuote.Line
+    | ListLine Lists.Line
+    | CodeLine Code.Block
 
 
 lineRegex : List (Line, Regex)
 lineRegex =
-    [ ( IndentedCodeLine "", Regex.regex "^ {4,4}(.*)$" )
-    , ( BlankLine, Regex.regex "^\\s*$" )
+    [ ( BlankLine "", Regex.regex "^\\s*$" )
+    , ( CodeLine ( Code.Indented ( [], "" ) ), Code.indentedRegex )
+    , ( CodeLine ( Code.Fenced Code.initFence ), Code.openingFenceRegex )
     , ( SetextHeadingLine 0 "", Regex.regex "^ {0,3}(=+|-+)[ \\t]*$")
     , ( ATXHeadingLine 0 "", Regex.regex "^ {0,3}(#{1,6})(?:[ \\t]+[ \\t#]+$|[ \\t]+|$)(.*?)(?:\\s+[ \\t#]*)?$" )
-    , ( CodeFenceLine emptyCodeFenceState, Regex.regex "^( {0,3})(`{3,}(?!.*`)|~{3,}(?!.*~))(.*)$" )
     , ( ThematicBreakLine, thematicBreakLineRegex )
-    , ( BlockQuoteLine "", Regex.regex "^ {0,3}(?:>[ ]?)(.*)$" )
-    , ( ListLine emptyListState "", Regex.regex "^( {0,3}(\\d{1,9})([.)]))(?: (.*))?$" )
-    , ( ListLine emptyListState "", Regex.regex "^( {0,3}([\\*\\-\\+]))(?: (.*))?$" )
+    , ( BlockQuoteLine "", BlockQuote.regex )
+    , ( ListLine Lists.initUnordered, Lists.unorderedRegex )
+    , ( ListLine Lists.initOrdered, Lists.orderedRegex )
     , ( TextLine "", Regex.regex "^.*$" )
     ]
 
 
-closingFenceLineRegex : Regex
-closingFenceLineRegex =
-    Regex.regex "^ {0,3}(`{3,}|~{3,})[ \\t]*$"
-
 thematicBreakLineRegex : Regex
 thematicBreakLineRegex =
     Regex.regex "^ {0,3}(?:(?:\\*[ \\t]*){3,}|(?:_[ \\t]*){3,}|(?:-[ \\t]*){3,})[ \\t]*$"
+
+
+toRawLines : String -> List String
+toRawLines =
+    String.lines
+
+
+toLines : String -> List Line -> List Line
+toLines rawText lines =
+    typifyLines ( toRawLines rawText, lines )
+        |> Tuple.second
+
+
+rawLinesToLines : List String -> List Line -> List Line
+rawLinesToLines rawLines lines =
+    typifyLines ( rawLines, lines )
+        |> Tuple.second
 
 
 typifyLines : ( List String, List Line ) -> ( List String, List Line )
@@ -89,21 +66,15 @@ typifyLines ( rawLines, typedLines ) =
 
         rawLine :: rawLinesRest ->
             case typedLines of
-                -- If last typed line is CodeLine, continue or close
-                -- the fence based on fenceState
-                CodeFenceLine fenceState :: _ ->
-                    ( rawLinesRest
-                    , continueOrCloseCodeFence fenceState rawLine
-                        :: typedLines
-                    ) |> typifyLines
+                CodeLine ( Code.Fenced ( True, fence, previousCode ) )
+                    :: typedLinesTail ->
+                        ( rawLinesRest
+                        , CodeLine
+                            ( Code.continueOrCloseFence
+                                fence previousCode rawLine )
+                                    :: typedLinesTail
+                        ) |> typifyLines
 
-                -- If last typed line is CodeLine, continue or close
-                -- the fence based on fenceState
-                CodeLine fenceState _ :: _ ->
-                    ( rawLinesRest
-                    , continueOrCloseCodeFence fenceState rawLine
-                        :: typedLines
-                    ) |> typifyLines
 
 -- Se abrir listLine, verificar ident, se for maior que o da
 --lista, faz parte da lista
@@ -116,494 +87,355 @@ typifyLines ( rawLines, typedLines ) =
                     ) |> typifyLines
 
 
-continueOrCloseCodeFence : CodeFenceState -> String -> Line
-continueOrCloseCodeFence fenceState rawLine =
-    if isClosingCodeFenceLine fenceState rawLine then
-        ClosingCodeFenceLine
-
-    else
-        CodeLine fenceState rawLine
-
-
-isClosingCodeFenceLine : CodeFenceState -> String -> Bool
-isClosingCodeFenceLine fenceState rawLine =
-    Regex.find (Regex.AtMost 1) closingFenceLineRegex rawLine
-        |> List.head
-        |> Maybe.map
-            (\match ->
-                case match.submatches of
-                    Just fence :: _ ->
-                        String.length fence >= fenceState.fenceSize
-                            && (Maybe.withDefault
-                                    (' ', "")
-                                    (String.uncons fence)
-                                        |> Tuple.first
-                                ) == fenceState.fenceChar
-
-                    _ ->
-                        False
-            )
-        |> Maybe.withDefault False
-
-
-indentCodeLine : CodeFenceState -> String -> String
-indentCodeLine fenceState =
-    Regex.replace
-        (Regex.AtMost 1)
-        (Regex.regex ("^( {0," ++ toString fenceState.indentSize ++ "})"))
-        (\_ -> "")
-
-
 typifyLine : String -> Line
 typifyLine lineStr =
     let
         applyRegex : (Line, Regex) -> Maybe Line -> Maybe Line
         applyRegex (line, regex) maybeLine =
             if maybeLine == Nothing then
-                let
-                    matchs =
-                        Regex.find (Regex.AtMost 1) regex lineStr
-                in
-                    if List.length matchs > 0 then
-                        Just (matchToLine matchs line)
-
-                    else
-                        Nothing
+                Regex.find (Regex.AtMost 1) regex lineStr
+                    |> List.head
+                    |> Maybe.map (\match -> matchToLine match line)
 
             else
                 maybeLine
 
     in
         List.foldl applyRegex Nothing lineRegex
-            |> Maybe.withDefault BlankLine
+            |> Maybe.withDefault (BlankLine "")
 
 
-matchToLine : List Regex.Match -> Line -> Line
-matchToLine matchs line =
+matchToLine : Regex.Match -> Line -> Line
+matchToLine match line =
     case line of
-        BlankLine ->
-            BlankLine
+        BlankLine _ ->
+            BlankLine match.match
 
         SetextHeadingLine _ _ ->
-            matchsToLine matchs matchToSetextHeadingLine
+            case match.submatches of
+                Just str :: _ ->
+                    if String.startsWith "=" str then
+                        SetextHeadingLine 1 str
+
+                    else
+                        SetextHeadingLine 2 str
+
+                _ ->
+                    TextLine match.match
 
         ATXHeadingLine _ _ ->
-            matchsToLine matchs matchToHeadingLine
+            case match.submatches of
+                Just lvl :: Just heading :: _ ->
+                    ATXHeadingLine (String.length lvl) heading
 
-        CodeFenceLine _ ->
-            matchsToLine matchs matchToCodeFenceLine
+                Just lvl :: Nothing :: _ ->
+                    ATXHeadingLine (String.length lvl) ""
 
-        IndentedCodeLine _ ->
-            matchsToLine matchs matchToIndentedCodeLine
+                _ ->
+                    TextLine match.match
 
         ThematicBreakLine ->
             ThematicBreakLine
 
         TextLine _ ->
-            matchsToLine matchs matchToTextLine
-
-        CodeLine fenceState code -> -- Impossible
-            CodeLine fenceState code
-
-        ClosingCodeFenceLine -> -- Impossible
-            ClosingCodeFenceLine
+            TextLine match.match
 
         BlockQuoteLine _ ->
-            matchsToLine matchs matchToBlockQuoteLine
+            BlockQuote.fromMatch match
+                |> Maybe.map BlockQuoteLine
+                |> Maybe.withDefault (TextLine match.match)
 
-        ListLine _ _ ->
-            matchsToLine matchs matchToListLine
+        ListLine info ->
+            Lists.fromMatch match info
+                |> Maybe.map ListLine
+                |> Maybe.withDefault (TextLine match.match)
 
+        CodeLine ( Code.Fenced _ ) ->
+            Code.fromOpeningFenceMatch match
+                |> Maybe.map CodeLine
+                |> Maybe.withDefault (TextLine match.match)
 
-matchsToLine : List Regex.Match -> (Regex.Match -> Line) -> Line
-matchsToLine matchs matchToLine =
-    List.head matchs
-        |> Maybe.map matchToLine
-        |> Maybe.withDefault BlankLine
-
-
-matchToSetextHeadingLine : Regex.Match -> Line
-matchToSetextHeadingLine match =
-    case match.submatches of
-        Just str :: _ ->
-            if String.startsWith "=" str then
-                SetextHeadingLine 1 str
-
-            else
-                SetextHeadingLine 2 str
-
-        _ ->
-            TextLine match.match
-
-
-matchToHeadingLine : Regex.Match -> Line
-matchToHeadingLine match =
-    case match.submatches of
-        Just lvl :: Just heading :: _ ->
-            ATXHeadingLine (String.length lvl) heading
-
-        Just lvl :: Nothing :: _ ->
-            ATXHeadingLine (String.length lvl) ""
-
-        _ ->
-            TextLine match.match
-
-
-matchToTextLine : Regex.Match -> Line
-matchToTextLine match =
-    TextLine match.match
-
-
-matchToCodeFenceLine : Regex.Match -> Line
-matchToCodeFenceLine match =
-    case Debug.log "x" match.submatches of
-        Just indent :: Just fence :: Just language :: _ ->
-            CodeFenceLine
-                { indentSize = String.length indent
-                , fenceChar =
-                    Maybe.withDefault ('`', "") (String.uncons fence)
-                        |> Tuple.first
-                , fenceSize = String.length fence
-                , language =
-                    String.words language
-                        |> List.head
-                        |> Maybe.withDefault ""
-                }
-
-        _ ->
-            TextLine match.match
-
-
-matchToIndentedCodeLine : Regex.Match -> Line
-matchToIndentedCodeLine match =
-    case match.submatches of
-        Just code :: _ ->
-            IndentedCodeLine code
-
-        _ ->
-            TextLine match.match
-
-
-matchToBlockQuoteLine : Regex.Match -> Line
-matchToBlockQuoteLine match =
-    case match.submatches of
-        Just quote :: _ ->
-            BlockQuoteLine quote
-
-        _ ->
-            TextLine match.match
-
-
-matchToListLine : Regex.Match -> Line
-matchToListLine match =
-    case match.submatches of
-        Just indentString :: Just number :: Just delimiter :: Just rawText :: _ ->
-            ListLine
-                { indentSize = String.length indentString + 1
-                , delimiter = delimiter
-                , start = number
-                , isLoose = Nothing
-                }
-                rawText
-
-        Just indentString :: Just delimiter :: Just rawText :: [] ->
-            ListLine
-                { indentSize = String.length indentString + 1
-                , delimiter = delimiter
-                , start = ""
-                , isLoose = Nothing
-                }
-                rawText
-
-        _ ->
-            TextLine match.match
+        CodeLine ( Code.Indented _ ) ->
+            Code.fromIndentedMatch match
+                |> Maybe.map CodeLine
+                |> Maybe.withDefault (TextLine match.match)
 
 
 type Block
     = HeadingBlock Int String
     | ThematicBreakBlock
     | ParagraphBlock String
-    | CodeBlock (Maybe CodeFenceState) String
-    | BlockQuote String
-    | ListBlock ListState (List String)
+    | CodeBlock Code.Block
+    | BlockQuote BlockContainer
+    | ListBlock Lists.Info (List BlockContainer)
+    | BlankBlock
 
 
-type alias ParseState =
+type alias BlockContainer = ( List String, List Line, List Block )
+
+
+type alias Info =
     { isCodeBlockOpen : Bool
     }
 
 
-initParseState : ParseState
-initParseState =
+initInfo : Info
+initInfo =
     { isCodeBlockOpen = False
     }
 
 
-linesToBlocks : ( List Block, List Line, ParseState ) -> ( List Block, List Line, ParseState )
-linesToBlocks ( blocks, lines, ({isCodeBlockOpen} as parseState) ) =
+linesToBlocks : ( List Line, List Block, Info ) -> ( List Line, List Block, Info )
+linesToBlocks =
+    linesToReversedBlocks 
+        >> \( lines, blocks, parseState ) ->
+            ( lines
+            , List.reverse blocks
+            , parseState
+            )
+
+
+linesToReversedBlocks : ( List Line, List Block, Info ) -> ( List Line, List Block, Info )
+linesToReversedBlocks ( lines, blocks, parseState ) =
     case lines of
         [] ->
-            ( List.reverse blocks
-            , lines
-            , parseState )
-
-
-        TextLine paragraph
-            :: BlankLine
-            :: rest ->
-                ( ParagraphBlock (String.trim paragraph) :: blocks
-                , rest
-                , parseState
-                ) |> linesToBlocks
-
-
-        TextLine line1
-            :: TextLine line2
-            :: rest ->
-                ( blocks
-                , TextLine (String.trim line1 ++ "\n" ++ String.trim line2)
-                    :: rest
-                , parseState
-                ) |> linesToBlocks
-
-
-        TextLine line1
-            :: IndentedCodeLine line2
-            :: rest ->
-                ( blocks
-                , TextLine (String.trim line1 ++ "\n" ++ String.trim line2)
-                    :: rest
-                , parseState
-                ) |> linesToBlocks
-
-
-        TextLine headingText
-            :: SetextHeadingLine lvl _
-            :: rest ->
-                ( HeadingBlock lvl (String.trim headingText) :: blocks
-                , rest
-                , parseState
-                ) |> linesToBlocks
-
-
-        ATXHeadingLine lvl headingText :: rest ->
-            ( HeadingBlock lvl (String.trim headingText) :: blocks
-            , rest
+            ( lines
+            , blocks
             , parseState
-            ) |> linesToBlocks
+            )
 
 
-        ThematicBreakLine :: rest ->
-            ( ThematicBreakBlock :: blocks
-            , rest
+        ATXHeadingLine lvl headingText :: linesTail ->
+            ( linesTail
+            , HeadingBlock lvl (String.trim headingText) :: blocks
             , parseState
-            ) |> linesToBlocks
+            ) |> linesToReversedBlocks
 
 
-        SetextHeadingLine 1 paragraph :: rest ->
-            ( ParagraphBlock (String.trim paragraph) :: blocks
-            , rest
+        ThematicBreakLine :: linesTail ->
+            ( linesTail
+            , ThematicBreakBlock :: blocks
             , parseState
-            ) |> linesToBlocks
+            ) |> linesToReversedBlocks
 
 
-        SetextHeadingLine 2 maybeParagraph :: rest ->
-            if Regex.contains thematicBreakLineRegex maybeParagraph then
-                ( ThematicBreakBlock :: blocks
-                , rest
-                , parseState
-                ) |> linesToBlocks
-
-            else
-                ( blocks
-                , TextLine (String.trim maybeParagraph)
-                    :: rest
-                , parseState
-                ) |> linesToBlocks
-
-
-        IndentedCodeLine code :: rest ->
+        SetextHeadingLine lvl rawLine :: linesTail ->
             case blocks of
-                CodeBlock Nothing previousCode :: restBlocks ->
-                    ( CodeBlock Nothing (previousCode ++ code ++ "\n")
-                        :: restBlocks
-                    , rest
+                ParagraphBlock paragraph :: blocksTail ->
+                    ( linesTail
+                    , HeadingBlock lvl paragraph :: blocksTail
                     , parseState
-                    ) |> linesToBlocks
+                    ) |> linesToReversedBlocks
 
                 _ ->
-                    ( CodeBlock Nothing (code ++ "\n") :: blocks
-                    , rest
-                    , parseState
-                    ) |> linesToBlocks
-
-
-        CodeFenceLine fenceState :: rest ->
-            ( CodeBlock (Just fenceState) "" :: blocks
-            , rest
-            , parseState
-            ) |> linesToBlocks
-
-
-        CodeLine fenceState code :: rest ->
-            case blocks of
-                CodeBlock _ previousCode :: restBlocks ->
-                    ( CodeBlock (Just fenceState)
-                        (previousCode
-                            ++ indentCodeLine fenceState code
-                            ++ "\n")
-                                :: restBlocks
-                    , rest
-                    , parseState
-                    ) |> linesToBlocks
-
-                _ ->
-                    ( CodeBlock (Just fenceState) code :: blocks
-                    , rest
-                    , parseState
-                    ) |> linesToBlocks
-
-
-        -- TODO Só quando o último block do blockquote for parágrafo ou lista?
-        BlockQuoteLine rawText
-            :: TextLine paragraph
-            :: rest ->
-                ( blocks
-                , BlockQuoteLine (rawText ++ "\n" ++ paragraph)
-                    :: rest
-                , parseState
-                ) |> linesToBlocks
-
-
-        BlockQuoteLine rawText1
-            :: BlockQuoteLine rawText2
-            :: rest ->
-                ( blocks
-                , BlockQuoteLine (rawText1 ++ "\n" ++ rawText2)
-                    :: rest
-                , parseState
-                ) |> linesToBlocks
-
-
-        BlockQuoteLine rawText :: rest ->
-            ( BlockQuote rawText :: blocks
-            , rest
-            , parseState
-            ) |> linesToBlocks
-
-
-        -- List cases
-        -- In order to solve of unwanted lists in paragraphs with hard-wrapped numerals, we allow only lists starting with 1 to interrupt paragraphs. Thus,
-        --TextLine paragraph
-        --    :: ListLine listState rawText
-        --    :: rest ->
-        --        if listState
-
-        ListLine listState rawText
-            :: TextLine line
-            :: rest ->
-                ( blocks
-                , ListLine listState (rawText ++ "\n" ++ String.trim line)
-                    :: rest
-                , parseState
-                ) |> linesToBlocks
-
-
-        ListLine listState rawText
-            :: IndentedCodeLine line
-            :: rest ->
-                ( blocks
-                , ListLine listState (rawText ++ "\n" ++ String.trim line)
-                    :: rest
-                , parseState
-                ) |> linesToBlocks
-
-
-        ListLine listState rawText
-            :: BlankLine
-            :: rest ->
-                ( blocks
-                , ListLine { listState | isLoose = Just False } rawText
-                    :: rest
-                , parseState
-                ) |> linesToBlocks
-
-
-        ListLine listState rawText :: rest ->
-            let
-                verifyLoose : ListState -> ListState
-                verifyLoose listState =
-                    { listState |
-                        isLoose = Just (listState.isLoose /= Nothing)
-                    }
-
-            in case blocks of
-                ListBlock listBlockState rawTextList :: restBlocks ->
-                    if listState.delimiter == listBlockState.delimiter then
-                        ( ListBlock listBlockState (rawTextList ++ [ rawText ])
-                            :: restBlocks
-                        , rest
+                    if lvl == 1 then
+                        ( TextLine rawLine :: linesTail
+                        , blocks
                         , parseState
-                        ) |> linesToBlocks
+                        ) |> linesToReversedBlocks
 
                     else
-                        ( ListBlock listState [ rawText ]
-                            :: blocks
-                        , rest
-                        , parseState
-                        ) |> linesToBlocks
+                        if Regex.contains thematicBreakLineRegex rawLine then
+                            ( linesTail
+                            , ThematicBreakBlock :: blocks
+                            , parseState
+                            ) |> linesToReversedBlocks
 
-                _ ->
-                    ( ListBlock listState [ rawText ]
-                        :: blocks
-                    , rest
-                    , parseState
-                    ) |> linesToBlocks
+                        else
+                            ( TextLine rawLine :: linesTail
+                            , blocks
+                            , parseState
+                            ) |> linesToReversedBlocks
 
 
-        BlankLine :: rest ->
+        CodeLine ( Code.Indented ( blankLines, lineCode ) ) :: linesTail ->
             case blocks of
-                CodeBlock fenceState previousCode :: restBlocks ->
-                    ( CodeBlock fenceState (previousCode ++ "\n")
-                        :: restBlocks
-                    , rest
+                CodeBlock ( Code.Indented blockArgs ) :: blocksTail ->
+                        ( linesTail
+                        , CodeBlock
+                            ( Code.addIndented
+                                ( blankLines, lineCode ) blockArgs
+                            ) :: blocksTail
+                        , parseState
+                        ) |> linesToReversedBlocks
+
+                ParagraphBlock paragraph :: blocksTail ->
+                    ( linesTail
+                    , ParagraphBlock (paragraph ++ "\n" ++ String.trim lineCode)
+                        :: blocksTail
                     , parseState
-                    ) |> linesToBlocks
+                    ) |> linesToReversedBlocks
 
                 _ ->
-                    ( blocks
-                    , rest
+                    ( linesTail
+                    , CodeBlock ( Code.Indented ( [], lineCode ++ "\n" ) )
+                        :: blocks
                     , parseState
-                    ) |> linesToBlocks
+                    ) |> linesToReversedBlocks
 
 
-        TextLine paragraph :: rest ->
-            ( ParagraphBlock (String.trim paragraph) :: blocks
-            , rest
+        CodeLine ( Code.Fenced codeFenceModel ) :: linesTail ->
+            ( linesTail
+            , CodeBlock ( Code.Fenced codeFenceModel )
+                :: blocks
             , parseState
-            ) |> linesToBlocks
+            ) |> linesToReversedBlocks
 
 
-        _ :: rest ->
-            ( blocks
-            , rest
-            , parseState
-            ) |> linesToBlocks
+        BlockQuoteLine rawLine :: linesTail ->
+            case blocks of
+                BlockQuote ( rawLines, lines, blocks )
+                    :: blocksTail ->
+                        ( linesTail
+                        , BlockQuote ( rawLines ++ [ rawLine ], lines, blocks )
+                            :: blocksTail
+                        , parseState
+                        ) |> linesToReversedBlocks
+
+                _ ->
+                    ( linesTail
+                    , BlockQuote ( [ rawLine ], [], [] )
+                        :: blocks
+                    , parseState
+                    ) |> linesToReversedBlocks
 
 
-toHtml : String -> List (Html msg)
-toHtml rawText =
-    ( []
-    , typifyLines ( (String.lines rawText), [] )
-        |> Tuple.second
-    , initParseState )
-        |> linesToBlocks 
-        |> \( blocks, _, _ ) -> blocks
-        |> List.map blockToHtml
+        ListLine ( lineInfo, rawLine ) :: linesTail ->
+            case blocks of
+                ListBlock blockInfo blockCs :: blocksTail ->
+                    if lineInfo.delimiter == blockInfo.delimiter then
+                        ( linesTail
+                        , ListBlock
+                            ( Lists.updateInfo lineInfo blockInfo )
+                            ( ([ rawLine ], [], []) :: blockCs )
+                                :: blocksTail
+                        , parseState
+                        ) |> linesToReversedBlocks
+
+                    else
+                        ( linesTail
+                        , ListBlock lineInfo [ ( [ rawLine ], [], [] ) ]
+                            :: blocks
+                        , parseState
+                        ) |> linesToReversedBlocks
+
+                _ ->
+                    ( linesTail
+                    , ListBlock lineInfo [ ( [ rawLine ], [], [] ) ]
+                        :: blocks
+                    , parseState
+                    ) |> linesToReversedBlocks
 
 
-blockToHtml : Block -> Html msg
-blockToHtml block =
+        BlankLine str :: linesTail ->
+            case blocks of
+                CodeBlock ( Code.Indented ( blankLines, previousCode ) )
+                    :: blocksTail ->
+                        ( linesTail
+                        , CodeBlock
+                            ( Code.Indented
+                                ( blankLines ++ [ str ]
+                                , previousCode
+                                )
+                            ) :: blocksTail
+                        , parseState
+                        ) |> linesToReversedBlocks
+
+                ListBlock blockInfo blockCs :: blocksTail ->
+                    ( linesTail
+                    , ListBlock (Lists.blankLineFound blockInfo) blockCs
+                        :: blocksTail
+                    , parseState
+                    ) |> linesToReversedBlocks
+
+                _ ->
+                    ( linesTail
+                    , BlankBlock :: blocks
+                    , parseState
+                    ) |> linesToReversedBlocks
+
+
+        TextLine rawLine :: linesTail ->
+            case blocks of
+                BlockQuote blockC :: blocksTail ->
+                        case maybeContinueParagraph rawLine blockC of
+                            Just updtBlocks ->
+                                ( linesTail
+                                , BlockQuote ( [], [], updtBlocks )
+                                    :: blocksTail
+                                , parseState
+                                ) |> linesToReversedBlocks
+
+                            Nothing ->
+                                ( linesTail
+                                , ParagraphBlock (String.trim rawLine)
+                                    :: blocks
+                                , parseState
+                                ) |> linesToReversedBlocks
+
+                ParagraphBlock paragraph :: blocksTail ->
+                    ( linesTail
+                    , ParagraphBlock (paragraph ++ "\n" ++ String.trim rawLine)
+                        :: blocksTail
+                    , parseState
+                    ) |> linesToReversedBlocks
+
+                _ ->
+                    ( linesTail
+                    , ParagraphBlock (String.trim rawLine) :: blocks
+                    , parseState
+                    ) |> linesToReversedBlocks
+
+
+blockCToReversedBlocks : BlockContainer -> List Block
+blockCToReversedBlocks ( rawLines, lines, blocks ) =
+    ( rawLinesToLines rawLines lines
+    , blocks
+    , initInfo )
+        |> linesToReversedBlocks
+        |> \(_, blocks_, _) -> blocks_
+
+
+maybeContinueParagraph : String -> BlockContainer -> Maybe (List Block)
+maybeContinueParagraph rawLine blockC =
+    case blockCToReversedBlocks blockC of
+        ParagraphBlock paragraph :: containerBlocksTail ->
+            ParagraphBlock (paragraph ++ "\n" ++ String.trim rawLine)
+                :: containerBlocksTail
+                    |> Just
+
+        BlockQuote blockC_ :: containerBlocksTail ->
+            case maybeContinueParagraph rawLine blockC_ of
+                Just updtBlockC_ ->
+                    BlockQuote ([], [], updtBlockC_)
+                        :: containerBlocksTail
+                            |> Just
+
+                Nothing ->
+                    Nothing
+
+        _ ->
+            Nothing
+
+
+blockCToBlocks : BlockContainer -> List Block
+blockCToBlocks =
+    blockCToReversedBlocks
+        >> List.reverse
+
+
+toBlocks : String -> List Block
+toBlocks rawText =
+    blockCToBlocks ( toRawLines rawText, [], [] )
+
+
+removeBlankBlock : List Block -> List Block
+removeBlankBlock =
+    List.filter (\block -> block /= BlankBlock )
+
+
+blockToHtml : Bool -> Block -> Html msg
+blockToHtml textAsParagraph block =
     case block of
         HeadingBlock lvl heading ->
             case lvl of
@@ -618,44 +450,39 @@ blockToHtml block =
             hr [] []
 
         ParagraphBlock paragraph ->
-            p [] [ text paragraph ]
+            if textAsParagraph then
+                p [] [ text paragraph ]
 
-        CodeBlock maybeFence codeStr ->
-            --Code.view codeBlock
-            case maybeFence of
-                Just { language } ->
-                    if String.length language > 0 then
-                        pre []
-                            [ code
-                                [ class ("language-" ++ language) ]
-                                [ text codeStr ]
-                            ]
-
-                    else
-                        pre [] [ code [] [ text codeStr ] ]
-
-                Nothing ->
-                    pre [] [ code [] [ text codeStr ] ]
-
-        BlockQuote rawText ->
-            blockquote [] (toHtml rawText)
-
-        ListBlock listState rawTextList ->
-            let
-                listItems =
-                    List.map toHtml rawTextList
-                        |> List.map (li [])
-
-            in
-            if listState.delimiter == "*"
-                || listState.delimiter == "+"
-                || listState.delimiter == "-" then
-                    ul [] listItems
             else
-                case String.toInt listState.start of
-                    Result.Ok int ->
-                        ol [ start int ] listItems
+                text paragraph
 
-                    Result.Err _ ->
-                        ul [] listItems
-                        
+        CodeBlock codeBlock ->
+            Code.view codeBlock
+
+        BlockQuote blockC ->
+            blockCToBlocks blockC
+                |> removeBlankBlock
+                |> List.map (blockToHtml True)
+                |> BlockQuote.view
+
+        ListBlock info blockCs ->
+            List.reverse blockCs
+                |> List.map blockCToBlocks
+                |> List.map
+                    ( removeBlankBlock
+                        >> List.map (blockToHtml (Lists.isLoose info))
+                        >> li []
+                    )
+                |> Lists.view info
+
+        BlankBlock ->
+            text ""
+
+
+toHtml : String -> List (Html msg)
+toHtml =
+    toBlocks
+        >> removeBlankBlock
+        >> List.map (blockToHtml True)
+
+
