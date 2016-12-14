@@ -53,11 +53,14 @@ parseRawLines ({ rawLines, lines } as blockC) =
 
         rawLine :: rawLinesTail ->
             case lines of
+                -- If is code inside code fence, there's no
+                -- need to typify the rawLine
+                -- Talvez mudar isso, pode estar dentro de lista
                 CodeLine ( Code.Fenced ( True, fence, previousCode ) )
                     :: linesTail ->
                         { blockC
                             | rawLines = rawLinesTail
-                            , lines    =
+                            , lines =
                                 CodeLine
                                     ( Code.continueOrCloseFence
                                         fence previousCode rawLine )
@@ -71,7 +74,7 @@ parseRawLines ({ rawLines, lines } as blockC) =
                 _ ->
                     { blockC
                         | rawLines = rawLinesTail
-                        , lines    = typifyLine rawLine :: lines
+                        , lines = typifyLine rawLine :: lines
                     } |> parseRawLines
 
 
@@ -248,24 +251,24 @@ parseLines ({ lines, blocks } as blockC) =
                                 ) :: blocksTail
                     } |> parseLines                    
 
-                ParagraphBlock paragraph :: blocksTail ->
-                    { blockC
-                        | lines  = linesTail
-                        , blocks =
-                            ParagraphBlock
-                                (paragraph ++ "\n" ++ String.trim lineCode)
-                                    :: blocksTail
-                    } |> parseLines
-
                 _ ->
-                    { blockC
-                        | lines  = linesTail
-                        , blocks = 
-                            CodeBlock
-                                ( Code.Indented
-                                    ( [], lineCode ++ "\n" )
-                                ) :: blocks
-                    } |> parseLines
+                    let
+                        ( isContinuation, updtBlockC_ ) =
+                            maybeContinueParagraph True lineCode
+                                { blockC | lines = linesTail }
+
+                    in
+                        if isContinuation then
+                            parseLines updtBlockC_
+
+                        else
+                            { updtBlockC_
+                                | blocks =
+                                    CodeBlock
+                                        ( Code.Indented
+                                            ( [], lineCode ++ "\n" )
+                                        ) :: blocks
+                            } |> parseLines
 
 
         CodeLine ( Code.Fenced codeFenceModel ) :: linesTail ->
@@ -383,64 +386,29 @@ parseLines ({ lines, blocks } as blockC) =
 
         TextLine rawLine :: linesTail ->
             let
-                addParagraphBlock =
-                    { blockC
-                        | lines  = linesTail
-                        , blocks =
+                ( isContinuation, updtBlockC_ ) =
+                    maybeContinueParagraph True rawLine
+                        { blockC | lines = linesTail }
+
+            in
+                if isContinuation then
+                    parseLines updtBlockC_
+
+                else
+                    { updtBlockC_
+                        | blocks =
                             ParagraphBlock (String.trim rawLine)
                                 :: blocks
                     } |> parseLines
 
-            in case blocks of
-                ParagraphBlock paragraph :: blocksTail ->
-                    { blockC
-                        | lines  = linesTail
-                        , blocks =
-                            ParagraphBlock (paragraph ++ "\n" ++ String.trim rawLine)
-                                :: blocksTail
-                    } |> parseLines
 
-                BlockQuote blockC_ :: blocksTail ->
-                    case maybeContinueParagraph rawLine blockC_ of
-                        Just updtBlockC ->
-                            { blockC
-                                | lines  = linesTail
-                                , blocks =
-                                    BlockQuote updtBlockC
-                                        :: blocksTail
-                            } |> parseLines
+maybeContinueParagraph : Bool -> String -> BlockContainer -> ( Bool, BlockContainer )
+maybeContinueParagraph isParsed rawLine blockC =
+    let parsedBlockC =
+        if isParsed then
+            blockC
 
-                        Nothing ->
-                            addParagraphBlock
-
-                ListBlock info blockCs :: blocksTail ->
-                    case blockCs of
-                        blockC_ :: blockCsTail ->
-                            case maybeContinueParagraph rawLine blockC_ of
-                                Just updtBlockC ->
-                                    { blockC
-                                        | lines  = linesTail
-                                        , blocks =
-                                            ListBlock info
-                                                (updtBlockC
-                                                    :: blockCsTail)
-                                                        :: blocksTail
-                                    } |> parseLines
-
-                                Nothing ->
-                                    addParagraphBlock
-
-                        _ ->
-                            addParagraphBlock
-
-                _ ->
-                    addParagraphBlock
-
-
-maybeContinueParagraph : String -> BlockContainer -> Maybe BlockContainer
-maybeContinueParagraph rawLine blockC =
-    let
-        parsedBlockC =
+        else
             parseRawLines blockC
                 |> parseLines
 
@@ -450,42 +418,44 @@ maybeContinueParagraph rawLine blockC =
                 | blocks =
                     ParagraphBlock (paragraph ++ "\n" ++ String.trim rawLine)
                         :: blockCBlocksTail
-            } |> Just
+            } |> (,) True
 
 
         BlockQuote blockC_ :: blockCBlocksTail ->
-            case maybeContinueParagraph rawLine blockC_ of
-                Just updtBlockC_ ->
-                    { parsedBlockC
-                        | blocks =
-                            BlockQuote updtBlockC_
-                                :: blockCBlocksTail
-                    } |> Just
+            let ( isContinuation, updtBlockC_ ) =
+                maybeContinueParagraph False rawLine blockC_
 
-                Nothing ->
-                    Nothing
+            in
+                { parsedBlockC
+                    | blocks =
+                        BlockQuote updtBlockC_
+                            :: blockCBlocksTail
+                } |> (,) isContinuation
 
 
         ListBlock info blockCs :: blockCBlocksTail ->
-            case blockCs of
-                blockC_ :: blockCsTail ->
-                    case maybeContinueParagraph rawLine blockC_ of
-                        Just updtBlockC_ ->
+            if info.hasBlankLineAfter then
+                ( False, parsedBlockC )
+
+            else
+                case blockCs of
+                    blockC_ :: blockCsTail ->
+                        let ( isContinuation, updtBlockC_ ) =
+                            maybeContinueParagraph False rawLine blockC_
+
+                        in
                             { parsedBlockC
                                 | blocks =
                                     ListBlock info
                                         ( updtBlockC_ :: blockCsTail )
                                             :: blockCBlocksTail
-                            } |> Just
+                            } |> (,) isContinuation
 
-                        Nothing ->
-                            Nothing
-
-                _ ->
-                    Nothing
+                    _ ->
+                        ( False, parsedBlockC )
 
         _ ->
-            Nothing
+            ( False, parsedBlockC )
 
 
 blockCToBlocks : BlockContainer -> List Block
@@ -558,5 +528,4 @@ toHtml =
     toBlocks
         >> removeBlankBlock
         >> List.map (blockToHtml True)
-
 

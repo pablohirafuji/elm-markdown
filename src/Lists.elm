@@ -18,15 +18,17 @@ type alias Info =
     , indentLength : Int
     , delimiter : String
     , isLoose : Maybe Bool
+    , hasBlankLineAfter : Bool
     }
 
 
-emptyInfo : Info
-emptyInfo =
+initInfo : Info
+initInfo =
     { type_ = Unordered
     , indentLength = 0
     , delimiter = ""
     , isLoose = Nothing
+    , hasBlankLineAfter = False
     }
 
 
@@ -37,12 +39,12 @@ type Type
 
 initUnordered : Line
 initUnordered =
-    ( emptyInfo, "" )
+    ( initInfo, "" )
 
 
 initOrdered : Line
 initOrdered =
-    ( { emptyInfo | type_ = Ordered 0 }, "" )
+    ( { initInfo | type_ = Ordered 0 }, "" )
 
 
 
@@ -61,10 +63,10 @@ unorderedRegex =
 
 newLine : Type -> String -> String -> String -> Line
 newLine type_ indentString delimiter rawLine =
-    ( { type_ = type_
-      , indentLength = String.length indentString + 1
-      , delimiter = delimiter
-      , isLoose = Nothing
+    ( { initInfo
+        | type_ = type_
+        , indentLength = String.length indentString + 1
+        , delimiter = delimiter
       }
     , rawLine
     )
@@ -119,6 +121,7 @@ updateInfo lineInfo blockInfo =
 
             else
                 Just True
+        , hasBlankLineAfter = False
     }
 
 
@@ -131,12 +134,15 @@ blankLineFound blockInfo =
 
             else
                 Just False
+        , hasBlankLineAfter = True
     }
 
 
 isLoose : Info -> Bool
 isLoose info =
     info.isLoose == Just True
+
+
 
 -- View
 
@@ -145,7 +151,7 @@ view : Info -> List ( Html msg ) -> Html msg
 view info =
     case info.type_ of
         Ordered startInt ->
-            -- Only to comply with CommonMark tests output
+            -- Just to comply with CommonMark tests output
             if startInt == 1 then
                 ol []
 
@@ -155,45 +161,3 @@ view info =
         Unordered ->
             ul []
 
-
-{-}
-view : Line -> Html msg
-view ( listModel, rawTextList ) =
-    let
-        listItems =
-            List.map toHtml rawTextList
-                |> List.map (li [])
-
-    in
-    if listState.delimiter == "*"
-        || listState.delimiter == "+"
-        || listState.delimiter == "-" then
-            ul [] listItems
-    else
-        case String.toInt listState.start of
-            Result.Ok int ->
-                ol [ start int ] listItems
-
-            Result.Err _ ->
-                ul [] listItems
-
-type alias Info =
-    { type_ : Type
-    , indentLength : Int
-    , delimiter : String
-    , isLoose : Maybe Bool
-    }
-
-    | ListBlock Lists.Info (List BlockContainer)
-
-
-
-        { blockC
-            | lines  = 
-            , blocks = 
-        } |> parseLines
-
-addRawLine
-
-
--}
