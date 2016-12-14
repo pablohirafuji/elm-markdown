@@ -125,7 +125,12 @@ updateInfo lineInfo blockInfo =
 blankLineFound : Info -> Info
 blankLineFound blockInfo =
     { blockInfo
-        | isLoose = Just False
+        | isLoose =
+            if blockInfo.isLoose == Just True then
+                Just True
+
+            else
+                Just False
     }
 
 
@@ -140,9 +145,10 @@ view : Info -> List ( Html msg ) -> Html msg
 view info =
     case info.type_ of
         Ordered startInt ->
+            -- Only to comply with CommonMark tests output
             if startInt == 1 then
                 ol []
-                
+
             else
                 ol [ start startInt ]
 
@@ -179,5 +185,15 @@ type alias Info =
     }
 
     | ListBlock Lists.Info (List BlockContainer)
+
+
+
+        { blockC
+            | lines  = 
+            , blocks = 
+        } |> parseLines
+
+addRawLine
+
 
 -}

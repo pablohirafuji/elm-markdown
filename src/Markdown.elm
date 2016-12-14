@@ -22,16 +22,16 @@ type Line
 
 lineRegex : List (Line, Regex)
 lineRegex =
-    [ ( BlankLine "", Regex.regex "^\\s*$" )
-    , ( CodeLine ( Code.Indented ( [], "" ) ), Code.indentedRegex )
-    , ( CodeLine ( Code.Fenced Code.initFence ), Code.openingFenceRegex )
-    , ( SetextHeadingLine 0 "", Regex.regex "^ {0,3}(=+|-+)[ \\t]*$")
-    , ( ATXHeadingLine 0 "", Regex.regex "^ {0,3}(#{1,6})(?:[ \\t]+[ \\t#]+$|[ \\t]+|$)(.*?)(?:\\s+[ \\t#]*)?$" )
-    , ( ThematicBreakLine, thematicBreakLineRegex )
-    , ( BlockQuoteLine "", BlockQuote.regex )
-    , ( ListLine Lists.initUnordered, Lists.unorderedRegex )
-    , ( ListLine Lists.initOrdered, Lists.orderedRegex )
-    , ( TextLine "", Regex.regex "^.*$" )
+    [ ( BlankLine ""                         , Regex.regex "^\\s*$" )
+    , ( CodeLine (Code.Indented ( [], "" ))  , Code.indentedRegex )
+    , ( CodeLine (Code.Fenced Code.initFence), Code.openingFenceRegex )
+    , ( SetextHeadingLine 0 ""               , Regex.regex "^ {0,3}(=+|-+)[ \\t]*$")
+    , ( ATXHeadingLine 0 ""                  , Regex.regex "^ {0,3}(#{1,6})(?:[ \\t]+[ \\t#]+$|[ \\t]+|$)(.*?)(?:\\s+[ \\t#]*)?$" )
+    , ( ThematicBreakLine                    , thematicBreakLineRegex )
+    , ( BlockQuoteLine ""                    , BlockQuote.regex )
+    , ( ListLine Lists.initUnordered         , Lists.unorderedRegex )
+    , ( ListLine Lists.initOrdered           , Lists.orderedRegex )
+    , ( TextLine ""                          , Regex.regex "^.*$" )
     ]
 
 
@@ -45,68 +45,56 @@ toRawLines =
     String.lines
 
 
-toLines : String -> List Line -> List Line
-toLines rawText lines =
-    typifyLines ( toRawLines rawText, lines )
-        |> Tuple.second
-
-
-rawLinesToLines : List String -> List Line -> List Line
-rawLinesToLines rawLines lines =
-    typifyLines ( rawLines, lines )
-        |> Tuple.second
-
-
-typifyLines : ( List String, List Line ) -> ( List String, List Line )
-typifyLines ( rawLines, typedLines ) =
+parseRawLines : BlockContainer -> BlockContainer
+parseRawLines ({ rawLines, lines } as blockC) =
     case rawLines of
         [] ->
-            ( rawLines
-            , List.reverse typedLines )
+            { blockC | lines = List.reverse blockC.lines }
 
-        rawLine :: rawLinesRest ->
-            case typedLines of
+        rawLine :: rawLinesTail ->
+            case lines of
                 CodeLine ( Code.Fenced ( True, fence, previousCode ) )
-                    :: typedLinesTail ->
-                        ( rawLinesRest
-                        , CodeLine
-                            ( Code.continueOrCloseFence
-                                fence previousCode rawLine )
-                                    :: typedLinesTail
-                        ) |> typifyLines
-
+                    :: linesTail ->
+                        { blockC
+                            | rawLines = rawLinesTail
+                            , lines    =
+                                CodeLine
+                                    ( Code.continueOrCloseFence
+                                        fence previousCode rawLine )
+                                            :: linesTail
+                        } |> parseRawLines
 
 -- Se abrir listLine, verificar ident, se for maior que o da
 --lista, faz parte da lista
 --Checar indent logo depois de ListLine lá em cima, se for
 --maior que o indent da listLine, faz parte da listline
-
                 _ ->
-                    ( rawLinesRest
-                    , typifyLine rawLine :: typedLines
-                    ) |> typifyLines
+                    { blockC
+                        | rawLines = rawLinesTail
+                        , lines    = typifyLine rawLine :: lines
+                    } |> parseRawLines
 
 
 typifyLine : String -> Line
 typifyLine lineStr =
     let
-        applyRegex : (Line, Regex) -> Maybe Line -> Maybe Line
-        applyRegex (line, regex) maybeLine =
+        applyRegex : ( Line, Regex ) -> Maybe Line -> Maybe Line
+        applyRegex ( line, regex ) maybeLine =
             if maybeLine == Nothing then
-                Regex.find (Regex.AtMost 1) regex lineStr
+                Regex.find ( Regex.AtMost 1 ) regex lineStr
                     |> List.head
-                    |> Maybe.map (\match -> matchToLine match line)
+                    |> Maybe.map ( matchToLine line )
 
             else
                 maybeLine
 
     in
         List.foldl applyRegex Nothing lineRegex
-            |> Maybe.withDefault (BlankLine "")
+            |> Maybe.withDefault ( BlankLine "" )
 
 
-matchToLine : Regex.Match -> Line -> Line
-matchToLine match line =
+matchToLine : Line -> Regex.Match -> Line
+matchToLine line match =
     case line of
         BlankLine _ ->
             BlankLine match.match
@@ -171,7 +159,21 @@ type Block
     | BlankBlock
 
 
-type alias BlockContainer = ( List String, List Line, List Block )
+type alias BlockContainer =
+    { rawLines : List String
+    , lines    : List Line
+    , blocks   : List Block
+    , info     : Info
+    }
+
+
+initBlockContainer : BlockContainer
+initBlockContainer =
+    { rawLines = []
+    , lines    = []
+    , blocks   = []
+    , info     = initInfo
+    }
 
 
 type alias Info =
@@ -185,233 +187,301 @@ initInfo =
     }
 
 
-linesToBlocks : ( List Line, List Block, Info ) -> ( List Line, List Block, Info )
-linesToBlocks =
-    linesToReversedBlocks 
-        >> \( lines, blocks, parseState ) ->
-            ( lines
-            , List.reverse blocks
-            , parseState
-            )
-
-
-linesToReversedBlocks : ( List Line, List Block, Info ) -> ( List Line, List Block, Info )
-linesToReversedBlocks ( lines, blocks, parseState ) =
+parseLines : BlockContainer -> BlockContainer
+parseLines ({ lines, blocks } as blockC) =
     case lines of
         [] ->
-            ( lines
-            , blocks
-            , parseState
-            )
+            blockC
 
 
         ATXHeadingLine lvl headingText :: linesTail ->
-            ( linesTail
-            , HeadingBlock lvl (String.trim headingText) :: blocks
-            , parseState
-            ) |> linesToReversedBlocks
+            { blockC
+                | lines  = linesTail
+                , blocks =
+                    HeadingBlock lvl (String.trim headingText) :: blocks
+            } |> parseLines
 
 
         ThematicBreakLine :: linesTail ->
-            ( linesTail
-            , ThematicBreakBlock :: blocks
-            , parseState
-            ) |> linesToReversedBlocks
+            { blockC
+                | lines  = linesTail
+                , blocks = ThematicBreakBlock :: blocks
+            } |> parseLines
 
 
         SetextHeadingLine lvl rawLine :: linesTail ->
             case blocks of
                 ParagraphBlock paragraph :: blocksTail ->
-                    ( linesTail
-                    , HeadingBlock lvl paragraph :: blocksTail
-                    , parseState
-                    ) |> linesToReversedBlocks
+                    { blockC
+                        | lines  = linesTail
+                        , blocks = HeadingBlock lvl paragraph :: blocksTail
+                    } |> parseLines
 
                 _ ->
                     if lvl == 1 then
-                        ( TextLine rawLine :: linesTail
-                        , blocks
-                        , parseState
-                        ) |> linesToReversedBlocks
+                        { blockC
+                            | lines = TextLine rawLine :: linesTail
+                        } |> parseLines
 
                     else
                         if Regex.contains thematicBreakLineRegex rawLine then
-                            ( linesTail
-                            , ThematicBreakBlock :: blocks
-                            , parseState
-                            ) |> linesToReversedBlocks
+                            { blockC
+                                | lines  = linesTail
+                                , blocks = ThematicBreakBlock :: blocks
+                            } |> parseLines
 
                         else
-                            ( TextLine rawLine :: linesTail
-                            , blocks
-                            , parseState
-                            ) |> linesToReversedBlocks
+                            { blockC
+                                | lines = TextLine rawLine :: linesTail
+                            } |> parseLines
 
 
-        CodeLine ( Code.Indented ( blankLines, lineCode ) ) :: linesTail ->
+        CodeLine (Code.Indented ( blankLines, lineCode )) :: linesTail ->
             case blocks of
                 CodeBlock ( Code.Indented blockArgs ) :: blocksTail ->
-                        ( linesTail
-                        , CodeBlock
-                            ( Code.addIndented
-                                ( blankLines, lineCode ) blockArgs
-                            ) :: blocksTail
-                        , parseState
-                        ) |> linesToReversedBlocks
+                    { blockC
+                        | lines  = linesTail
+                        , blocks =
+                            CodeBlock
+                                ( Code.addIndented
+                                    (blankLines, lineCode) blockArgs
+                                ) :: blocksTail
+                    } |> parseLines                    
 
                 ParagraphBlock paragraph :: blocksTail ->
-                    ( linesTail
-                    , ParagraphBlock (paragraph ++ "\n" ++ String.trim lineCode)
-                        :: blocksTail
-                    , parseState
-                    ) |> linesToReversedBlocks
+                    { blockC
+                        | lines  = linesTail
+                        , blocks =
+                            ParagraphBlock
+                                (paragraph ++ "\n" ++ String.trim lineCode)
+                                    :: blocksTail
+                    } |> parseLines
 
                 _ ->
-                    ( linesTail
-                    , CodeBlock ( Code.Indented ( [], lineCode ++ "\n" ) )
-                        :: blocks
-                    , parseState
-                    ) |> linesToReversedBlocks
+                    { blockC
+                        | lines  = linesTail
+                        , blocks = 
+                            CodeBlock
+                                ( Code.Indented
+                                    ( [], lineCode ++ "\n" )
+                                ) :: blocks
+                    } |> parseLines
 
 
         CodeLine ( Code.Fenced codeFenceModel ) :: linesTail ->
-            ( linesTail
-            , CodeBlock ( Code.Fenced codeFenceModel )
-                :: blocks
-            , parseState
-            ) |> linesToReversedBlocks
+            { blockC
+                | lines  = linesTail
+                , blocks =
+                    CodeBlock ( Code.Fenced codeFenceModel ) :: blocks
+            } |> parseLines
 
 
         BlockQuoteLine rawLine :: linesTail ->
             case blocks of
-                BlockQuote ( rawLines, lines, blocks )
-                    :: blocksTail ->
-                        ( linesTail
-                        , BlockQuote ( rawLines ++ [ rawLine ], lines, blocks )
-                            :: blocksTail
-                        , parseState
-                        ) |> linesToReversedBlocks
+                BlockQuote blockC_ :: blocksTail ->
+                    { blockC
+                        | lines  = linesTail
+                        , blocks =
+                            BlockQuote
+                                { blockC_
+                                    | rawLines = 
+                                        blockC_.rawLines ++ [ rawLine ]
+                                } :: blocksTail
+                    } |> parseLines
 
                 _ ->
-                    ( linesTail
-                    , BlockQuote ( [ rawLine ], [], [] )
-                        :: blocks
-                    , parseState
-                    ) |> linesToReversedBlocks
+                    { blockC
+                        | lines  = linesTail
+                        , blocks =
+                            BlockQuote
+                                { initBlockContainer
+                                    | rawLines = [ rawLine ]
+                                } :: blocks
+                    } |> parseLines
 
 
         ListLine ( lineInfo, rawLine ) :: linesTail ->
-            case blocks of
+            let addListBlock =
+                { blockC
+                    | lines  = linesTail
+                    , blocks =
+                        ListBlock lineInfo
+                            [ { initBlockContainer
+                                | rawLines = [ rawLine ]
+                            } ] :: blocks
+                } |> parseLines
+
+            in case blocks of
                 ListBlock blockInfo blockCs :: blocksTail ->
                     if lineInfo.delimiter == blockInfo.delimiter then
-                        ( linesTail
-                        , ListBlock
-                            ( Lists.updateInfo lineInfo blockInfo )
-                            ( ([ rawLine ], [], []) :: blockCs )
-                                :: blocksTail
-                        , parseState
-                        ) |> linesToReversedBlocks
+                        { blockC
+                            | lines  = linesTail
+                            , blocks =
+                                ListBlock
+                                    ( Lists.updateInfo lineInfo blockInfo )
+                                    ( { initBlockContainer
+                                            | rawLines = [ rawLine ]
+                                      } :: blockCs
+                                    ) :: blocksTail
+                        } |> parseLines
 
                     else
-                        ( linesTail
-                        , ListBlock lineInfo [ ( [ rawLine ], [], [] ) ]
-                            :: blocks
-                        , parseState
-                        ) |> linesToReversedBlocks
+                        addListBlock
+
+                ParagraphBlock paragraph :: blocksTail ->
+                    case lineInfo.type_ of
+                        Lists.Ordered 1 ->
+                            addListBlock
+
+                        Lists.Ordered int ->
+                            { blockC
+                                | lines  = linesTail
+                                , blocks =
+                                    ParagraphBlock
+                                        (paragraph ++ "\n"
+                                            ++ String.trim (toString int ++ lineInfo.delimiter ++ " " ++ rawLine))
+                                                :: blocksTail
+                            } |> parseLines
+
+                        _ ->
+                            addListBlock
 
                 _ ->
-                    ( linesTail
-                    , ListBlock lineInfo [ ( [ rawLine ], [], [] ) ]
-                        :: blocks
-                    , parseState
-                    ) |> linesToReversedBlocks
+                    addListBlock
 
 
         BlankLine str :: linesTail ->
             case blocks of
                 CodeBlock ( Code.Indented ( blankLines, previousCode ) )
                     :: blocksTail ->
-                        ( linesTail
-                        , CodeBlock
-                            ( Code.Indented
-                                ( blankLines ++ [ str ]
-                                , previousCode
-                                )
-                            ) :: blocksTail
-                        , parseState
-                        ) |> linesToReversedBlocks
+                        { blockC
+                            | lines  = linesTail
+                            , blocks =
+                                CodeBlock
+                                    ( Code.Indented
+                                        ( blankLines ++ [ str ]
+                                        , previousCode
+                                        )
+                                    ) :: blocksTail
+                        } |> parseLines
 
                 ListBlock blockInfo blockCs :: blocksTail ->
-                    ( linesTail
-                    , ListBlock (Lists.blankLineFound blockInfo) blockCs
-                        :: blocksTail
-                    , parseState
-                    ) |> linesToReversedBlocks
+                    { blockC
+                        | lines  = linesTail
+                        , blocks =
+                            ListBlock
+                                (Lists.blankLineFound blockInfo) blockCs
+                                    :: blocksTail
+                    } |> parseLines
 
                 _ ->
-                    ( linesTail
-                    , BlankBlock :: blocks
-                    , parseState
-                    ) |> linesToReversedBlocks
+                    { blockC
+                        | lines  = linesTail
+                        , blocks = BlankBlock :: blocks
+                    } |> parseLines
 
 
         TextLine rawLine :: linesTail ->
-            case blocks of
-                BlockQuote blockC :: blocksTail ->
-                        case maybeContinueParagraph rawLine blockC of
-                            Just updtBlocks ->
-                                ( linesTail
-                                , BlockQuote ( [], [], updtBlocks )
-                                    :: blocksTail
-                                , parseState
-                                ) |> linesToReversedBlocks
+            let
+                addParagraphBlock =
+                    { blockC
+                        | lines  = linesTail
+                        , blocks =
+                            ParagraphBlock (String.trim rawLine)
+                                :: blocks
+                    } |> parseLines
 
-                            Nothing ->
-                                ( linesTail
-                                , ParagraphBlock (String.trim rawLine)
-                                    :: blocks
-                                , parseState
-                                ) |> linesToReversedBlocks
-
+            in case blocks of
                 ParagraphBlock paragraph :: blocksTail ->
-                    ( linesTail
-                    , ParagraphBlock (paragraph ++ "\n" ++ String.trim rawLine)
-                        :: blocksTail
-                    , parseState
-                    ) |> linesToReversedBlocks
+                    { blockC
+                        | lines  = linesTail
+                        , blocks =
+                            ParagraphBlock (paragraph ++ "\n" ++ String.trim rawLine)
+                                :: blocksTail
+                    } |> parseLines
+
+                BlockQuote blockC_ :: blocksTail ->
+                    case maybeContinueParagraph rawLine blockC_ of
+                        Just updtBlockC ->
+                            { blockC
+                                | lines  = linesTail
+                                , blocks =
+                                    BlockQuote updtBlockC
+                                        :: blocksTail
+                            } |> parseLines
+
+                        Nothing ->
+                            addParagraphBlock
+
+                ListBlock info blockCs :: blocksTail ->
+                    case blockCs of
+                        blockC_ :: blockCsTail ->
+                            case maybeContinueParagraph rawLine blockC_ of
+                                Just updtBlockC ->
+                                    { blockC
+                                        | lines  = linesTail
+                                        , blocks =
+                                            ListBlock info
+                                                (updtBlockC
+                                                    :: blockCsTail)
+                                                        :: blocksTail
+                                    } |> parseLines
+
+                                Nothing ->
+                                    addParagraphBlock
+
+                        _ ->
+                            addParagraphBlock
 
                 _ ->
-                    ( linesTail
-                    , ParagraphBlock (String.trim rawLine) :: blocks
-                    , parseState
-                    ) |> linesToReversedBlocks
+                    addParagraphBlock
 
 
-blockCToReversedBlocks : BlockContainer -> List Block
-blockCToReversedBlocks ( rawLines, lines, blocks ) =
-    ( rawLinesToLines rawLines lines
-    , blocks
-    , initInfo )
-        |> linesToReversedBlocks
-        |> \(_, blocks_, _) -> blocks_
-
-
-maybeContinueParagraph : String -> BlockContainer -> Maybe (List Block)
+maybeContinueParagraph : String -> BlockContainer -> Maybe BlockContainer
 maybeContinueParagraph rawLine blockC =
-    case blockCToReversedBlocks blockC of
-        ParagraphBlock paragraph :: containerBlocksTail ->
-            ParagraphBlock (paragraph ++ "\n" ++ String.trim rawLine)
-                :: containerBlocksTail
-                    |> Just
+    let
+        parsedBlockC =
+            parseRawLines blockC
+                |> parseLines
 
-        BlockQuote blockC_ :: containerBlocksTail ->
+    in case parsedBlockC.blocks of
+        ParagraphBlock paragraph :: blockCBlocksTail ->
+            { parsedBlockC
+                | blocks =
+                    ParagraphBlock (paragraph ++ "\n" ++ String.trim rawLine)
+                        :: blockCBlocksTail
+            } |> Just
+
+
+        BlockQuote blockC_ :: blockCBlocksTail ->
             case maybeContinueParagraph rawLine blockC_ of
                 Just updtBlockC_ ->
-                    BlockQuote ([], [], updtBlockC_)
-                        :: containerBlocksTail
-                            |> Just
+                    { parsedBlockC
+                        | blocks =
+                            BlockQuote updtBlockC_
+                                :: blockCBlocksTail
+                    } |> Just
 
                 Nothing ->
+                    Nothing
+
+
+        ListBlock info blockCs :: blockCBlocksTail ->
+            case blockCs of
+                blockC_ :: blockCsTail ->
+                    case maybeContinueParagraph rawLine blockC_ of
+                        Just updtBlockC_ ->
+                            { parsedBlockC
+                                | blocks =
+                                    ListBlock info
+                                        ( updtBlockC_ :: blockCsTail )
+                                            :: blockCBlocksTail
+                            } |> Just
+
+                        Nothing ->
+                            Nothing
+
+                _ ->
                     Nothing
 
         _ ->
@@ -420,18 +490,22 @@ maybeContinueParagraph rawLine blockC =
 
 blockCToBlocks : BlockContainer -> List Block
 blockCToBlocks =
-    blockCToReversedBlocks
+    parseRawLines
+        >> parseLines
+        >> .blocks
         >> List.reverse
 
 
 toBlocks : String -> List Block
 toBlocks rawText =
-    blockCToBlocks ( toRawLines rawText, [], [] )
+    { initBlockContainer
+        | rawLines = toRawLines rawText
+    } |> blockCToBlocks
 
 
 removeBlankBlock : List Block -> List Block
 removeBlankBlock =
-    List.filter (\block -> block /= BlankBlock )
+    List.filter ((/=) BlankBlock)
 
 
 blockToHtml : Bool -> Block -> Html msg
