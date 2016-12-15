@@ -1,4 +1,4 @@
-module Code exposing (..)
+module CommonMark.Code exposing (..)
 
 
 import Regex exposing (Regex)
@@ -10,7 +10,7 @@ import Html.Attributes exposing (class)
 -- Model
 
 
-type Block
+type Model
     = Indented ( List BlankLine, String )
     | Fenced Fence
 
@@ -21,9 +21,9 @@ type alias BlankLine = String
 type alias Fence = ( IsOpen, FenceModel, String )
 
 
-initFence : Fence
-initFence =
-    ( True, initFenceModel, "" )
+--initFence : Fence
+--initFence =
+--    ( True, initFenceModel, "" )
 
 
 type alias IsOpen = Bool
@@ -37,13 +37,13 @@ type alias FenceModel =
     }
 
 
-initFenceModel : FenceModel
-initFenceModel =
-    { indentLength = 0
-    , fenceLength = 0
-    , fenceChar = ""
-    , language = ""
-    }
+--initFenceModel : FenceModel
+--initFenceModel =
+--    { indentLength = 0
+--    , fenceLength = 0
+--    , fenceChar = ""
+--    , language = ""
+--    }
 
 
 
@@ -65,20 +65,25 @@ closingFenceRegex =
     Regex.regex "^ {0,3}(`{3,}|~{3,})[ \\t]*$"
 
 
-fromIndentedMatch : Regex.Match -> Maybe Block
+fromIndentedMatch : Regex.Match -> ( List String, String )
 fromIndentedMatch =
     .submatches
         >> List.head
         >> Maybe.withDefault Nothing
-        >> Maybe.map
-            (\ code -> Indented ( [], code ) )
+        >> Maybe.map ( (,) [] )
+        >> Maybe.withDefault ( [], "" )
+--fromIndentedMatch : Regex.Match -> Maybe Model
+--fromIndentedMatch =
+--    .submatches
+--        >> List.head
+--        >> Maybe.withDefault Nothing
+--        >> Maybe.map (\code -> Indented ([], code))
 
 
-fromOpeningFenceMatch : Regex.Match -> Maybe Block
+fromOpeningFenceMatch : Regex.Match -> Fence
 fromOpeningFenceMatch match =
     case match.submatches of
         Just indent :: Just fence :: Just language :: _ ->
-            Fenced
                 ( True
                 ,   { indentLength = String.length indent
                     , fenceLength = String.length fence
@@ -89,16 +94,37 @@ fromOpeningFenceMatch match =
                             |> Maybe.withDefault ""
                     }
                 , ""
-                ) |> Just
+                )
 
         _ ->
-            Nothing
+            ( True, FenceModel 0 0 "`" "", "" )
+
+--fromOpeningFenceMatch : Regex.Match -> Maybe Model
+--fromOpeningFenceMatch match =
+--    case match.submatches of
+--        Just indent :: Just fence :: Just language :: _ ->
+--            Fenced
+--                ( True
+--                ,   { indentLength = String.length indent
+--                    , fenceLength = String.length fence
+--                    , fenceChar = String.left 1 fence
+--                    , language =
+--                        String.words language
+--                            |> List.head
+--                            |> Maybe.withDefault ""
+--                    }
+--                , ""
+--                ) |> Just
+
+--        _ ->
+--            Nothing
+
 
 
 -- Helpers
 
 
-continueOrCloseFence : FenceModel -> String -> String -> Block
+continueOrCloseFence : FenceModel -> String -> String -> Model
 continueOrCloseFence fence previousCode rawLine =
     if isClosingFenceLine fence rawLine then
         Fenced ( False, fence, previousCode )
@@ -139,8 +165,8 @@ indentLine indentLength =
         (\_ -> "" )
 
 
-addIndented : ( List String, String ) -> ( List String, String ) -> Block
-addIndented ( _, lineCode) ( blockBlankLines, blockCode ) =
+addIndented : ( List String, String ) -> ( List String, String ) -> Model
+addIndented ( _, lineCode ) ( blockBlankLines, blockCode ) =
     let
         indentBL blankLine = 
             indentLine 4 blankLine ++ "\n"
@@ -155,10 +181,17 @@ addIndented ( _, lineCode) ( blockBlankLines, blockCode ) =
             )
 
 
+addBlankLine : String -> ( List BlankLine, String ) -> Model
+addBlankLine blankLine ( blankLines, previousCode ) =
+    Indented
+        ( blankLines ++ [ blankLine ]
+        , previousCode )
+
+
 -- View
 
 
-view : Block -> Html msg
+view : Model -> Html msg
 view block =
     case block of
         Indented ( _, codeStr ) ->

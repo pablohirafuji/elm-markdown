@@ -1,4 +1,4 @@
-module Lists exposing (..)
+module CommonMark.List exposing (..)
 
 
 import Regex exposing (Regex)
@@ -10,10 +10,10 @@ import Html.Attributes exposing (start)
 -- Model
 
 
-type alias Line = ( Info, String )
+type alias Line = ( Model, String )
 
 
-type alias Info =
+type alias Model =
     { type_ : Type
     , indentLength : Int
     , delimiter : String
@@ -22,8 +22,8 @@ type alias Info =
     }
 
 
-initInfo : Info
-initInfo =
+initModel : Model
+initModel =
     { type_ = Unordered
     , indentLength = 0
     , delimiter = ""
@@ -35,16 +35,6 @@ initInfo =
 type Type
     = Unordered
     | Ordered Int
-
-
-initUnordered : Line
-initUnordered =
-    ( initInfo, "" )
-
-
-initOrdered : Line
-initOrdered =
-    ( { initInfo | type_ = Ordered 0 }, "" )
 
 
 
@@ -63,7 +53,7 @@ unorderedRegex =
 
 newLine : Type -> String -> String -> String -> Line
 newLine type_ indentString delimiter rawLine =
-    ( { initInfo
+    ( { initModel
         | type_ = type_
         , indentLength = String.length indentString + 1
         , delimiter = delimiter
@@ -72,38 +62,34 @@ newLine type_ indentString delimiter rawLine =
     )
 
 
-fromOrderedMatch : Regex.Match -> Maybe Line
+fromOrderedMatch : Regex.Match -> Line
 fromOrderedMatch match =
     case match.submatches of
         Just indentString :: Just start :: Just delimiter :: Just rawLine :: _ ->
             case String.toInt start of
                 Result.Ok int ->
                     newLine (Ordered int) indentString delimiter rawLine
-                        |> Just
-
 
                 Result.Err _ ->
                     newLine (Unordered) indentString delimiter rawLine
-                        |> Just
 
         _ ->
-            Nothing
+            ( initModel, "" )
 
 
-fromUnorderedMatch : Regex.Match -> Maybe Line
+fromUnorderedMatch : Regex.Match -> Line
 fromUnorderedMatch match =
     case match.submatches of
         Just indentString :: Just delimiter :: Just rawLine :: _ ->
             newLine (Unordered) indentString delimiter rawLine
-                |> Just
 
         _ ->
-            Nothing
+            ( initModel, "" )
 
 
-fromMatch : Regex.Match -> Line -> Maybe Line
-fromMatch match ( info, _ ) =
-    case info.type_ of
+fromMatch : Type -> Regex.Match -> Line
+fromMatch type_ match =
+    case type_ of
         Unordered ->
             fromUnorderedMatch match
 
@@ -111,34 +97,30 @@ fromMatch match ( info, _ ) =
             fromOrderedMatch match
 
 
-updateInfo : Info -> Info -> Info
-updateInfo lineInfo blockInfo =
-    { blockInfo
-        | indentLength = lineInfo.indentLength
-        , isLoose =
-            if blockInfo.isLoose == Nothing then
-                Nothing
-
-            else
-                Just True
+updateModel : Model -> Model -> Model
+updateModel lineModel blockModel =
+    { blockModel
+        | indentLength = lineModel.indentLength
         , hasBlankLineAfter = False
+        , isLoose =
+            if blockModel.isLoose == Nothing
+                then Nothing
+                else Just True
     }
 
 
-blankLineFound : Info -> Info
-blankLineFound blockInfo =
-    { blockInfo
-        | isLoose =
-            if blockInfo.isLoose == Just True then
-                Just True
-
-            else
-                Just False
-        , hasBlankLineAfter = True
+blankLineFound : Model -> Model
+blankLineFound blockModel =
+    { blockModel
+        | hasBlankLineAfter = True
+        , isLoose =
+            if blockModel.isLoose == Just True
+                then Just True
+                else Just False
     }
 
 
-isLoose : Info -> Bool
+isLoose : Model -> Bool
 isLoose info =
     info.isLoose == Just True
 
@@ -147,16 +129,14 @@ isLoose info =
 -- View
 
 
-view : Info -> List ( Html msg ) -> Html msg
+view : Model -> List ( Html msg ) -> Html msg
 view info =
     case info.type_ of
         Ordered startInt ->
             -- Just to comply with CommonMark tests output
-            if startInt == 1 then
-                ol []
-
-            else
-                ol [ start startInt ]
+            if startInt == 1
+                then ol []
+                else ol [ start startInt ]
 
         Unordered ->
             ul []

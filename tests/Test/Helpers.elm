@@ -3,7 +3,7 @@ module Test.Helpers exposing (..)
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Markdown
+import CommonMark
 
 
 
@@ -14,7 +14,7 @@ testEq : Int -> List (Html msg) -> String -> List (Html msg) -> Output msg
 testEq number description input expectedResult =
     let
         result =
-            Markdown.toHtml input
+            CommonMark.toHtml input
 
         isValid =
             toString result == toString expectedResult

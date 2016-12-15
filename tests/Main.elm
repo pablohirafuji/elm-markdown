@@ -4,7 +4,7 @@ module Main exposing (..)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
-import Markdown
+import CommonMark
 import Test.View
 
 
@@ -49,7 +49,7 @@ view model =
         --, br [] []
         --, p []
         --      [ text <| toString <| (List.map Markdown.typeOfLine (String.lines model.textarea)) ]
-        , div [] <| Markdown.toHtml model.textarea
+        , div [] <| CommonMark.toHtml model.textarea
         --, textarea
         --    [ value <| String.dropRight 1 <| String.dropLeft 1 <| toString model.textarea
         --    , style [ ("font-size", "16px"), ("width", "90%") ] ] []
