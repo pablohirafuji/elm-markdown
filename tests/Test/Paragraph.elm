@@ -64,7 +64,7 @@ run =
         [ p [] [ text "Final spaces are stripped before inline parsing, so a paragraph that ends with two or more spaces will not end with a hard line break:" ]
         ]
         "aaa     \nbbb     "
-        [ p [] [ text "aaa" ], br [] [], text "bbb" ]
+        [ p [] [ text "aaa", br [] [], text "bbb" ] ]
 
     ]
 

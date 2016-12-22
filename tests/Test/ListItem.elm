@@ -157,20 +157,20 @@ run =
         [ p [] [ text "If the first block in the list item is an indented code block, then by rule #2, the contents must be indented one space after the list marker:" ]
         ]
         "    indented code\n\nparagraph\n\n    more code"
-        [ pre [] [ code [] [ text "indented code\n" ] ], p [] [ text "nparagraph" ], pre [] [ code [] [ text "more code\n" ] ] ]
+        [ pre [] [ code [] [ text "indented code\n" ] ], p [] [ text "paragraph" ], pre [] [ code [] [ text "more code\n" ] ] ]
 
 
     , testEq 234
         []
         "1.     indented code\n\n   paragraph\n\n       more code"
-        [ ol [] [ li [] [ pre [] [ code [] [ text "indented code\n" ] ], p [] [ text "nparagraph" ], pre [] [ code [] [ text "more code\n" ] ] ] ] ]
+        [ ol [] [ li [] [ pre [] [ code [] [ text "indented code\n" ] ], p [] [ text "paragraph" ], pre [] [ code [] [ text "more code\n" ] ] ] ] ]
 
 
     , testEq 235
         [ p [] [ text "Note that an additional space indent is interpreted as space inside the code block:" ]
         ]
         "1.      indented code\n\n   paragraph\n\n       more code"
-        [ ol [] [ li [] [ pre [] [ code [] [ text " indented code\n" ] ], p [] [ text "nparagraph" ], pre [] [ code [] [ text "more code\n" ] ] ] ] ]
+        [ ol [] [ li [] [ pre [] [ code [] [ text " indented code\n" ] ], p [] [ text "paragraph" ], pre [] [ code [] [ text "more code\n" ] ] ] ] ]
 
 
     , testEq 236

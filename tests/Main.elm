@@ -43,12 +43,12 @@ update msg model =
 view : Model -> Html Msg
 view model =
     div []
-        [ textarea [ onInput TextAreaInput, value model.textarea ] []
+        [ textarea [ onInput TextAreaInput, defaultValue model.textarea ] []
         , br [] []
         --, text (toString (String.lines model.textarea))
         --, br [] []
-        --, p []
-        --      [ text <| toString <| (List.map Markdown.typeOfLine (String.lines model.textarea)) ]
+        , p []
+              [ text <| toString <| CommonMark.toBlocks model.textarea ]
         , div [] <| CommonMark.toHtml model.textarea
         --, textarea
         --    [ value <| String.dropRight 1 <| String.dropLeft 1 <| toString model.textarea

@@ -121,7 +121,17 @@ run =
         [ p [] [ text "This is a tight list, because the blank lines are in a code block:" ]
         ]
         "- a\n- ```\n  b\n\n\n  ```\n- c"
-        [ ul [] [ li [] [ text "a" ], li [] [ pre [] [ code [] [ text "b\n\n\n" ] ] ] ], li [] [ text "c" ] ]
+        [ ul []
+            [ li [] [ text "a" ]
+            , li []
+                [ pre []
+                    [ code []
+                        [ text "b\n\n\n" ]
+                    ]
+                ]
+            , li [] [ text "c" ]
+            ]
+        ]
 
 
     , testEq 278
