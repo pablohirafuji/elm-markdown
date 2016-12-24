@@ -181,11 +181,17 @@ addIndented ( _, lineCode ) ( blockBlankLines, blockCode ) =
             )
 
 
-addBlankLine : String -> ( List BlankLine, String ) -> Model
-addBlankLine blankLine ( blankLines, previousCode ) =
+addBlankLineToIndented : String -> ( List BlankLine, String ) -> Model
+addBlankLineToIndented blankLine ( blankLines, previousCode ) =
     Indented
         ( blankLines ++ [ blankLine ]
         , previousCode )
+
+
+addBlankLineToFenced : String -> Fence -> Model
+addBlankLineToFenced blankLine ( isOpen, fence, previousCode ) =
+    Fenced ( isOpen, fence, previousCode ++ "\n" )
+
 
 
 -- View

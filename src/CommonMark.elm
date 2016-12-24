@@ -83,55 +83,77 @@ parseRawLines ( rawLines, blocks ) =
             blocks
 
         rawLine :: rawLinesTail ->
-            case blocks of
-                ListBlock model blocksList :: blocksTail->
-                    if Lists.indentLength rawLine >= model.indentLength then
-                        case blocksList of
-                            blocks_ :: blocksListTail ->
-                                case blocks_ of
-                                    -- Verificar se vai ser inserido em outra ListBlock
-                                    -- Se não, conferir BlankBlock aqui mesmo
-                                    BlankBlock :: blocksTail_ ->
-                                        ListBlock { model | isLoose = True }
-                                            ( parseRawLines ( [ String.dropLeft model.indentLength rawLine ], blocks_ )
-                                                :: blocksListTail
-                                            ) :: blocksTail
-                                                |> (,) rawLinesTail
-                                                |> parseRawLines
+            preParseRawLine ( rawLine, blocks )
+                |> (,) rawLinesTail
+                |> parseRawLines
 
-                                    _ ->
-                                        ListBlock model
-                                            ( parseRawLines ( [ String.dropLeft model.indentLength rawLine ], blocks_ )
-                                                :: blocksListTail
-                                            ) :: blocksTail
-                                                |> (,) rawLinesTail
-                                                |> parseRawLines
 
-                            [] ->
-                                ListBlock model
-                                    [ parseRawLines ( [ String.dropLeft model.indentLength rawLine ], [] )
-                                    ] :: blocksTail
-                                        |> (,) rawLinesTail
-                                        |> parseRawLines
+preParseRawLine : ( String, List Block ) -> List Block
+preParseRawLine ( rawLine, blocks ) =
+    case blocks of
+        ListBlock model blocksList :: blocksTail ->
+            if Lists.indentLength rawLine >= model.indentLength then
+                case blocksList of
+                    blocks_ :: blocksListTail ->
+                        let
+                            unindentedRawLine : String
+                            unindentedRawLine =
+                                Code.indentLine model.indentLength rawLine
 
-                    else
-                        parseRawLine rawLine blocks
-                            |> (,) rawLinesTail
-                            |> parseRawLines
+                            updtListBlock : Lists.Model -> List Block
+                            updtListBlock model_ =
+                                ListBlock model_
+                                    ( parseRawLines ( [ unindentedRawLine ], blocks_ )
+                                        :: blocksListTail
+                                    ) :: blocksTail
 
-                -- No need to typify the line if Fenced CodeBlock
-                -- is open, just check for closing fence.
-                CodeBlock (Code.Fenced (True, fence, lines_)) :: blocksTail ->
-                    Code.continueOrCloseFence fence lines_ rawLine
-                        |> CodeBlock
-                        |> \codeBlock -> codeBlock :: blocksTail
-                        |> (,) rawLinesTail
-                        |> parseRawLines
+                        in case blocks_ of
+                            -- A list item can begin with at most
+                            -- one blank line without begin loose.
+                            [ BlankBlock ] ->
+                                updtListBlock model
 
-                _ ->
-                    parseRawLine rawLine blocks
-                        |> (,) rawLinesTail
-                        |> parseRawLines
+                            BlankBlock :: blocksTail_ ->
+                                if List.all (\b -> b == BlankBlock) blocksTail_ then
+                                    parseRawLine rawLine blocks
+
+                                else
+                                    updtListBlock { model | isLoose = True }
+
+                            ListBlock model_ blocksList_ :: blocksTail_ ->
+                                if Lists.indentLength unindentedRawLine >= model_.indentLength then
+                                    updtListBlock model
+
+                                else
+                                    if isBlankBlockLast blocksList_ then
+                                        updtListBlock { model | isLoose = True }
+
+                                    else
+                                        updtListBlock model
+
+                            _ ->
+                                updtListBlock model
+
+                    [] ->
+                        ListBlock model
+                            ( [ parseRawLines ( [ Code.indentLine model.indentLength rawLine ], [] ) ]
+                            ) :: blocksTail
+
+
+            else
+                parseRawLine rawLine blocks
+
+
+        -- No need to typify the line if Fenced CodeBlock
+        -- is open, just check for closing fence.
+        CodeBlock (Code.Fenced (True, fence, lines_)) :: blocksTail ->
+            Code.continueOrCloseFence fence lines_ rawLine
+                |> CodeBlock
+                |> \codeBlock -> codeBlock :: blocksTail
+
+
+        _ ->
+            parseRawLine rawLine blocks
 
 
 parseRawLine : String -> List Block -> List Block
@@ -189,18 +211,24 @@ parseBlankLine match blocks =
         -- to the CodeBlock
         CodeBlock ( Code.Indented indentedModel )
             :: blocksTail ->
-                Code.addBlankLine match.match indentedModel
+                Code.addBlankLineToIndented match.match indentedModel
+                    |> CodeBlock
+                    |> \b -> b :: blocksTail
+
+
+        CodeBlock ( Code.Fenced ( True, fence, pCode ) )
+            :: blocksTail ->
+                Code.addBlankLineToFenced match.match ( True, fence, pCode )
                     |> CodeBlock
                     |> \b -> b :: blocksTail
 
 
         ListBlock model blocksList :: blocksTail ->
             ListBlock
-                --(Lists.blankLineFound model)
                 model
                 (addBlankLineToBlocksList match blocksList)
-                --blocksList
                     :: blocksTail
+
 
         _ ->
             BlankBlock :: blocks
@@ -322,7 +350,7 @@ parseListLine type_ match blocks =
                 newListBlock
 
         ParagraphBlock paragraph :: blocksTail ->
-            -- Empty list item cannot interrupt
+            -- Empty list item cannot interrupt a paragraph.
             if parsedRawLine == [ BlankBlock ] then
                 ParagraphBlock
                     ( paragraph ++ [ match.match ] )
@@ -330,7 +358,7 @@ parseListLine type_ match blocks =
 
             else
                 case lineModel.type_ of
-                    -- Ordered list with start 1 can interrupt
+                    -- Ordered list with start 1 can interrupt.
                     Lists.Ordered 1 ->
                         newListBlock
 
@@ -351,6 +379,10 @@ isBlankBlockLast blocksList =
     case blocksList of
         blocks :: blocksListTail ->
             case blocks of
+                -- Ignore if it's an empty list item (example 242)
+                BlankBlock :: [] ->
+                    False
+
                 BlankBlock :: _ ->
                     True
 

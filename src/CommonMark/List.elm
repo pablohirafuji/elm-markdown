@@ -57,13 +57,24 @@ initSpacesRegex =
 fromOrderedMatch : Regex.Match -> Line
 fromOrderedMatch match =
     case match.submatches of
-        Just indentString :: Just start :: Just delimiter :: Just indentSpace :: Just rawLine :: _ ->
-            case String.toInt start of
-                Result.Ok int ->
-                    newLine (Ordered int) indentString delimiter indentSpace rawLine
+        Just indentString
+            :: Just start
+            :: Just delimiter
+            :: Just indentSpace
+            :: maybeRawLine
+            :: _ ->
+                let type_ =
+                    String.toInt start
+                        |> Result.map Ordered
+                        |> Result.withDefault Unordered
 
-                Result.Err _ ->
-                    newLine (Unordered) indentString delimiter indentSpace rawLine
+                in
+                    newLine
+                        type_
+                        indentString
+                        delimiter
+                        indentSpace
+                        (Maybe.withDefault "" maybeRawLine)
 
         _ ->
             ( initModel, "" )
@@ -136,34 +147,6 @@ newLine type_ indentString delimiter indentSpace rawLine =
         )
 
 
---updateModel : Model -> Model -> Model
---updateModel lineModel blockModel =
---    { blockModel
---        | indentLength = lineModel.indentLength
---        --, hasBlankLineAfter = False
---        --, isLoose =
---        --    if blockModel.isLoose == Nothing
---        --        then Nothing
---        --        else Just True
---    }
-
-
---blankLineFound : Model -> Model
---blankLineFound blockModel =
---    { blockModel
---        | hasBlankLineAfter = True
---        , isLoose =
---            if blockModel.isLoose == Just True
---                then Just True
---                else Just False
---    }
-
-
---isLoose : Model -> Bool
---isLoose info =
---    info.isLoose == Just True
-
-
 indentLength : String -> Int
 indentLength rawLine =
     Regex.find (Regex.AtMost 1) initSpacesRegex rawLine
@@ -180,7 +163,7 @@ view : Model -> List ( Html msg ) -> Html msg
 view info =
     case info.type_ of
         Ordered startInt ->
-            -- Just to comply with CommonMark tests output
+            -- To comply with CommonMark tests output
             if startInt == 1 then
                 ol []
             
@@ -190,36 +173,3 @@ view info =
         Unordered ->
             ul []
 
-
-
-                --ListBlock model blocksList :: blocksTail->
-                --    -- Verificar se é blankLine?
-                --    if Lists.indentLength rawLine >= model.indentLength then
-                --        case blocksList of
-                --            blocks_ :: blocksListTail ->
-                --                let
-                --                    updtModel =
-                --                        if isBlankBlockLast blocksList then
-                --                            { model | isLoose = Just True }
-                --                        else
-                --                            model
-                --                in
-                --                    ListBlock updtModel
-                --                        ( parseRawLines ( [ String.dropLeft model.indentLength rawLine ], blocks_ )
-                --                            :: blocksListTail
-                --                        ) :: blocksTail
-                --                            |> (,) rawLinesTail
-                --                            |> parseRawLines
-
-                --            [] ->
-                --                ListBlock model
-                --                    [ parseRawLines ( [ String.dropLeft model.indentLength rawLine ], [] )
-                --                    ] :: blocksTail
-                --                        |> (,) rawLinesTail
-                --                        |> parseRawLines
-
-                --    else
-                --        -- Pular indentedcode check? Só pode ocorrer dentro da list
-                --        parseRawLine rawLine blocks
-                --            |> (,) rawLinesTail
-                --            |> parseRawLines
