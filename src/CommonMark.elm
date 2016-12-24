@@ -33,8 +33,8 @@ type Line
     | UnorderedListLine
 
 
-lineRegex : List (Line, Regex)
-lineRegex =
+lineMinusListRegexes : List (Line, Regex)
+lineMinusListRegexes =
     [ ( BlankLine           , blankLineRegex )
     , ( IndentedCodeLine    , Code.indentedRegex )
     , ( OpeningFenceCodeLine, Code.openingFenceRegex )
@@ -42,9 +42,23 @@ lineRegex =
     , ( ATXHeadingLine      , Heading.atxRegex )
     , ( ThematicBreakLine   , thematicBreakLineRegex )
     , ( BlockQuoteLine      , BlockQuote.regex )
-    , ( OrderedListLine     , Lists.orderedRegex )
-    , ( UnorderedListLine   , Lists.unorderedRegex )
     ]
+
+
+listLineRegexes : List (Line, Regex)
+listLineRegexes =
+    [ ( OrderedListLine  , Lists.orderedRegex )
+    , ( UnorderedListLine, Lists.unorderedRegex )
+    ]
+
+lineRegexes : List (Line, Regex)
+lineRegexes =
+    lineMinusListRegexes ++ listLineRegexes
+
+
+listLineFirstRegexes : List (Line, Regex)
+listLineFirstRegexes =
+    listLineRegexes ++ lineMinusListRegexes
 
 
 blankLineRegex : Regex
@@ -114,7 +128,7 @@ preParseRawLine ( rawLine, blocks ) =
                                 updtListBlock model
 
                             BlankBlock :: blocksTail_ ->
-                                if List.all (\b -> b == BlankBlock) blocksTail_ then
+                                if List.all ((==) BlankBlock) blocksTail_ then
                                     parseRawLine rawLine blocks
 
                                 else
@@ -141,7 +155,8 @@ preParseRawLine ( rawLine, blocks ) =
 
 
             else
-                parseRawLine rawLine blocks
+                -- parseRawLine with ordered or unordered priority
+                parseRawLineListsFirst rawLine blocks
 
 
         -- No need to typify the line if Fenced CodeBlock
@@ -158,7 +173,13 @@ preParseRawLine ( rawLine, blocks ) =
 
 parseRawLine : String -> List Block -> List Block
 parseRawLine rawLine blocks =
-    List.foldl (applyRegex rawLine blocks) Nothing lineRegex
+    List.foldl (applyRegex rawLine blocks) Nothing lineRegexes
+        |> Maybe.withDefault ( parseTextLine rawLine blocks )
+
+
+parseRawLineListsFirst : String -> List Block -> List Block
+parseRawLineListsFirst rawLine blocks =
+    List.foldl (applyRegex rawLine blocks) Nothing listLineFirstRegexes
         |> Maybe.withDefault ( parseTextLine rawLine blocks )
 
 
@@ -281,10 +302,10 @@ parseIndentedCodeLine match blocks =
         Code.fromIndentedMatch match
 
     in case blocks of
-        CodeBlock ( Code.Indented blockArgs ) :: blocksTail ->
+        CodeBlock (Code.Indented blockArgs) :: blocksTail ->
             CodeBlock
                 ( Code.addIndented
-                    (blankLines, codeLine) blockArgs
+                    ( blankLines, codeLine ) blockArgs
                 ) :: blocksTail  
 
         _ ->
@@ -313,11 +334,11 @@ parseBlockQuoteLine match blocks =
     in case blocks of
         BlockQuote blocks_ :: blocksTail ->
             BlockQuote
-                ( parseRawLines ( [ rawLine ], blocks_ ) )
+                (parseRawLines ( [ rawLine ], blocks_ ))
                     :: blocksTail
 
         _ ->
-            BlockQuote ( parseRawLines ( [ rawLine ], [] ) )
+            BlockQuote (parseRawLines ( [ rawLine ], [] ))
                 :: blocks
 
 
@@ -343,7 +364,7 @@ parseListLine type_ match blocks =
                             blockModel.isLoose
                                 || isBlankBlockLast blocksList
                     }
-                    ( parsedRawLine :: blocksList )
+                    (parsedRawLine :: blocksList)
                         :: blocksTail
 
             else
@@ -353,7 +374,7 @@ parseListLine type_ match blocks =
             -- Empty list item cannot interrupt a paragraph.
             if parsedRawLine == [ BlankBlock ] then
                 ParagraphBlock
-                    ( paragraph ++ [ match.match ] )
+                    (paragraph ++ [ match.match ])
                         :: blocksTail
 
             else
@@ -364,7 +385,7 @@ parseListLine type_ match blocks =
 
                     Lists.Ordered int ->
                         ParagraphBlock
-                            ( paragraph ++ [ match.match ] )
+                            (paragraph ++ [ match.match ])
                                 :: blocksTail
 
                     _ ->
@@ -400,14 +421,14 @@ parseTextLine : String -> List Block -> List Block
 parseTextLine rawLine blocks =
     maybeContinueParagraph rawLine blocks
         |> Maybe.withDefault
-            ( ParagraphBlock [ rawLine ] :: blocks )
+            (ParagraphBlock [ rawLine ] :: blocks)
 
 
 maybeContinueParagraph : String -> List Block -> Maybe ( List Block )
 maybeContinueParagraph rawLine blocks =
     case blocks of
         ParagraphBlock paragraph :: blocksTail ->
-            ParagraphBlock ( paragraph ++ [ rawLine ] )
+            ParagraphBlock (paragraph ++ [ rawLine ])
                 :: blocksTail
                     |> Just
 
@@ -427,7 +448,7 @@ maybeContinueParagraph rawLine blocks =
                         |> Maybe.map
                             (\updtBlocks_ ->
                                 ListBlock model
-                                    ( updtBlocks_ :: blocksListTail )
+                                    (updtBlocks_ :: blocksListTail)
                                         :: blocksTail
                             )
 
