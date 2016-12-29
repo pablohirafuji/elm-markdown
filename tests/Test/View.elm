@@ -15,7 +15,8 @@ import Test.BlankLine
 import Test.BlockQuote
 import Test.ListItem
 import Test.List
-
+--import Test.Spec
+import Test.Inline.Code
 
 
 -- Based on http://spec.commonmark.org/0.27/
@@ -35,6 +36,8 @@ tests =
     , ( "Block quotes", Test.BlockQuote.run )
     , ( "List Items", Test.ListItem.run )
     , ( "Lists", Test.List.run )
+    , ( "6.3 Code spans", Test.Inline.Code.run )
+    --, ( "All", Test.Spec.run )
     ]
 
 

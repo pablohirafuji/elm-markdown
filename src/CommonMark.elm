@@ -15,6 +15,7 @@ import CommonMark.Code as Code
 import CommonMark.List as Lists
 import CommonMark.BlockQuote as BlockQuote
 import CommonMark.Heading as Heading
+import CommonMark.Inline as Inline
 
 
 
@@ -33,7 +34,7 @@ type Line
     | UnorderedListLine
 
 
-lineMinusListRegexes : List (Line, Regex)
+lineMinusListRegexes : List ( Line, Regex )
 lineMinusListRegexes =
     [ ( BlankLine           , blankLineRegex )
     , ( IndentedCodeLine    , Code.indentedRegex )
@@ -45,18 +46,18 @@ lineMinusListRegexes =
     ]
 
 
-listLineRegexes : List (Line, Regex)
+listLineRegexes : List ( Line, Regex )
 listLineRegexes =
     [ ( OrderedListLine  , Lists.orderedRegex )
     , ( UnorderedListLine, Lists.unorderedRegex )
     ]
 
-lineRegexes : List (Line, Regex)
+lineRegexes : List ( Line, Regex )
 lineRegexes =
     lineMinusListRegexes ++ listLineRegexes
 
 
-listLineFirstRegexes : List (Line, Regex)
+listLineFirstRegexes : List ( Line, Regex )
 listLineFirstRegexes =
     listLineRegexes ++ lineMinusListRegexes
 
@@ -82,12 +83,12 @@ toRawLines =
 
 type Block
     = BlankBlock
-    | HeadingBlock ( Int, List String )
+    | HeadingBlock ( Int, String )
     | ThematicBreakBlock
     | CodeBlock Code.Model
     | BlockQuote (List Block)
     | ListBlock Lists.Model (List (List Block))
-    | ParagraphBlock (List String)
+    | ParagraphBlock String
 
 
 parseRawLines : ( List String, List Block ) -> List Block
@@ -155,7 +156,7 @@ preParseRawLine ( rawLine, blocks ) =
 
 
             else
-                -- parseRawLine with ordered or unordered priority
+                -- parseRawLine with list priority
                 parseRawLineListsFirst rawLine blocks
 
 
@@ -374,7 +375,7 @@ parseListLine type_ match blocks =
             -- Empty list item cannot interrupt a paragraph.
             if parsedRawLine == [ BlankBlock ] then
                 ParagraphBlock
-                    (paragraph ++ [ match.match ])
+                    (paragraph ++ match.match)
                         :: blocksTail
 
             else
@@ -385,7 +386,7 @@ parseListLine type_ match blocks =
 
                     Lists.Ordered int ->
                         ParagraphBlock
-                            (paragraph ++ [ match.match ])
+                            (paragraph ++ match.match)
                                 :: blocksTail
 
                     _ ->
@@ -421,14 +422,14 @@ parseTextLine : String -> List Block -> List Block
 parseTextLine rawLine blocks =
     maybeContinueParagraph rawLine blocks
         |> Maybe.withDefault
-            (ParagraphBlock [ rawLine ] :: blocks)
+            (ParagraphBlock rawLine :: blocks)
 
 
 maybeContinueParagraph : String -> List Block -> Maybe ( List Block )
 maybeContinueParagraph rawLine blocks =
     case blocks of
         ParagraphBlock paragraph :: blocksTail ->
-            ParagraphBlock (paragraph ++ [ rawLine ])
+            ParagraphBlock (paragraph ++ rawLine)
                 :: blocksTail
                     |> Just
 
@@ -464,22 +465,22 @@ blockToHtml textAsParagraph block =
     case block of
         HeadingBlock ( lvl, heading ) ->
             case lvl of
-                1 -> [ h1 [] [ text (concatLines heading) ] ]
-                2 -> [ h2 [] [ text (concatLines heading) ] ]
-                3 -> [ h3 [] [ text (concatLines heading) ] ]
-                4 -> [ h4 [] [ text (concatLines heading) ] ]
-                5 -> [ h5 [] [ text (concatLines heading) ] ]
-                _ -> [ h6 [] [ text (concatLines heading) ] ]
+                1 -> [ h1 [] [ text heading ] ]
+                2 -> [ h2 [] [ text heading ] ]
+                3 -> [ h3 [] [ text heading ] ]
+                4 -> [ h4 [] [ text heading ] ]
+                5 -> [ h5 [] [ text heading ] ]
+                _ -> [ h6 [] [ text heading ] ]
 
         ThematicBreakBlock ->
             [ hr [] [] ]
 
         ParagraphBlock lines ->
             if textAsParagraph then
-                [ p [] (linesToHtml lines) ]
+                [ p [] (Inline.toHtml lines) ]
 
             else
-                linesToHtml lines
+                Inline.toHtml lines
 
         CodeBlock codeBlock ->
             [ Code.view codeBlock ]
@@ -501,81 +502,6 @@ blockToHtml textAsParagraph block =
 
         BlankBlock ->
             []
-
-
-type Inline
-    = Normal String
-    | HardBreakLine
-
-
-linesToHtml : List String -> List (Html msg)
-linesToHtml =
-    List.map hardBreakLine
-        >> List.concat
-        >> List.foldl
-            (\inline inlines ->
-                case inline of
-                    Normal str ->
-                        case inlines of
-                            Normal str_ :: inlinesTail ->
-                                Normal (str_ ++ "\n" ++ str)
-                                    :: inlinesTail
-
-                            _ ->
-                                Normal str :: inlines
-
-                    HardBreakLine ->
-                        HardBreakLine :: inlines
-
-            ) []
-        >> (\reversedInlines ->
-                case reversedInlines of
-                    HardBreakLine :: reversedInlinesTail ->
-                        reversedInlinesTail
-
-                    _ ->
-                        reversedInlines
-            )
-        >> List.reverse
-        >> List.map inlineToHtml
-
-
-hardBreakLine : String -> List Inline
-hardBreakLine line =
-    if String.endsWith "  " line then
-        [ Normal
-            <| String.trim line
-        , HardBreakLine
-        ]
-
-    else if String.endsWith "\\" line then
-        [ Normal
-            <| String.trim
-            <| String.dropRight 1 line
-        , HardBreakLine
-        ]
-
-    else
-        [ Normal
-            <| String.trim line
-        ]
-
-
-inlineToHtml : Inline -> Html msg
-inlineToHtml inline =
-    case inline of
-        Normal normal ->
-            text normal
-
-        HardBreakLine ->
-            br [] []
-
-
-concatLines : List String -> String
-concatLines =
-    List.map String.trim
-        >> List.intersperse "\n"
-        >> String.concat
 
 
 reverseBlocks : List Block -> List Block

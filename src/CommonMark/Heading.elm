@@ -25,14 +25,14 @@ setextRegex =
 
 
 -- Tranformar em result?
-atxMatch : Regex.Match -> ( Int, List String )
+atxMatch : Regex.Match -> ( Int, String )
 atxMatch match =
     case match.submatches of
         Just lvl :: Just heading :: _ ->
-            ( String.length lvl, [ heading ] )
+            ( String.length lvl, heading )
 
         _ ->
-            ( 1, [ match.match ] )
+            ( 1, match.match )
 
 
 -- Tranformar em result?
