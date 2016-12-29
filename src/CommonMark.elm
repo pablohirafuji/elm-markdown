@@ -374,9 +374,8 @@ parseListLine type_ match blocks =
         ParagraphBlock paragraph :: blocksTail ->
             -- Empty list item cannot interrupt a paragraph.
             if parsedRawLine == [ BlankBlock ] then
-                ParagraphBlock
-                    (paragraph ++ match.match)
-                        :: blocksTail
+                addToParagraph paragraph match.match
+                    :: blocksTail
 
             else
                 case lineModel.type_ of
@@ -385,9 +384,8 @@ parseListLine type_ match blocks =
                         newListBlock
 
                     Lists.Ordered int ->
-                        ParagraphBlock
-                            (paragraph ++ match.match)
-                                :: blocksTail
+                        addToParagraph paragraph match.match
+                            :: blocksTail
 
                     _ ->
                         newListBlock
@@ -422,14 +420,19 @@ parseTextLine : String -> List Block -> List Block
 parseTextLine rawLine blocks =
     maybeContinueParagraph rawLine blocks
         |> Maybe.withDefault
-            (ParagraphBlock rawLine :: blocks)
+            (ParagraphBlock (String.trimLeft rawLine) :: blocks)
+
+
+addToParagraph : String -> String -> Block
+addToParagraph paragraph rawLine =
+    ParagraphBlock (paragraph ++ "\n" ++ String.trimLeft rawLine)
 
 
 maybeContinueParagraph : String -> List Block -> Maybe ( List Block )
 maybeContinueParagraph rawLine blocks =
     case blocks of
         ParagraphBlock paragraph :: blocksTail ->
-            ParagraphBlock (paragraph ++ rawLine)
+            addToParagraph paragraph rawLine
                 :: blocksTail
                     |> Just
 
