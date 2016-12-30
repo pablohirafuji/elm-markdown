@@ -24,7 +24,7 @@ testEq number description input expectedResult =
                 "green"
 
             else
-                "red"
+                "#EEB4B4"
 
         view =
             div [] <|

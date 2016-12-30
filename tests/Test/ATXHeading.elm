@@ -117,5 +117,5 @@ run =
     , testEq 49
         [ p [] [ text "ATX headings can be empty:" ] ]
         "## \n#\n### ###"
-        [ h2 [] [ text "" ], h1 [] [ text "" ], h3 [] [ text "" ] ]
+        [ h2 [] [], h1 [] [], h3 [] [] ]
     ]

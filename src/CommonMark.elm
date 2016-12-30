@@ -468,12 +468,12 @@ blockToHtml textAsParagraph block =
     case block of
         HeadingBlock ( lvl, heading ) ->
             case lvl of
-                1 -> [ h1 [] [ text heading ] ]
-                2 -> [ h2 [] [ text heading ] ]
-                3 -> [ h3 [] [ text heading ] ]
-                4 -> [ h4 [] [ text heading ] ]
-                5 -> [ h5 [] [ text heading ] ]
-                _ -> [ h6 [] [ text heading ] ]
+                1 -> [ h1 [] (Inline.toHtml heading) ]
+                2 -> [ h2 [] (Inline.toHtml heading) ]
+                3 -> [ h3 [] (Inline.toHtml heading) ]
+                4 -> [ h4 [] (Inline.toHtml heading) ]
+                5 -> [ h5 [] (Inline.toHtml heading) ]
+                _ -> [ h6 [] (Inline.toHtml heading) ]
 
         ThematicBreakBlock ->
             [ hr [] [] ]

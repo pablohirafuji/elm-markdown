@@ -8,7 +8,7 @@ import Regex exposing (Regex)
 
 codeRegex : Regex
 codeRegex =
-    Regex.regex "(`+)\\s*([\\s\\S]*?[^`])\\s*\\1(?!`)" 
+    Regex.regex "(`+)([\\s\\S]*?[^`])\\s*\\1(?!`)" 
 
 
 strongRegex : Regex
@@ -74,33 +74,73 @@ findMatches regexes rawText =
 findMatch : String -> ( Inline, Regex ) -> List Match
 findMatch rawText ( type_, regex ) =
     Regex.find Regex.All regex rawText
-        |> List.map
-            (\match ->
-                { type_   = type_
-                , content = []
-                , match   = match.match
-                , start   = match.index
-                , end     = match.index + String.length match.match
-                , rawText = matchToRawText type_ match.match
-                }
-            )
+        |> List.filterMap (regexMatchToMatch type_)
 
 
-matchToRawText : Inline -> String -> String
-matchToRawText type_ matchStr =
+baseMatch : Inline -> Regex.Match -> String -> Match
+baseMatch type_ regexMatch rawText =
+    { type_   = type_
+    , content = []
+    , match   = regexMatch.match
+    , start   = regexMatch.index
+    , end     = regexMatch.index + String.length regexMatch.match
+    , rawText = rawText
+    }
+
+
+regexMatchToMatch : Inline -> Regex.Match -> Maybe Match
+regexMatchToMatch type_ regexMatch =
     case type_ of
         Strong ->
-            String.slice 2 -2 matchStr
+            Just (baseMatch type_ regexMatch (String.slice 2 -2 regexMatch.match))
 
         Emphasis ->
-            String.slice 1 -1 matchStr
+            Just (baseMatch type_ regexMatch (String.slice 1 -1 regexMatch.match))
 
         Code ->
-            String.trim matchStr
-                |> Regex.replace Regex.All codeSpaceReplaceRegex (\_ -> " ")
+            case regexMatch.submatches of
+                Just fence :: Just code :: _ ->
+                    if String.startsWith "`" code then
+                        Nothing
+
+                    else
+                        String.trim code
+                            |> Regex.replace Regex.All codeSpaceReplaceRegex (\_ -> " ")
+                            |> baseMatch type_ regexMatch
+                            |> Just
+
+                _ ->
+                    Nothing
 
         _ ->
-            matchStr
+            Just (baseMatch type_ regexMatch regexMatch.match)
+
+
+preParseMatches : List Match -> List Match
+preParseMatches matches =
+    let
+        checkPrecedence : Match -> List Match -> List Match
+        checkPrecedence match matches_ =
+            case matches_ of
+                match_ :: matchTail_ ->
+                    case match_.type_ of
+                        Code ->
+                            if match_.start < match.end
+                                && match.start < match_.end then
+                                    matches_
+
+                            else
+                                match :: matches_
+
+                        _ ->
+                            match :: matches_
+
+                [] ->
+                    [ match ]
+
+    
+    in
+        List.foldr checkPrecedence [] matches
 
 
 parseMatches : ( String, List Match, List AST ) -> List AST
@@ -170,7 +210,7 @@ parseMatch ( rawText, match, ast ) =
                     ASTMatch (addChild astHead match)
                         :: astTail
 
-            -- Intersecting, so ignore
+            -- Overlaping previous Match
             else
                 ast
 
@@ -217,10 +257,13 @@ addChild parentMatch childMatch =
 
 toAST : String -> List AST
 toAST rawText =
-    let trimmedText = String.trim rawText
-    in findMatches regexes trimmedText
-            |> (\matches ->
-                parseMatches ( trimmedText, matches, [] ) )
+    let
+        trimmedText = String.trim rawText
+    
+    in
+        findMatches regexes trimmedText
+            |> preParseMatches
+            |> \matches -> parseMatches ( trimmedText, matches, [] )
             |> reverseASTs
 
 

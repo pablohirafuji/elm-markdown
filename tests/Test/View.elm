@@ -17,6 +17,7 @@ import Test.ListItem
 import Test.List
 --import Test.Spec
 import Test.Inline.Code
+import Test.Inline.EmphasisStrong
 
 
 -- Based on http://spec.commonmark.org/0.27/
@@ -37,6 +38,7 @@ tests =
     , ( "List Items", Test.ListItem.run )
     , ( "Lists", Test.List.run )
     , ( "6.3 Code spans", Test.Inline.Code.run )
+    , ( "6.4 Emphasis and strong emphasis", Test.Inline.EmphasisStrong.run )
     --, ( "All", Test.Spec.run )
     ]
 
