@@ -13,12 +13,23 @@ codeRegex =
 
 strongRegex : Regex
 strongRegex =
-    Regex.regex "__([\\s\\S]+?)__(?!_)|\\*\\*([\\s\\S]+?)\\*\\*(?!\\*)"
+    Regex.regex "(__|\\*\\*)(?! )([\\s\\S]+?)(?! )\\1"
+
+-- __([\s\S]+?)__(?!_)|\*\*([\s\S]+?)\*\*(?!\*)
+-- __(?! )(.+)(?! )__|\*\*(?! )(.+)\*\*(?! )(?!\*)
+-- (__|\*\*)(?! )(.+)(?! )\1
+-- So far: \*(?![!"#$%&'()\*+,\-./:;<=>?@[\\\]^_`{|}~\s])([\s\S]+?)\*
+-- OpenEmphasis: \*(?![!"#$%&'()+,\-./:;<=>?@[\\\]^_`{|}~\s])
+-- CloseEmphasis: (?![!"#$%&'()\*+,\-./:;<=>?@[\\\]^_`{|}~\s])\*
+-- Encontrou um fechamento, procura por uma abertura
+-- usa a primeira que encontrar
 
 
 emRegex : Regex
 emRegex =
     Regex.regex "\\b_((?:[^_]|__)+?)_\\b|\\*((?:\\*\\*|[\\s\\S])+?)\\*(?!\\*)"
+
+-- \\b_((?:[^_]|__)+?)_\\b|\\*((?:\\*\\*|[\\s\\S])+?)\\*(?!\\*)
 
 
 hardBreakRegex : Regex

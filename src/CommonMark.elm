@@ -41,16 +41,20 @@ lineMinusListRegexes =
     , ( OpeningFenceCodeLine, Code.openingFenceRegex )
     , ( SetextHeadingLine   , Heading.setextRegex )
     , ( ATXHeadingLine      , Heading.atxRegex )
-    , ( ThematicBreakLine   , thematicBreakLineRegex )
     , ( BlockQuoteLine      , BlockQuote.regex )
     ]
 
 
 listLineRegexes : List ( Line, Regex )
 listLineRegexes =
-    [ ( OrderedListLine  , Lists.orderedRegex )
+    -- When both a thematic break and a list item are possible
+    -- interpretations of a line, the thematic break takes
+    -- precedence
+    [ ( ThematicBreakLine, thematicBreakLineRegex )
+    , ( OrderedListLine  , Lists.orderedRegex )
     , ( UnorderedListLine, Lists.unorderedRegex )
     ]
+
 
 lineRegexes : List ( Line, Regex )
 lineRegexes =
@@ -229,8 +233,8 @@ parseLine line blocks match =
 parseBlankLine : Regex.Match -> List Block -> List Block
 parseBlankLine match blocks =
     case blocks of
-        -- BlankLine after Indented CodeBlock may be added
-        -- to the CodeBlock
+        -- BlankLine after Indented CodeBlock may be added to
+        -- the CodeBlock if another Indented CodeBlock is found
         CodeBlock ( Code.Indented indentedModel )
             :: blocksTail ->
                 Code.addBlankLineToIndented match.match indentedModel
@@ -278,17 +282,17 @@ parseSetextHeadingLine match blocks =
             HeadingBlock ( lvl, paragraph ) :: blocksTail
 
         _ ->
-            -- If used marker is "=", always parse as TextLine.
+            -- If marker is "=" (lvl == 1), always parse as TextLine.
             if lvl == 1 then
                 parseTextLine match.match blocks
 
-            -- If used marker is "-" and length is 1, it's
+            -- If marker is "-" and length is 1, it's
             -- an empty ListLine.
             else if str == "-" then
                 parseListLine Lists.Unordered match blocks
 
             -- If matches with thematic break line regex, it's
-            -- a ThematicBreakBlock. E.g.: "--" does not match.
+            -- a ThematicBreakBlock. Ps: "--" does not match.
             else if Regex.contains thematicBreakLineRegex match.match then
                 ThematicBreakBlock :: blocks
 

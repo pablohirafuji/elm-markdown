@@ -6058,14 +6058,14 @@ run =
         []
         "foo\nbaz\n"
         [ p []
-            [ text "foobaz" ]
+            [ text "foo\nbaz" ]
         ]
 
     , testEq 618
         []
         "foo \n baz\n"
         [ p []
-            [ text "foobaz" ]
+            [ text "foo\nbaz" ]
         ]
 
     , testEq 619

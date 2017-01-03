@@ -18,6 +18,7 @@ import Test.List
 --import Test.Spec
 import Test.Inline.Code
 import Test.Inline.EmphasisStrong
+import Test.Inline.LineBreak
 
 
 -- Based on http://spec.commonmark.org/0.27/
@@ -39,6 +40,7 @@ tests =
     , ( "Lists", Test.List.run )
     , ( "6.3 Code spans", Test.Inline.Code.run )
     , ( "6.4 Emphasis and strong emphasis", Test.Inline.EmphasisStrong.run )
+    , ( "6.9-10 Line breaks", Test.Inline.LineBreak.run )
     --, ( "All", Test.Spec.run )
     ]
 
