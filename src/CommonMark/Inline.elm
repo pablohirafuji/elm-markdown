@@ -3,54 +3,10 @@ module CommonMark.Inline exposing (..)
 
 
 import Html exposing (..)
+import Html.Attributes exposing (href, title)
+--import Http exposing (encodeUri)
 import Regex exposing (Regex)
 
-
-codeRegex : Regex
-codeRegex =
-    Regex.regex "(`+)([\\s\\S]*?[^`])\\s*\\1(?!`)" 
-
-
-strongRegex : Regex
-strongRegex =
-    Regex.regex "(__|\\*\\*)(?! )([\\s\\S]+?)(?! )\\1"
-
--- __([\s\S]+?)__(?!_)|\*\*([\s\S]+?)\*\*(?!\*)
--- __(?! )(.+)(?! )__|\*\*(?! )(.+)\*\*(?! )(?!\*)
--- (__|\*\*)(?! )(.+)(?! )\1
--- So far: \*(?![!"#$%&'()\*+,\-./:;<=>?@[\\\]^_`{|}~\s])([\s\S]+?)\*
--- OpenEmphasis: \*(?![!"#$%&'()+,\-./:;<=>?@[\\\]^_`{|}~\s])
--- CloseEmphasis: (?![!"#$%&'()\*+,\-./:;<=>?@[\\\]^_`{|}~\s])\*
--- Encontrou um fechamento, procura por uma abertura
--- usa a primeira que encontrar
--- ([!"#$%&'\*_()+,\-./:;<=>?@[\\\]^`{|}~\s])(\*|_)+\1|(?!\1)(\*|_)+(?!\1)
-
--- anterior não pode ser alphanumeric ser próximo for pontuação
-
---(([!"#$%&'\*_()+,\-./:;<=>?@[\\\]^`{|}~\s])(\*|_)+([!"#$%&'\*_()+,\-./:;<=>?@[\\\]^`{|}~])|(?!\3(\*|_)+(?!\3))(?!\s)
---\s(\*|_)+(?!\s)
-emRegex : Regex
-emRegex =
-    Regex.regex "\\b_((?:[^_]|__)+?)_\\b|\\*((?:\\*\\*|[\\s\\S])+?)\\*(?!\\*)"
-
-
--- left-flanking but not right-flanking:
--- \s(\*+|_+)(?![\s\*_])
-
-
--- right-flanking but not left-flanking:
--- \s?(\*+|_+)\s -- Verificar se match começa com espaço, se começar, descartar
-
-
--- (?![!"#$%&'\*_()+,\-./:;<=>?@[\\\]^`{|}~])(\*+|_+)(?![!"#$%&'\*_()+,\-./:;<=>?@[\\\]^`{|}~])
-
--- ((([!"#$%&'\*_()+,\-./:;<=>?@[\\\]^`{|}~])|(?!\2))|\s)(\*|_)+\2
--- [!"#$%&'\*_()+,\-./:;<=>?@[\\\]^`{|}~](\*|_)+[!"#$%&'\*_()+,\-./:;<=>?@[\\\]^`{|}~]|(?:[!"#$%&'\*_()+,\-./:;<=>?@[\\\]^`{|}~\s])(\*|_)+(?:[!"#$%&'\*_()+,\-./:;<=>?@[\\\]^`{|}~\s])
-
-
-pontuactionRegex : String
-pontuactionRegex =
-    Regex.escape "!\"#$%&'*_()+,-./:;<=>?@[\\]^`{|}~"
 
 
 hardBreakRegex : Regex
@@ -58,17 +14,11 @@ hardBreakRegex =
     Regex.regex " {2,}\\n|\\\\\\n"
 
 
-codeSpaceReplaceRegex : Regex
-codeSpaceReplaceRegex =
-    Regex.regex " {2,}|\\n"
-
-
 type Inline
-    = Normal String
-    | HardBreak
+    = HardBreak
     | Code
-    | Strong
     | Emphasis Int
+    | Link ( String, Maybe String) -- ( Url, Title )
 
 
 -- Abstract Syntax Tree
@@ -89,10 +39,7 @@ type alias Match =
 
 regexes : List ( Inline, Regex )
 regexes =
-    [ --( Code     , codeRegex )
-    --, ( Strong   , strongRegex )
-    --, ( Emphasis , emRegex )
-     ( HardBreak, hardBreakRegex )
+    [ ( HardBreak, hardBreakRegex )
     ]
 
 
@@ -105,7 +52,7 @@ findMatches regexes rawText =
 findMatch : String -> ( Inline, Regex ) -> List Match
 findMatch rawText ( type_, regex ) =
     Regex.find Regex.All regex rawText
-        |> List.filterMap (regexMatchToMatch type_)
+        |> List.map (baseMatch type_)
 
 
 baseMatch : Inline -> Regex.Match -> Match
@@ -117,38 +64,6 @@ baseMatch type_ regexMatch =
     , rawText = regexMatch.match
     , text    = regexMatch.match
     }
-
-
-regexMatchToMatch : Inline -> Regex.Match -> Maybe Match
-regexMatchToMatch type_ regexMatch =
-    Just (baseMatch type_ regexMatch)
-
-
-preParseMatches : List Match -> List Match
-preParseMatches matches =
-    let
-        checkPrecedence : Match -> List Match -> List Match
-        checkPrecedence match matches_ =
-            case matches_ of
-                match_ :: matchTail_ ->
-                    case match_.type_ of
-                        Code ->
-                            if match_.start < match.end
-                                && match.start < match_.end then
-                                    matches_
-
-                            else
-                                match :: matches_
-
-                        _ ->
-                            match :: matches_
-
-                [] ->
-                    [ match ]
-
-    
-    in
-        List.foldr checkPrecedence [] matches
 
 
 parseMatches : ( String, List Match, List AST ) -> List AST
@@ -213,8 +128,7 @@ parseMatch ( rawText, match, ast ) =
 
             -- Inside previous Match
             else if astHead.start < match.start
-                && astHead.end > match.end
-                && astHead.type_ /= Code then
+                && astHead.end > match.end then
                     ASTMatch (addChild astHead match)
                         :: astTail
 
@@ -238,17 +152,26 @@ newASTMatch match =
 addChild : Match -> Match -> Match
 addChild parentMatch childMatch =
     let
+        reduction =
+            case parentMatch.type_ of
+                Emphasis length ->
+                    parentMatch.start + length
+
+                _ ->
+                    parentMatch.start
+
+
         updtChildMatch =
             { childMatch
-                | start = childMatch.start - parentMatch.start
-                , end = childMatch.end - parentMatch.end
+                | start = childMatch.start - reduction
+                , end = childMatch.end - reduction
             }
 
         updtParentMatch parsedASTs =
             { parentMatch
                 | content =
                     parseMatches
-                        ( parentMatch.rawText
+                        ( parentMatch.text
                         , [ updtChildMatch ]
                         , parsedASTs
                         )
@@ -274,7 +197,6 @@ toAST rawText =
                     .matches (lexer (initLexerModel trimmedText))
                         ++ matches
             |> List.sortBy .start
-            |> preParseMatches
             |> \matches -> parseMatches ( trimmedText, matches, [] )
             |> reverseASTs
 
@@ -310,23 +232,29 @@ astToHtml ast =
 
         ASTMatch match ->
             case match.type_ of
-                Normal text_ ->
-                    [ text text_ ]
-
                 HardBreak ->
                     [ br [] [] ]
 
                 Code ->
                     [ code [] [ text match.text ] ]
 
-                Strong ->
-                    [ strong [] (astsToHtml match.content) ]
-
                 Emphasis length ->
                     case length of
                         1 -> [ em [] (astsToHtml match.content) ]
                         2 -> [ strong [] (astsToHtml match.content) ]
                         _ -> [ strong [] [ em [] (astsToHtml match.content) ] ]
+
+                Link ( url, maybeTitle ) ->
+                    case maybeTitle of
+                        Just title_ ->
+                            [ a [ href url, title title_ ]
+                                [ text match.text ]
+                            ]
+
+                        Nothing ->
+                            [ a [ href url ]
+                                [ text match.text ]
+                            ]
 
 
 toHtml : String -> List (Html msg)
@@ -361,6 +289,11 @@ lexer model =
 
                 else if char == '`' then
                     codeTagFound model
+                        |> Maybe.withDefault noOpModel
+                        |> lexer
+
+                else if char == '[' then
+                    linkTagFound model
                         |> Maybe.withDefault noOpModel
                         |> lexer
 
@@ -417,7 +350,7 @@ codeTagFound model =
 
         closeRegex : Int -> Regex
         closeRegex length =
-            Regex.regex ("^([^`]+)(`{" ++ toString length ++ "})([^`]|$)")
+            Regex.regex ("^([\\s\\S]*?[^`])(`{" ++ toString length ++ "})([^`]|$)")
 
 
         extractOpenTagLength : String -> Maybe Int
@@ -450,17 +383,6 @@ codeTagFound model =
                 }
 
 
-        updateModel : Match -> LexerModel
-        updateModel match =
-            { model
-                | remainText =
-                    String.dropLeft (String.length match.rawText) model.remainText
-                , index = match.end
-                , matches = match :: model.matches
-                , lastChar = Just '`'
-            }
-
-
         verifyCloseTag : String -> Int -> LexerModel
         verifyCloseTag remainText tagLength =
             let
@@ -490,7 +412,7 @@ codeTagFound model =
                         Just code :: Just closeTag :: _ ->
                             ( code, closeTag )
                                 |> toMatch
-                                |> updateModel
+                                |> updateLexerModel model
 
                         _ ->
                             noMatchLexerModel
@@ -507,6 +429,100 @@ codeTagFound model =
         model.remainText
             |> extractOpenTagLength
             |> Maybe.map (verifyCloseTag model.remainText)
+
+
+
+-- Link
+
+
+linkTagFound : LexerModel -> Maybe LexerModel
+linkTagFound model =
+    let
+        insideRegex : String
+        insideRegex =
+            "[^\\[\\]\\\\]*(?:\\\\.[^\\[\\]\\\\]*)*"
+
+
+        hrefRegex : String
+        hrefRegex =
+            "\\s*(?:<([^<>\\s]*)>|([^\\s\\(\\)\\\\]*(?:\\\\.[^\\(\\)\\\\]*)*))" ++ titleRegex ++ "\\s*"
+            --"\\s*<?([^\\s\\(\\)]*(?:\\\\.[^\\(\\)\\\\]*)*)>?" ++ titleRegex ++ "\\s*"
+
+
+        titleRegex : String
+        titleRegex =
+            "(?:\\s+['\"(]([^'\"(\\\\]*(?:\\\\.[^'\"')\\\\]*)*)['\")])?"
+
+
+        linkRegex : Regex
+        linkRegex =
+            Regex.regex ("^\\[(" ++ insideRegex ++ ")\\]\\(" ++ hrefRegex ++ "\\)")
+
+
+        refLinkRegex : Regex
+        refLinkRegex =
+            Regex.regex ("^\\[(" ++ insideRegex ++ ")\\]\\s*\\[([^\\]]*)\\]")
+
+
+        extractLinkRegex : Regex.Match -> Maybe ( Int, String, String, Maybe String )
+        extractLinkRegex regexMatch =
+            case regexMatch.submatches of
+                Just rawText :: maybeRawUrlAB :: maybeRawUrl :: maybeTitle :: _ ->
+                    let
+                        return rawUrl =
+                            ( String.length regexMatch.match
+                            , rawText
+                            , rawUrl
+                            , maybeTitle
+                            )
+
+                    in
+                        case ( maybeRawUrlAB, maybeRawUrl ) of
+                            ( Just rawUrl, Nothing ) ->
+                                Just (return rawUrl)
+
+                            ( Nothing, Just rawUrl ) ->
+                                Just (return rawUrl)
+
+                            _ ->
+                                Nothing
+
+                _ ->
+                    Nothing
+
+
+        linkRegexToMatch : ( Int, String, String, Maybe String ) -> Match
+        linkRegexToMatch ( length, rawText, url, maybeTitle ) =
+            { type_   = Link ( url, maybeTitle ) 
+            , content = []
+            , start   = model.index
+            , end     = model.index + length
+            , rawText = rawText
+            , text    = rawText
+            }
+
+
+        applyLinkRegex : String -> Maybe Match
+        applyLinkRegex =
+            Regex.find (Regex.AtMost 1) linkRegex
+                >> List.head
+                >> Maybe.map (Debug.log "linkMatchRegex")
+                >> Maybe.andThen extractLinkRegex
+                >> Maybe.map linkRegexToMatch
+                >> Maybe.map (Debug.log "linkMatch")
+
+
+        extractRefLinkRegex : String -> Maybe Regex.Match
+        extractRefLinkRegex =
+            Regex.find (Regex.AtMost 1) refLinkRegex
+                >> List.head
+                >> Maybe.map (Debug.log "refLink")
+
+
+    in
+        model.remainText
+            |> applyLinkRegex
+            |> Maybe.map (updateLexerModel model)
 
 
 
@@ -673,7 +689,7 @@ retrieveToken token tokens =
                         Just
                             ( tokensHead
                             , { token
-                                | index = token.index + remainLenght
+                                | index = token.index - remainLenght
                                 , length = token.length + remainLenght
                               }
                             , tokensTail
@@ -734,10 +750,21 @@ regexMatchToTuple matches =
             ( Nothing, Nothing )
 
 
+updateLexerModel : LexerModel -> Match -> LexerModel
+updateLexerModel model match =
+    { model
+        | remainText =
+            String.dropLeft (match.end - match.start) model.remainText
+        , index = match.end
+        , matches = match :: model.matches
+        , lastChar = Just 'a'
+    }
+
+
 testSrt : String
 testSrt = """
-***Pablo* Gustavo** ``Daiji` *da Costa* Hirafuji `código com  *negrito*`  
-meio _negrito_ `final`.
+***Pablo* Gustavo** `Daiji` *da Costa* Hirafuji `código com  *negrito*`  
+meio __negrito__ `final`*fsgdfgf* .
 """
 
 main : Html msg
