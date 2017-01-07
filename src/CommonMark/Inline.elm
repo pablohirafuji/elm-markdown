@@ -17,8 +17,8 @@ hardBreakRegex =
 type Inline
     = HardBreak
     | Code
-    | Emphasis Int
-    | Link ( String, Maybe String) -- ( Url, Title )
+    | Emphasis Int -- Length
+    | Link ( String, Maybe String) -- ( Url, Maybe Title )
 
 
 -- Abstract Syntax Tree
@@ -432,28 +432,74 @@ codeTagFound model =
 
 
 
--- Link
+----- Link
 
 
+type alias LinkMatch =
+    { matchLength : Int
+    , inside : String
+    , url : String
+    , maybeTitle : Maybe String
+    }
+
+
+insideRegex : String
+insideRegex =
+    "[^\\[\\]\\\\]*(?:\\\\.[^\\[\\]\\\\]*)*"
+
+
+titleRegex : String
+titleRegex =
+    "(?:\\s+(?:'([^'\\\\]*(?:\\\\.[^'\\\\]*)*)'|\"([^\"\\\\]*(?:\\\\.[^\"\\\\]*)*)\"|\\(([^\\)\\\\]*(?:\\\\.[^\\)\\\\]*)*)\\)))?"
+
+
+hrefRegex : String
+hrefRegex =
+    "\\s*(?:<([^<>\\s]*)>|([^\\s\\(\\)\\\\]*(?:\\\\.[^\\(\\)\\\\]*)*))" ++ titleRegex ++ "\\s*"
+
+
+extractLinkRegex : Regex.Match -> Maybe LinkMatch
+extractLinkRegex regexMatch =
+    case regexMatch.submatches of
+        Just rawText
+            :: maybeRawUrlAB -- with angle brackets: <http://url.com>
+            :: maybeRawUrlW -- without angle brackets : http://url.com
+            :: maybeTitleSQ -- with single quotes: 'title'
+            :: maybeTitleDQ -- with double quotes: "title"
+            :: maybeTitleP -- with parenthesis: (title)
+            :: _ ->
+                let
+                    maybeRawUrl : Maybe String
+                    maybeRawUrl =
+                        returnFirstJust [ maybeRawUrlAB, maybeRawUrlW ]
+
+
+                    toReturn : String -> LinkMatch
+                    toReturn rawUrl =
+                        { matchLength = String.length regexMatch.match
+                        , inside = rawText
+                        , url = rawUrl
+                        , maybeTitle =
+                            returnFirstJust
+                                [ maybeTitleSQ
+                                , maybeTitleDQ
+                                , maybeTitleP
+                                ]
+                        }
+
+                in
+                    maybeRawUrl
+                        |> Maybe.map toReturn
+                    
+
+        _ ->
+            Nothing
+
+
+-- TODO code backtick have precedence over link - how to do?
 linkTagFound : LexerModel -> Maybe LexerModel
 linkTagFound model =
     let
-        insideRegex : String
-        insideRegex =
-            "[^\\[\\]\\\\]*(?:\\\\.[^\\[\\]\\\\]*)*"
-
-
-        hrefRegex : String
-        hrefRegex =
-            "\\s*(?:<([^<>\\s]*)>|([^\\s\\(\\)\\\\]*(?:\\\\.[^\\(\\)\\\\]*)*))" ++ titleRegex ++ "\\s*"
-            --"\\s*<?([^\\s\\(\\)]*(?:\\\\.[^\\(\\)\\\\]*)*)>?" ++ titleRegex ++ "\\s*"
-
-
-        titleRegex : String
-        titleRegex =
-            "(?:\\s+['\"(]([^'\"(\\\\]*(?:\\\\.[^'\"')\\\\]*)*)['\")])?"
-
-
         linkRegex : Regex
         linkRegex =
             Regex.regex ("^\\[(" ++ insideRegex ++ ")\\]\\(" ++ hrefRegex ++ "\\)")
@@ -464,41 +510,14 @@ linkTagFound model =
             Regex.regex ("^\\[(" ++ insideRegex ++ ")\\]\\s*\\[([^\\]]*)\\]")
 
 
-        extractLinkRegex : Regex.Match -> Maybe ( Int, String, String, Maybe String )
-        extractLinkRegex regexMatch =
-            case regexMatch.submatches of
-                Just rawText :: maybeRawUrlAB :: maybeRawUrl :: maybeTitle :: _ ->
-                    let
-                        return rawUrl =
-                            ( String.length regexMatch.match
-                            , rawText
-                            , rawUrl
-                            , maybeTitle
-                            )
-
-                    in
-                        case ( maybeRawUrlAB, maybeRawUrl ) of
-                            ( Just rawUrl, Nothing ) ->
-                                Just (return rawUrl)
-
-                            ( Nothing, Just rawUrl ) ->
-                                Just (return rawUrl)
-
-                            _ ->
-                                Nothing
-
-                _ ->
-                    Nothing
-
-
-        linkRegexToMatch : ( Int, String, String, Maybe String ) -> Match
-        linkRegexToMatch ( length, rawText, url, maybeTitle ) =
+        linkRegexToMatch : LinkMatch -> Match
+        linkRegexToMatch { matchLength, inside, url, maybeTitle } =
             { type_   = Link ( url, maybeTitle ) 
             , content = []
             , start   = model.index
-            , end     = model.index + length
-            , rawText = rawText
-            , text    = rawText
+            , end     = model.index + matchLength
+            , rawText = inside
+            , text    = inside
             }
 
 
@@ -509,14 +528,14 @@ linkTagFound model =
                 >> Maybe.map (Debug.log "linkMatchRegex")
                 >> Maybe.andThen extractLinkRegex
                 >> Maybe.map linkRegexToMatch
-                >> Maybe.map (Debug.log "linkMatch")
+                -->> Maybe.map (Debug.log "linkMatch")
 
 
         extractRefLinkRegex : String -> Maybe Regex.Match
         extractRefLinkRegex =
             Regex.find (Regex.AtMost 1) refLinkRegex
                 >> List.head
-                >> Maybe.map (Debug.log "refLink")
+                -->> Maybe.map (Debug.log "refLink")
 
 
     in
@@ -750,6 +769,19 @@ regexMatchToTuple matches =
             ( Nothing, Nothing )
 
 
+returnFirstJust : List (Maybe a) -> Maybe a
+returnFirstJust maybes =
+    let
+        process : Maybe a -> Maybe a -> Maybe a
+        process a maybeFound =
+            case maybeFound of
+                Just found -> Just found
+                Nothing -> a
+
+    in
+        List.foldl process Nothing maybes
+
+
 updateLexerModel : LexerModel -> Match -> LexerModel
 updateLexerModel model match =
     { model
@@ -757,7 +789,11 @@ updateLexerModel model match =
             String.dropLeft (match.end - match.start) model.remainText
         , index = match.end
         , matches = match :: model.matches
-        , lastChar = Just 'a'
+        , lastChar =
+            model.rawText
+                |> String.reverse
+                |> String.uncons
+                |> Maybe.map Tuple.first
     }
 
 

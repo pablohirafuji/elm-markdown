@@ -25,7 +25,7 @@ type alias Model =
 
 init : Model
 init =
-    { textarea = strTest
+    { textarea = ""
     }
 
 
@@ -45,33 +45,9 @@ view model =
     div []
         [ textarea [ onInput TextAreaInput, defaultValue model.textarea ] []
         , br [] []
-        --, text (toString (String.lines model.textarea))
-        --, br [] []
         , p []
               [ text <| toString <| CommonMark.toBlocks model.textarea ]
         , div [] <| CommonMark.toHtml model.textarea
-        --, textarea
-        --    [ value <| String.dropRight 1 <| String.dropLeft 1 <| toString model.textarea
-        --    , style [ ("font-size", "16px"), ("width", "90%") ] ] []
         , Test.View.view
         ]
 
-
-strTest : String
-strTest = ""
---"""
---and here a paragraph ends.
-
---This is the Heading
---===================
-
---And here is the body…
---# H1
---## H2
---____
---### H3
---#### H4
---#####
---``
---````javascript
---"""

@@ -10,16 +10,16 @@ you with optional arguments, error handling, and records with optional fields.
 
 
 import Html exposing (..)
+import Html.Attributes exposing (start, class)
+import Dict exposing (Dict)
 import Regex exposing (Regex)
 import CommonMark.Code as Code
 import CommonMark.List as Lists
-import CommonMark.BlockQuote as BlockQuote
-import CommonMark.Heading as Heading
 import CommonMark.Inline as Inline
 
 
 
--- Line
+----- Line
 
 
 type Line
@@ -34,14 +34,18 @@ type Line
     | UnorderedListLine
 
 
+
+-- Regexes
+
+
 lineMinusListRegexes : List ( Line, Regex )
 lineMinusListRegexes =
     [ ( BlankLine           , blankLineRegex )
     , ( IndentedCodeLine    , Code.indentedRegex )
     , ( OpeningFenceCodeLine, Code.openingFenceRegex )
-    , ( SetextHeadingLine   , Heading.setextRegex )
-    , ( ATXHeadingLine      , Heading.atxRegex )
-    , ( BlockQuoteLine      , BlockQuote.regex )
+    , ( SetextHeadingLine   , headingSetextRegex )
+    , ( ATXHeadingLine      , headingAtxRegex )
+    , ( BlockQuoteLine      , blockQuoteLineRegex )
     ]
 
 
@@ -71,9 +75,60 @@ blankLineRegex =
     Regex.regex "^\\s*$"
 
 
+headingAtxRegex : Regex
+headingAtxRegex =
+    Regex.regex "^ {0,3}(#{1,6})(?:[ \\t]+[ \\t#]+$|[ \\t]+|$)(.*?)(?:\\s+[ \\t#]*)?$"
+
+
+headingSetextRegex : Regex
+headingSetextRegex =
+    Regex.regex "^ {0,3}(=+|-+)[ \\t]*$"
+
+
 thematicBreakLineRegex : Regex
 thematicBreakLineRegex =
     Regex.regex "^ {0,3}(?:(?:\\*[ \\t]*){3,}|(?:_[ \\t]*){3,}|(?:-[ \\t]*){3,})[ \\t]*$"
+
+
+blockQuoteLineRegex : Regex
+blockQuoteLineRegex =
+    Regex.regex "^ {0,3}(?:>[ ]?)(.*)$"
+
+
+
+-- Regex Matches
+
+
+headingAtxMatch : Regex.Match -> ( Int, String )
+headingAtxMatch match =
+    case match.submatches of
+        Just lvl :: Just heading :: _ ->
+            ( String.length lvl, heading )
+
+        _ ->
+            ( 1, match.match )
+
+
+headingSetextMatch : Regex.Match -> ( Int, String )
+headingSetextMatch match =
+    case match.submatches of
+        Just str :: _ ->
+            if String.startsWith "=" str then
+                ( 1, str )
+
+            else
+                ( 2, str )
+
+        _ ->
+            ( 1, "" )
+
+
+blockQuoteFromMatch : Regex.Match -> String
+blockQuoteFromMatch match =
+    match.submatches
+        |> List.head
+        |> Maybe.withDefault Nothing
+        |> Maybe.withDefault ""
 
 
 toRawLines : String -> List String
@@ -82,273 +137,273 @@ toRawLines =
 
 
 
--- Block
+----- Abstract Syntax
 
 
-type Block
-    = BlankBlock
-    | HeadingBlock ( Int, String )
-    | ThematicBreakBlock
-    | CodeBlock Code.Model
-    | BlockQuote (List Block)
-    | ListBlock Lists.Model (List (List Block))
-    | ParagraphBlock String
+type AS
+    = BlankAS
+    | HeadingAS ( Int, String )
+    | ThematicBreakAS
+    | CodeAS Code.Model
+    | BlockQuoteAS (List AS)
+    | ListAS Lists.Model (List (List AS))
+    | ParagraphAS String
 
 
-parseRawLines : ( List String, List Block ) -> List Block
-parseRawLines ( rawLines, blocks ) =
+parseRawLines : ( List String, List AS ) -> List AS
+parseRawLines ( rawLines, absSyns ) =
     case rawLines of
         [] ->
-            blocks
+            absSyns
 
         rawLine :: rawLinesTail ->
-            preParseRawLine ( rawLine, blocks )
+            preParseRawLine ( rawLine, absSyns )
                 |> (,) rawLinesTail
                 |> parseRawLines
 
 
-preParseRawLine : ( String, List Block ) -> List Block
-preParseRawLine ( rawLine, blocks ) =
-    case blocks of
-        ListBlock model blocksList :: blocksTail ->
+preParseRawLine : ( String, List AS ) -> List AS
+preParseRawLine ( rawLine, absSyns ) =
+    case absSyns of
+        ListAS model absSynsList :: absSynsTail ->
             if Lists.indentLength rawLine >= model.indentLength then
-                case blocksList of
-                    blocks_ :: blocksListTail ->
+                case absSynsList of
+                    absSyns_ :: absSynsListTail ->
                         let
                             unindentedRawLine : String
                             unindentedRawLine =
                                 Code.indentLine model.indentLength rawLine
 
-                            updtListBlock : Lists.Model -> List Block
-                            updtListBlock model_ =
-                                ListBlock model_
-                                    ( parseRawLines ( [ unindentedRawLine ], blocks_ )
-                                        :: blocksListTail
-                                    ) :: blocksTail
+                            updtListAS : Lists.Model -> List AS
+                            updtListAS model_ =
+                                ListAS model_
+                                    ( parseRawLines ( [ unindentedRawLine ], absSyns_ )
+                                        :: absSynsListTail
+                                    ) :: absSynsTail
 
-                        in case blocks_ of
+                        in case absSyns_ of
                             -- A list item can begin with at most
                             -- one blank line without begin loose.
-                            [ BlankBlock ] ->
-                                updtListBlock model
+                            [ BlankAS ] ->
+                                updtListAS model
 
-                            BlankBlock :: blocksTail_ ->
-                                if List.all ((==) BlankBlock) blocksTail_ then
-                                    parseRawLine rawLine blocks
+                            BlankAS :: absSynsTail_ ->
+                                if List.all ((==) BlankAS) absSynsTail_ then
+                                    parseRawLine rawLine absSyns
 
                                 else
-                                    updtListBlock { model | isLoose = True }
+                                    updtListAS { model | isLoose = True }
 
-                            ListBlock model_ blocksList_ :: blocksTail_ ->
+                            ListAS model_ absSynsList_ :: absSynsTail_ ->
                                 if Lists.indentLength unindentedRawLine >= model_.indentLength then
-                                    updtListBlock model
+                                    updtListAS model
 
                                 else
-                                    if isBlankBlockLast blocksList_ then
-                                        updtListBlock { model | isLoose = True }
+                                    if isBlankASLast absSynsList_ then
+                                        updtListAS { model | isLoose = True }
 
                                     else
-                                        updtListBlock model
+                                        updtListAS model
 
                             _ ->
-                                updtListBlock model
+                                updtListAS model
 
                     [] ->
-                        ListBlock model
+                        ListAS model
                             ( [ parseRawLines ( [ Code.indentLine model.indentLength rawLine ], [] ) ]
-                            ) :: blocksTail
+                            ) :: absSynsTail
 
 
             else
                 -- parseRawLine with list priority
-                parseRawLineListsFirst rawLine blocks
+                parseRawLineListsFirst rawLine absSyns
 
 
-        -- No need to typify the line if Fenced CodeBlock
+        -- No need to typify the line if Fenced CodeAS
         -- is open, just check for closing fence.
-        CodeBlock (Code.Fenced (True, fence, lines_)) :: blocksTail ->
+        CodeAS (Code.Fenced (True, fence, lines_)) :: absSynsTail ->
             Code.continueOrCloseFence fence lines_ rawLine
-                |> CodeBlock
-                |> \codeBlock -> codeBlock :: blocksTail
+                |> CodeAS
+                |> \codeAS -> codeAS :: absSynsTail
 
 
         _ ->
-            parseRawLine rawLine blocks
+            parseRawLine rawLine absSyns
 
 
-parseRawLine : String -> List Block -> List Block
-parseRawLine rawLine blocks =
-    List.foldl (applyRegex rawLine blocks) Nothing lineRegexes
-        |> Maybe.withDefault ( parseTextLine rawLine blocks )
+parseRawLine : String -> List AS -> List AS
+parseRawLine rawLine absSyns =
+    List.foldl (applyRegex rawLine absSyns) Nothing lineRegexes
+        |> Maybe.withDefault ( parseTextLine rawLine absSyns )
 
 
-parseRawLineListsFirst : String -> List Block -> List Block
-parseRawLineListsFirst rawLine blocks =
-    List.foldl (applyRegex rawLine blocks) Nothing listLineFirstRegexes
-        |> Maybe.withDefault ( parseTextLine rawLine blocks )
+parseRawLineListsFirst : String -> List AS -> List AS
+parseRawLineListsFirst rawLine absSyns =
+    List.foldl (applyRegex rawLine absSyns) Nothing listLineFirstRegexes
+        |> Maybe.withDefault ( parseTextLine rawLine absSyns )
 
 
-applyRegex : String -> List Block -> ( Line, Regex ) -> Maybe (List Block) -> Maybe (List Block)
-applyRegex rawLine blocks ( line, regex ) maybeBlocks =
-    if maybeBlocks == Nothing then
+applyRegex : String -> List AS -> ( Line, Regex ) -> Maybe (List AS) -> Maybe (List AS)
+applyRegex rawLine absSyns ( line, regex ) maybeASs =
+    if maybeASs == Nothing then
         Regex.find ( Regex.AtMost 1 ) regex rawLine
             |> List.head
-            |> Maybe.map ( parseLine line blocks )
+            |> Maybe.map ( parseLine line absSyns )
 
     else
-        maybeBlocks
+        maybeASs
 
 
-parseLine : Line -> List Block -> Regex.Match -> List Block
-parseLine line blocks match =
+parseLine : Line -> List AS -> Regex.Match -> List AS
+parseLine line absSyns match =
     case line of
         BlankLine ->
-            parseBlankLine match blocks
+            parseBlankLine match absSyns
 
         ATXHeadingLine ->
-            HeadingBlock ( Heading.atxMatch match ) :: blocks
+            HeadingAS (headingAtxMatch match) :: absSyns
 
         SetextHeadingLine ->
-            parseSetextHeadingLine match blocks
+            parseSetextHeadingLine match absSyns
 
         ThematicBreakLine ->
-            ThematicBreakBlock :: blocks
+            ThematicBreakAS :: absSyns
 
         IndentedCodeLine ->
-            parseIndentedCodeLine match blocks
+            parseIndentedCodeLine match absSyns
 
         OpeningFenceCodeLine ->
-            parseFencedCodeLine match blocks
+            parseFencedCodeLine match absSyns
 
         BlockQuoteLine ->
-            parseBlockQuoteLine match blocks
+            parseBlockQuoteLine match absSyns
 
         OrderedListLine ->
-            parseListLine (Lists.Ordered 0) match blocks
+            parseListLine (Lists.Ordered 0) match absSyns
         
         UnorderedListLine ->
-            parseListLine Lists.Unordered match blocks
+            parseListLine Lists.Unordered match absSyns
 
 
-parseBlankLine : Regex.Match -> List Block -> List Block
-parseBlankLine match blocks =
-    case blocks of
-        -- BlankLine after Indented CodeBlock may be added to
-        -- the CodeBlock if another Indented CodeBlock is found
-        CodeBlock ( Code.Indented indentedModel )
-            :: blocksTail ->
+parseBlankLine : Regex.Match -> List AS -> List AS
+parseBlankLine match absSyns =
+    case absSyns of
+        -- BlankLine after Indented CodeAS may be added to
+        -- the CodeAS if another Indented CodeAS is found
+        CodeAS ( Code.Indented indentedModel )
+            :: absSynsTail ->
                 Code.addBlankLineToIndented match.match indentedModel
-                    |> CodeBlock
-                    |> \b -> b :: blocksTail
+                    |> CodeAS
+                    |> \b -> b :: absSynsTail
 
 
-        CodeBlock ( Code.Fenced ( True, fence, pCode ) )
-            :: blocksTail ->
+        CodeAS ( Code.Fenced ( True, fence, pCode ) )
+            :: absSynsTail ->
                 Code.addBlankLineToFenced match.match ( True, fence, pCode )
-                    |> CodeBlock
-                    |> \b -> b :: blocksTail
+                    |> CodeAS
+                    |> \b -> b :: absSynsTail
 
 
-        ListBlock model blocksList :: blocksTail ->
-            ListBlock
+        ListAS model absSynsList :: absSynsTail ->
+            ListAS
                 model
-                (addBlankLineToBlocksList match blocksList)
-                    :: blocksTail
+                (addBlankLineToASsList match absSynsList)
+                    :: absSynsTail
 
 
         _ ->
-            BlankBlock :: blocks
+            BlankAS :: absSyns
 
 
-addBlankLineToBlocksList : Regex.Match -> List (List Block) -> List (List Block)
-addBlankLineToBlocksList match blocksList =
-    case blocksList of
-        blocks :: blocksListTail ->
-            parseBlankLine match blocks
-                :: blocksListTail
+addBlankLineToASsList : Regex.Match -> List (List AS) -> List (List AS)
+addBlankLineToASsList match absSynsList =
+    case absSynsList of
+        absSyns :: absSynsListTail ->
+            parseBlankLine match absSyns
+                :: absSynsListTail
 
         [] ->
-            [ [ BlankBlock ] ]
+            [ [ BlankAS ] ]
 
 
-parseSetextHeadingLine : Regex.Match -> List Block -> List Block
-parseSetextHeadingLine match blocks =
+parseSetextHeadingLine : Regex.Match -> List AS -> List AS
+parseSetextHeadingLine match absSyns =
     let ( lvl, str ) =
-        Heading.setextMatch match
+        headingSetextMatch match
 
-    in case blocks of
-        -- Only occurs after ParagraphBlock.
-        ParagraphBlock paragraph :: blocksTail ->
-            HeadingBlock ( lvl, paragraph ) :: blocksTail
+    in case absSyns of
+        -- Only occurs after ParagraphAS.
+        ParagraphAS paragraph :: absSynsTail ->
+            HeadingAS ( lvl, paragraph ) :: absSynsTail
 
         _ ->
             -- If marker is "=" (lvl == 1), always parse as TextLine.
             if lvl == 1 then
-                parseTextLine match.match blocks
+                parseTextLine match.match absSyns
 
             -- If marker is "-" and length is 1, it's
             -- an empty ListLine.
             else if str == "-" then
-                parseListLine Lists.Unordered match blocks
+                parseListLine Lists.Unordered match absSyns
 
             -- If matches with thematic break line regex, it's
-            -- a ThematicBreakBlock. Ps: "--" does not match.
+            -- a ThematicBreakAS. Ps: "--" does not match.
             else if Regex.contains thematicBreakLineRegex match.match then
-                ThematicBreakBlock :: blocks
+                ThematicBreakAS :: absSyns
 
             -- Otherwise, parse as TextLine
             else
-                parseTextLine match.match blocks
+                parseTextLine match.match absSyns
 
 
-parseIndentedCodeLine : Regex.Match -> List Block -> List Block
-parseIndentedCodeLine match blocks =
+parseIndentedCodeLine : Regex.Match -> List AS -> List AS
+parseIndentedCodeLine match absSyns =
     let ( blankLines, codeLine ) =
         Code.fromIndentedMatch match
 
-    in case blocks of
-        CodeBlock (Code.Indented blockArgs) :: blocksTail ->
-            CodeBlock
+    in case absSyns of
+        CodeAS (Code.Indented absSynArgs) :: absSynsTail ->
+            CodeAS
                 ( Code.addIndented
-                    ( blankLines, codeLine ) blockArgs
-                ) :: blocksTail  
+                    ( blankLines, codeLine ) absSynArgs
+                ) :: absSynsTail  
 
         _ ->
-            maybeContinueParagraph codeLine blocks
+            maybeContinueParagraph codeLine absSyns
                 |> Maybe.withDefault
-                    ( CodeBlock
+                    ( CodeAS
                         ( Code.Indented
                             ( [], codeLine ++ "\n" )
-                        ) :: blocks
+                        ) :: absSyns
                     )
 
 
-parseFencedCodeLine : Regex.Match -> List Block -> List Block
-parseFencedCodeLine match blocks =
-    CodeBlock
+parseFencedCodeLine : Regex.Match -> List AS -> List AS
+parseFencedCodeLine match absSyns =
+    CodeAS
         ( Code.Fenced
             (Code.fromOpeningFenceMatch match)
-        ) :: blocks
+        ) :: absSyns
 
 
-parseBlockQuoteLine : Regex.Match -> List Block -> List Block
-parseBlockQuoteLine match blocks =
+parseBlockQuoteLine : Regex.Match -> List AS -> List AS
+parseBlockQuoteLine match absSyns =
     let rawLine =
-        BlockQuote.fromMatch match
+        blockQuoteFromMatch match
 
-    in case blocks of
-        BlockQuote blocks_ :: blocksTail ->
-            BlockQuote
-                (parseRawLines ( [ rawLine ], blocks_ ))
-                    :: blocksTail
+    in case absSyns of
+        BlockQuoteAS absSyns_ :: absSynsTail ->
+            BlockQuoteAS
+                (parseRawLines ( [ rawLine ], absSyns_ ))
+                    :: absSynsTail
 
         _ ->
-            BlockQuote (parseRawLines ( [ rawLine ], [] ))
-                :: blocks
+            BlockQuoteAS (parseRawLines ( [ rawLine ], [] ))
+                :: absSyns
 
 
-parseListLine : Lists.Type -> Regex.Match -> List Block -> List Block
-parseListLine type_ match blocks =
+parseListLine : Lists.Type -> Regex.Match -> List AS -> List AS
+parseListLine type_ match absSyns =
     let
         ( lineModel, rawLine ) =
             Lists.fromMatch type_ match
@@ -356,62 +411,62 @@ parseListLine type_ match blocks =
         parsedRawLine =
             parseRawLines ( [ rawLine ], [] )
 
-        newListBlock =
-            ListBlock lineModel [ parsedRawLine ] :: blocks
+        newListAS =
+            ListAS lineModel [ parsedRawLine ] :: absSyns
 
-    in case blocks of
-        ListBlock blockModel blocksList :: blocksTail ->
-            if lineModel.delimiter == blockModel.delimiter then
-                ListBlock
-                    { blockModel
+    in case absSyns of
+        ListAS absSynModel absSynsList :: absSynsTail ->
+            if lineModel.delimiter == absSynModel.delimiter then
+                ListAS
+                    { absSynModel
                         | indentLength = lineModel.indentLength
                         , isLoose =
-                            blockModel.isLoose
-                                || isBlankBlockLast blocksList
+                            absSynModel.isLoose
+                                || isBlankASLast absSynsList
                     }
-                    (parsedRawLine :: blocksList)
-                        :: blocksTail
+                    (parsedRawLine :: absSynsList)
+                        :: absSynsTail
 
             else
-                newListBlock
+                newListAS
 
-        ParagraphBlock paragraph :: blocksTail ->
+        ParagraphAS paragraph :: absSynsTail ->
             -- Empty list item cannot interrupt a paragraph.
-            if parsedRawLine == [ BlankBlock ] then
+            if parsedRawLine == [ BlankAS ] then
                 addToParagraph paragraph match.match
-                    :: blocksTail
+                    :: absSynsTail
 
             else
                 case lineModel.type_ of
                     -- Ordered list with start 1 can interrupt.
                     Lists.Ordered 1 ->
-                        newListBlock
+                        newListAS
 
                     Lists.Ordered int ->
                         addToParagraph paragraph match.match
-                            :: blocksTail
+                            :: absSynsTail
 
                     _ ->
-                        newListBlock
+                        newListAS
 
         _ ->
-            newListBlock
+            newListAS
 
 
-isBlankBlockLast : List (List Block) -> Bool
-isBlankBlockLast blocksList =
-    case blocksList of
-        blocks :: blocksListTail ->
-            case blocks of
+isBlankASLast : List (List AS) -> Bool
+isBlankASLast absSynsList =
+    case absSynsList of
+        absSyns :: absSynsListTail ->
+            case absSyns of
                 -- Ignore if it's an empty list item (example 242)
-                BlankBlock :: [] ->
+                BlankAS :: [] ->
                     False
 
-                BlankBlock :: _ ->
+                BlankAS :: _ ->
                     True
 
-                ListBlock _ blocksList_ :: _ ->
-                    isBlankBlockLast blocksList_
+                ListAS _ absSynsList_ :: _ ->
+                    isBlankASLast absSynsList_
 
                 _ ->
                     False
@@ -420,44 +475,44 @@ isBlankBlockLast blocksList =
             False
 
 
-parseTextLine : String -> List Block -> List Block
-parseTextLine rawLine blocks =
-    maybeContinueParagraph rawLine blocks
+parseTextLine : String -> List AS -> List AS
+parseTextLine rawLine absSyns =
+    maybeContinueParagraph rawLine absSyns
         |> Maybe.withDefault
-            (ParagraphBlock (String.trimLeft rawLine) :: blocks)
+            (ParagraphAS (String.trimLeft rawLine) :: absSyns)
 
 
-addToParagraph : String -> String -> Block
+addToParagraph : String -> String -> AS
 addToParagraph paragraph rawLine =
-    ParagraphBlock (paragraph ++ "\n" ++ String.trimLeft rawLine)
+    ParagraphAS (paragraph ++ "\n" ++ String.trimLeft rawLine)
 
 
-maybeContinueParagraph : String -> List Block -> Maybe ( List Block )
-maybeContinueParagraph rawLine blocks =
-    case blocks of
-        ParagraphBlock paragraph :: blocksTail ->
+maybeContinueParagraph : String -> List AS -> Maybe ( List AS )
+maybeContinueParagraph rawLine absSyns =
+    case absSyns of
+        ParagraphAS paragraph :: absSynsTail ->
             addToParagraph paragraph rawLine
-                :: blocksTail
+                :: absSynsTail
                     |> Just
 
 
-        BlockQuote blocks_ :: blocksTail ->
-            maybeContinueParagraph rawLine blocks_
+        BlockQuoteAS absSyns_ :: absSynsTail ->
+            maybeContinueParagraph rawLine absSyns_
                 |> Maybe.map
-                    (\updtBlocks_ ->
-                        BlockQuote updtBlocks_ :: blocksTail
+                    (\updtASs_ ->
+                        BlockQuoteAS updtASs_ :: absSynsTail
                     )
 
 
-        ListBlock model blocksList :: blocksTail ->
-            case blocksList of
-                blocks_ :: blocksListTail ->
-                    maybeContinueParagraph rawLine blocks_
+        ListAS model absSynsList :: absSynsTail ->
+            case absSynsList of
+                absSyns_ :: absSynsListTail ->
+                    maybeContinueParagraph rawLine absSyns_
                         |> Maybe.map
-                            (\updtBlocks_ ->
-                                ListBlock model
-                                    (updtBlocks_ :: blocksListTail)
-                                        :: blocksTail
+                            (\updtASs_ ->
+                                ListAS model
+                                    (updtASs_ :: absSynsListTail)
+                                        :: absSynsTail
                             )
 
                 _ ->
@@ -467,94 +522,391 @@ maybeContinueParagraph rawLine blocks =
             Nothing
 
 
-blockToHtml : Bool -> Block -> List (Html msg)
-blockToHtml textAsParagraph block =
-    case block of
-        HeadingBlock ( lvl, heading ) ->
-            case lvl of
-                1 -> [ h1 [] (Inline.toHtml heading) ]
-                2 -> [ h2 [] (Inline.toHtml heading) ]
-                3 -> [ h3 [] (Inline.toHtml heading) ]
-                4 -> [ h4 [] (Inline.toHtml heading) ]
-                5 -> [ h5 [] (Inline.toHtml heading) ]
-                _ -> [ h6 [] (Inline.toHtml heading) ]
 
-        ThematicBreakBlock ->
-            [ hr [] [] ]
-
-        ParagraphBlock lines ->
-            if textAsParagraph then
-                [ p [] (Inline.toHtml lines) ]
-
-            else
-                Inline.toHtml lines
-
-        CodeBlock codeBlock ->
-            [ Code.view codeBlock ]
-
-        BlockQuote blocks ->
-            List.map (blockToHtml True) blocks
-                |> List.concat
-                |> BlockQuote.view
-                |> (\bq -> [ bq ] )
-
-        ListBlock model blocks ->
-            List.map
-                ( List.map (blockToHtml (model.isLoose))
-                    >> List.concat
-                    >> li []
-                ) blocks
-                |> Lists.view model
-                |> (\list -> [ list ] )
-
-        BlankBlock ->
-            []
+----- References
 
 
-reverseBlocks : List Block -> List Block
-reverseBlocks =
-    List.reverse
-        >> List.map reverseContainedBlock
+type alias References =
+    --   RefText ( Url  , Maybe Title  )
+    Dict String ( String, Maybe String )
 
 
-reverseContainedBlock : Block -> Block
-reverseContainedBlock block =
-    case block of
-        ListBlock model blocksList ->
-            List.reverse blocksList
-                |> List.map reverseBlocks
-                |> ListBlock model
-
-        BlockQuote blocks ->
-           reverseBlocks blocks
-                |> BlockQuote
-
-        block ->
-            block
+refRegex : Regex
+refRegex =
+    Regex.regex
+        (  "^\\s*\\[("
+        ++ Inline.insideRegex
+        ++ ")\\]:"
+        ++ Inline.hrefRegex
+        ++ "(?![^\\n])"
+        )
 
 
-{-| Convert a list of characters into a String. Can be useful if you
-want to create a string primarly by consing, perhaps for decoding
-something.
+insertLinkMatch : References -> Inline.LinkMatch -> References
+insertLinkMatch refs linkMatch =
+    if Dict.member linkMatch.inside refs then
+        refs
+
+    else
+        Dict.insert
+            linkMatch.inside
+            ( linkMatch.url, linkMatch.maybeTitle )
+            refs
+
+
+dropRefString : String -> Inline.LinkMatch -> Maybe String
+dropRefString rawText inlineMatch =
+    let
+        strippedText =
+            String.dropLeft inlineMatch.matchLength rawText
+
+    in
+        if Regex.contains blankLineRegex strippedText then
+            Nothing
+
+        else
+            Just strippedText
+
+
+maybeLinkMatch : String -> Maybe Inline.LinkMatch
+maybeLinkMatch rawText =
+    Regex.find (Regex.AtMost 1) refRegex rawText
+        |> List.head
+        |> Maybe.andThen Inline.extractLinkRegex
+        |> Maybe.andThen
+            (\linkMatch ->
+                if linkMatch.url == ""
+                    || linkMatch.inside == "" then
+                        Nothing
+
+                else
+                    Just
+                        { linkMatch | inside =
+                            String.toLower linkMatch.inside
+                        }
+            )
+
+
+parseReference : References -> String -> ( References, Maybe String )
+parseReference refs rawText =
+    case maybeLinkMatch rawText of
+        Just linkMatch ->
+            let
+                maybeStrippedText =
+                    dropRefString rawText linkMatch
+
+                updtRefs =
+                    insertLinkMatch refs linkMatch
+
+            in
+                case maybeStrippedText of
+                    Just strippedText ->
+                        parseReference updtRefs strippedText
+
+                    Nothing ->
+                        ( updtRefs, Nothing ) 
+
+
+        Nothing ->
+            ( refs, Just rawText )
+
+
+parseReferences : References -> List AS -> ( References, List AS )
+parseReferences refs =
+    let
+        applyParser : AS -> ( References, List AS ) -> ( References, List AS )
+        applyParser absSyn ( refs_, parsedASs ) =
+            case absSyn of
+                ParagraphAS rawText ->
+                    let
+                        ( paragraphRefs, maybeUpdtText ) =
+                            parseReference Dict.empty rawText
+
+                        updtRefs =
+                            Dict.union paragraphRefs refs_
+                    
+                    in
+                        case maybeUpdtText of
+                            Just updtText ->
+                                ( updtRefs
+                                , ParagraphAS updtText
+                                    :: parsedASs
+                                )
+
+                            Nothing ->
+                                ( updtRefs, parsedASs )
+
+
+                ListAS model absSynsList ->
+                    let
+                        ( updtRefs, updtAbsSynsList ) =
+                            List.foldl
+                                (\absSyns ( refs__, parsedASsList ) ->
+                                    parseReferences refs__ absSyns
+                                        |> Tuple.mapSecond
+                                            (flip (::) parsedASsList)
+                                )
+                                ( refs_, [] )
+                                absSynsList
+
+                    in
+                        ( updtRefs
+                        , ListAS model updtAbsSynsList
+                            :: parsedASs
+                        )
+
+
+                BlockQuoteAS absSyns ->
+                    parseReferences refs_ absSyns
+                        |> Tuple.mapSecond BlockQuoteAS
+                        |> Tuple.mapSecond (flip (::) parsedASs)
+
+
+                _ ->
+                    ( refs_, absSyn :: parsedASs )
+
+    in
+        List.foldl applyParser ( refs, [] )
+
+
+
+----- Block
+
+
+type Block
+    = ThematicBreak
+    | Heading HeadingBlock
+    | Code CodeBlock
+    | Paragraph ParagraphBlock
+    | BlockQuote BlockQuoteBlock
+    | List ListBlock
+
+
+type alias HeadingBlock =
+    { level : Int
+    , inlines : List Inline.AST
+    }
+
+
+type alias CodeBlock =
+    { language : Maybe String
+    , code : String
+    }
+
+
+type alias ParagraphBlock =
+    { inlines : List Inline.AST }
+
+
+type alias BlockQuoteBlock =
+    { blocks : List Block }
+
+
+type alias ListBlock =
+    { type_ : Lists.Type
+    , isLoose : Bool
+    , items : List (List Block)
+    }
+
+
+absSynToBlock : References -> AS -> Maybe Block
+absSynToBlock refs absSyn =
+    case absSyn of
+        HeadingAS ( lvl, rawText ) ->
+            Just
+                <| Heading
+                    { level = lvl
+                    , inlines = Inline.toAST rawText
+                    }
+
+
+        ThematicBreakAS ->
+            Just ThematicBreak
+
+
+        ParagraphAS rawText ->
+            Just
+                <| Paragraph
+                    { inlines = Inline.toAST rawText }
+
+
+        CodeAS codeAS ->
+            Just
+                <| Code
+                <| Code.asToBlock codeAS
+
+
+        BlockQuoteAS absSyns ->
+            Just
+                <| BlockQuote
+                    { blocks = absSynsToBlocks ( refs, absSyns ) }
+
+
+        ListAS model absSynsList ->
+            Just
+                <| List
+                    { type_ = model.type_
+                    , isLoose = model.isLoose
+                    , items =
+                        List.map
+                            (absSynsToBlocks << (,) refs)
+                            absSynsList
+                    }
+
+
+        BlankAS ->
+            Nothing
+
+
+absSynsToBlocks : ( References, List AS ) -> List Block
+absSynsToBlocks ( refs, absSyns ) =
+    List.filterMap (absSynToBlock refs) absSyns
+
+
+
+{-| Documentation
 
     toBlocks "# Heading title" == [ h1 [] [ text "Heading title"" ] ]
 -}
+
 toBlocks : String -> List Block
 toBlocks rawText =
     ( toRawLines rawText, [] )
         |> parseRawLines
-        |> reverseBlocks
+        |> parseReferences Dict.empty
+        |> absSynsToBlocks
 
 
-{-| Convert a list of characters into a String. Can be useful if you
-want to create a string primarly by consing, perhaps for decoding
-something.
+
+----- Html
+
+-- Expor e codumentar
+type alias Elements msg =
+    { heading : Int -> List (Html msg) -> Html msg
+    , thematicBreak : Html msg
+    , paragraph : Bool -> List (Html msg) -> List (Html msg)
+    , blockQuote : List (Html msg) -> Html msg
+    , code : Maybe String -> String -> Html msg
+    , list : Lists.Type -> List ( Html msg ) -> Html msg
+    }
+
+-- Expor e codumentar
+defaultElements : Elements msg
+defaultElements =
+    { heading = headingHtml
+    , thematicBreak = hr [] []
+    , paragraph = paragraphHtml
+    , blockQuote = blockquote []
+    , code = codeHtml
+    , list = listHtml
+    }
+
+
+headingHtml : Int -> List (Html msg) -> Html msg
+headingHtml level =
+    case level of
+        1 -> h1 []
+        2 -> h2 []
+        3 -> h3 []
+        4 -> h4 []
+        5 -> h5 []
+        _ -> h6 []
+
+
+paragraphHtml : Bool -> List (Html msg) -> List (Html msg)
+paragraphHtml textAsParagraph innerHtml =
+    if textAsParagraph then
+        [ p [] innerHtml ]
+
+    else
+        innerHtml
+
+
+codeHtml : Maybe String -> String -> Html msg
+codeHtml maybeLanguage codeStr =
+    let
+        basicView : List (Html.Attribute msg) -> String -> Html msg
+        basicView attrs codeStr_ =
+            pre []
+                [ code attrs
+                    [ text codeStr_ ]
+                ]
+
+    in
+        case maybeLanguage of
+            Just language ->
+                basicView
+                    [ class ("language-" ++ language) ]
+                    codeStr
+
+            Nothing ->
+                basicView [] codeStr
+
+
+listHtml : Lists.Type -> List ( Html msg ) -> Html msg
+listHtml type_ =
+    case type_ of
+        Lists.Ordered startInt ->
+            -- To comply with CommonMark tests output
+            if startInt == 1 then
+                ol []
+            
+            else
+                ol [ start startInt ]
+
+        Lists.Unordered ->
+            ul []
+
+
+blockToHtml : Elements msg -> Bool -> Block -> List (Html msg)
+blockToHtml elements textAsParagraph block =
+    case block of
+        Heading { level, inlines } ->
+            [ elements.heading
+                level
+                (Inline.astsToHtml inlines)
+            ]
+
+        ThematicBreak ->
+            [ elements.thematicBreak ]
+
+        Paragraph { inlines } ->
+            elements.paragraph
+                textAsParagraph
+                (Inline.astsToHtml inlines)
+
+        Code { language, code } ->
+            [ elements.code language code ]
+
+        BlockQuote { blocks } ->
+            blocksToHtml elements True blocks
+                |> elements.blockQuote
+                |> flip (::) []
+
+        List { type_, isLoose, items } ->
+            List.map (blocksToHtml elements isLoose >> li []) items
+                |> elements.list type_
+                |> (\list -> [ list ] )
+
+
+blocksToHtml : Elements msg -> Bool -> List Block -> List (Html msg)
+blocksToHtml elements textAsParagraph =
+    List.map (blockToHtml elements textAsParagraph)
+        >> List.concat
+
+
+-- Expor e codumentar
+customHtml : Elements msg -> String -> List (Html msg)
+customHtml elements =
+    toBlocks
+        >> blocksToHtml elements True
+
+
+{-| Documentation
 
     toHtml "# Heading title" == [ h1 [] [ text "Heading title"" ] ]
 -}
 toHtml : String -> List (Html msg)
 toHtml =
-    toBlocks
-        >> List.map (blockToHtml True)
-        >> List.concat
+    customHtml defaultElements
 

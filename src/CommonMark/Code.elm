@@ -2,8 +2,6 @@ module CommonMark.Code exposing (..)
 
 
 import Regex exposing (Regex)
-import Html exposing (Html, pre, code, text)
-import Html.Attributes exposing (class)
 
 
 
@@ -17,17 +15,9 @@ type Model
 
 type alias BlankLine = String
 
-
 type alias Fence = ( IsOpen, FenceModel, String )
 
-
---initFence : Fence
---initFence =
---    ( True, initFenceModel, "" )
-
-
 type alias IsOpen = Bool
-
 
 type alias FenceModel =
     { indentLength : Int
@@ -35,15 +25,6 @@ type alias FenceModel =
     , fenceChar : String
     , language : String
     }
-
-
---initFenceModel : FenceModel
---initFenceModel =
---    { indentLength = 0
---    , fenceLength = 0
---    , fenceChar = ""
---    , language = ""
---    }
 
 
 
@@ -72,12 +53,6 @@ fromIndentedMatch =
         >> Maybe.withDefault Nothing
         >> Maybe.map ( (,) [] )
         >> Maybe.withDefault ( [], "" )
---fromIndentedMatch : Regex.Match -> Maybe Model
---fromIndentedMatch =
---    .submatches
---        >> List.head
---        >> Maybe.withDefault Nothing
---        >> Maybe.map (\code -> Indented ([], code))
 
 
 fromOpeningFenceMatch : Regex.Match -> Fence
@@ -98,26 +73,6 @@ fromOpeningFenceMatch match =
 
         _ ->
             ( True, FenceModel 0 0 "`" "", "" )
-
---fromOpeningFenceMatch : Regex.Match -> Maybe Model
---fromOpeningFenceMatch match =
---    case match.submatches of
---        Just indent :: Just fence :: Just language :: _ ->
---            Fenced
---                ( True
---                ,   { indentLength = String.length indent
---                    , fenceLength = String.length fence
---                    , fenceChar = String.left 1 fence
---                    , language =
---                        String.words language
---                            |> List.head
---                            |> Maybe.withDefault ""
---                    }
---                , ""
---                ) |> Just
-
---        _ ->
---            Nothing
 
 
 
@@ -193,30 +148,21 @@ addBlankLineToFenced blankLine ( isOpen, fence, previousCode ) =
     Fenced ( isOpen, fence, previousCode ++ "\n" )
 
 
-
--- View
-
-
-view : Model -> Html msg
-view block =
-    case block of
+asToBlock : Model -> { language : Maybe String, code : String }
+asToBlock model =
+    case model of
         Indented ( _, codeStr ) ->
-            basicView [] codeStr
+            { language = Nothing
+            , code = codeStr
+            }
 
         Fenced ( _, { language }, codeStr ) ->
             if String.length language > 0 then
-                basicView
-                    [ class ("language-" ++ language) ]
-                    codeStr
+                { language = Just language
+                , code = codeStr
+                }
 
             else
-                basicView [] codeStr
-
-
-basicView : List (Html.Attribute msg) -> String -> Html msg
-basicView attrs codeStr =
-    pre []
-        [ code attrs
-            [ text codeStr ]
-        ]
-
+                { language = Nothing
+                , code = codeStr
+                }

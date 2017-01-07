@@ -154,22 +154,3 @@ indentLength rawLine =
         |> Maybe.map (.match >> String.length)
         |> Maybe.withDefault 0
 
-
-
--- View
-
-
-view : Model -> List ( Html msg ) -> Html msg
-view info =
-    case info.type_ of
-        Ordered startInt ->
-            -- To comply with CommonMark tests output
-            if startInt == 1 then
-                ol []
-            
-            else
-                ol [ start startInt ]
-
-        Unordered ->
-            ul []
-
