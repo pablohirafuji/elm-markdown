@@ -1,7 +1,7 @@
 module CommonMark.Inline exposing (..)
 
 
-
+import Dict exposing (Dict)
 import Html exposing (..)
 import Html.Attributes exposing (href, title)
 --import Http exposing (encodeUri)
@@ -21,7 +21,10 @@ type Inline
     | Link ( String, Maybe String) -- ( Url, Maybe Title )
 
 
+
 -- Abstract Syntax Tree
+
+
 type AST
     = NoMatch String
     | ASTMatch Match
@@ -72,13 +75,16 @@ parseMatches ( rawText, matches, ast ) =
         [] ->
             case ast of
                 [] ->
+                    -- No text to parse
                     if String.isEmpty rawText then
                         []
 
+                    -- No match found
                     else
                         [ NoMatch rawText ]
 
 
+                -- Add final unmatched string
                 ASTMatch astHead :: _ ->
                     let
                         finalStr =
@@ -105,6 +111,7 @@ parseMatch : ( String, Match, List AST ) -> List AST
 parseMatch ( rawText, match, ast ) =
     case ast of
         [] ->
+            -- Add initial unmatched string
             if match.start > 0 then
                 [ newASTMatch match
                 , NoMatch (String.left (match.start) rawText)
@@ -120,7 +127,7 @@ parseMatch ( rawText, match, ast ) =
                 newASTMatch match
                     :: ast
             
-            -- New Match and in between normal text
+            -- New Match and add in between unmatched string
             else if astHead.end < match.start then
                 newASTMatch match
                     :: NoMatch (String.slice astHead.end match.start rawText)
@@ -186,15 +193,15 @@ addChild parentMatch childMatch =
                 updtParentMatch parentMatch.content
 
 
-toAST : String -> List AST
-toAST rawText =
+toAST : References -> String -> List AST
+toAST refs rawText =
     let
         trimmedText = String.trim rawText
     
     in
         findMatches regexes trimmedText
             |> \matches ->
-                    .matches (lexer (initLexerModel trimmedText))
+                    .matches (lexer (initLexerModel refs trimmedText))
                         ++ matches
             |> List.sortBy .start
             |> \matches -> parseMatches ( trimmedText, matches, [] )
@@ -257,13 +264,51 @@ astToHtml ast =
                             ]
 
 
-toHtml : String -> List (Html msg)
-toHtml =
-    toAST
-        >> astsToHtml
+--toHtml : String -> List (Html msg)
+--toHtml =
+--    toAST
+--        >> astsToHtml
 
 
--- Scanner
+
+-- Lexer
+
+
+type alias LexerModel =
+    { rawText : String
+    , remainText : String
+    , lastChar : Maybe Char
+    , tokens : List Token
+    , index : Int
+    , matches : List Match
+    , refs : References
+    }
+
+
+initLexerModel : References -> String -> LexerModel
+initLexerModel refs rawText  =
+    { rawText = rawText
+    , remainText = rawText
+    , lastChar = Nothing
+    , tokens = []
+    , index = 0
+    , matches = []
+    , refs = refs
+    }
+
+
+type alias Token =
+    { index : Int
+    , length : Int
+    , meaning : Meaning
+    --, state : State -- Desnecessário?
+    }
+
+
+type Meaning
+    = EmphasisTag Char
+    | LinkOpen
+    | ImageOpen
 
 
 lexer : LexerModel -> LexerModel
@@ -299,42 +344,6 @@ lexer model =
 
                 else
                     lexer noOpModel
-
-
-type alias LexerModel =
-    { rawText : String
-    , remainText : String
-    , lastChar : Maybe Char
-    , tokens : List Token
-    , index : Int
-    , matches : List Match
-    }
-
-
-initLexerModel : String -> LexerModel
-initLexerModel rawText  =
-    { rawText = rawText
-    , remainText = rawText
-    , lastChar = Nothing
-    , tokens = []
-    , index = 0
-    , matches = []
-    }
-
-
-type alias Token =
-    { index : Int
-    , length : Int
-    , meaning : Meaning
-    --, state : State -- Desnecessário?
-    }
-
-
-type Meaning
-    = EmphasisTag Char
-    | LinkOpen
-    | ImageOpen
-
 
 
 -- Code Span
@@ -435,6 +444,11 @@ codeTagFound model =
 ----- Link
 
 
+type alias References =
+    --   RefText ( Url  , Maybe Title  )
+    Dict String ( String, Maybe String )
+
+
 type alias LinkMatch =
     { matchLength : Int
     , inside : String
@@ -456,6 +470,16 @@ titleRegex =
 hrefRegex : String
 hrefRegex =
     "\\s*(?:<([^<>\\s]*)>|([^\\s\\(\\)\\\\]*(?:\\\\.[^\\(\\)\\\\]*)*))" ++ titleRegex ++ "\\s*"
+
+
+linkRegex : Regex
+linkRegex =
+    Regex.regex ("^\\[(" ++ insideRegex ++ ")\\]\\(" ++ hrefRegex ++ "\\)")
+
+
+refLinkRegex : Regex
+refLinkRegex =
+    Regex.regex ("^\\[(" ++ insideRegex ++ ")\\](?:\\[(" ++ insideRegex ++ ")\\])?")
 
 
 extractLinkRegex : Regex.Match -> Maybe LinkMatch
@@ -496,22 +520,47 @@ extractLinkRegex regexMatch =
             Nothing
 
 
+extractRefLinkRegex : References -> Regex.Match -> Maybe LinkMatch
+extractRefLinkRegex refs regexMatch =
+    case regexMatch.submatches of
+        Just inside :: maybeRef :: _ ->
+            let
+                refString : String
+                refString =
+                    case maybeRef of
+                        Nothing -> inside
+                        Just "" -> inside
+                        Just ref -> ref
+
+
+                maybeRefItem : Maybe ( String, Maybe String )
+                maybeRefItem =
+                    Dict.get (String.toLower refString) refs
+
+
+                toReturn : ( String, Maybe String ) -> LinkMatch
+                toReturn ( rawUrl, maybeTitle ) =
+                    { matchLength = String.length regexMatch.match
+                    , inside = inside
+                    , url = rawUrl
+                    , maybeTitle = maybeTitle
+                    }
+
+            in
+                maybeRefItem
+                    |> Maybe.map toReturn
+                    
+
+        _ ->
+            Nothing
+
+
 -- TODO code backtick have precedence over link - how to do?
 linkTagFound : LexerModel -> Maybe LexerModel
 linkTagFound model =
     let
-        linkRegex : Regex
-        linkRegex =
-            Regex.regex ("^\\[(" ++ insideRegex ++ ")\\]\\(" ++ hrefRegex ++ "\\)")
-
-
-        refLinkRegex : Regex
-        refLinkRegex =
-            Regex.regex ("^\\[(" ++ insideRegex ++ ")\\]\\s*\\[([^\\]]*)\\]")
-
-
-        linkRegexToMatch : LinkMatch -> Match
-        linkRegexToMatch { matchLength, inside, url, maybeTitle } =
+        linkMatchToMatch : LinkMatch -> Match
+        linkMatchToMatch { matchLength, inside, url, maybeTitle } =
             { type_   = Link ( url, maybeTitle ) 
             , content = []
             , start   = model.index
@@ -521,26 +570,25 @@ linkTagFound model =
             }
 
 
-        applyLinkRegex : String -> Maybe Match
+        applyLinkRegex : String -> Maybe LinkMatch
         applyLinkRegex =
             Regex.find (Regex.AtMost 1) linkRegex
                 >> List.head
-                >> Maybe.map (Debug.log "linkMatchRegex")
                 >> Maybe.andThen extractLinkRegex
-                >> Maybe.map linkRegexToMatch
-                -->> Maybe.map (Debug.log "linkMatch")
 
 
-        extractRefLinkRegex : String -> Maybe Regex.Match
-        extractRefLinkRegex =
+        applyRefLinkRegex : String -> Maybe LinkMatch
+        applyRefLinkRegex =
             Regex.find (Regex.AtMost 1) refLinkRegex
                 >> List.head
-                -->> Maybe.map (Debug.log "refLink")
+                >> Maybe.andThen (extractRefLinkRegex model.refs)
 
 
     in
         model.remainText
             |> applyLinkRegex
+            |> ifNothing (applyRefLinkRegex model.remainText)
+            |> Maybe.map linkMatchToMatch
             |> Maybe.map (updateLexerModel model)
 
 
@@ -782,6 +830,15 @@ returnFirstJust maybes =
         List.foldl process Nothing maybes
 
 
+ifNothing : Maybe a -> Maybe a -> Maybe a
+ifNothing maybe maybe_ =
+    if maybe_ == Nothing then
+        maybe
+
+    else
+        maybe_
+
+
 updateLexerModel : LexerModel -> Match -> LexerModel
 updateLexerModel model match =
     { model
@@ -797,21 +854,21 @@ updateLexerModel model match =
     }
 
 
-testSrt : String
-testSrt = """
-***Pablo* Gustavo** `Daiji` *da Costa* Hirafuji `código com  *negrito*`  
-meio __negrito__ `final`*fsgdfgf* .
-"""
+--testSrt : String
+--testSrt = """
+--***Pablo* Gustavo** `Daiji` *da Costa* Hirafuji `código com  *negrito*`  
+--meio __negrito__ `final`*fsgdfgf* .
+--"""
 
-main : Html msg
-main =
-    div []
-        [ p [] (toHtml testSrt)
-        , p [] [ text (toString <| toAST testSrt ) ]
-        , p []
-            [ text
-                <| toString
-                <| lexer
-                <| initLexerModel testSrt
-            ]
-        ]
+--main : Html msg
+--main =
+--    div []
+--        [ p [] (toHtml testSrt)
+--        , p [] [ text (toString <| toAST testSrt ) ]
+--        , p []
+--            [ text
+--                <| toString
+--                <| lexer
+--                <| initLexerModel testSrt
+--            ]
+--        ]

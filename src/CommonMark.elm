@@ -15,7 +15,7 @@ import Dict exposing (Dict)
 import Regex exposing (Regex)
 import CommonMark.Code as Code
 import CommonMark.List as Lists
-import CommonMark.Inline as Inline
+import CommonMark.Inline as Inline exposing (References)
 
 
 
@@ -526,11 +526,6 @@ maybeContinueParagraph rawLine absSyns =
 ----- References
 
 
-type alias References =
-    --   RefText ( Url  , Maybe Title  )
-    Dict String ( String, Maybe String )
-
-
 refRegex : Regex
 refRegex =
     Regex.regex
@@ -716,7 +711,7 @@ absSynToBlock refs absSyn =
             Just
                 <| Heading
                     { level = lvl
-                    , inlines = Inline.toAST rawText
+                    , inlines = Inline.toAST refs rawText
                     }
 
 
@@ -727,7 +722,7 @@ absSynToBlock refs absSyn =
         ParagraphAS rawText ->
             Just
                 <| Paragraph
-                    { inlines = Inline.toAST rawText }
+                    { inlines = Inline.toAST refs rawText }
 
 
         CodeAS codeAS ->
