@@ -556,6 +556,9 @@ extractRefLinkRegex refs regexMatch =
 
 
 -- TODO code backtick have precedence over link - how to do?
+-- TODO: reference labels corta todos os espaços e quebra de linha
+        -- String.tim >> Regex.replace
+-- TODO: Parsar título quando imprimir
 linkTagFound : LexerModel -> Maybe LexerModel
 linkTagFound model =
     let

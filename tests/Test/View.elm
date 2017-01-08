@@ -9,7 +9,7 @@ import Test.SetextHeading
 import Test.IndentedCode
 import Test.FencedCode
 --import Test.HTMLBlocks
---import Test.LinkReferenceDefinitions
+import Test.LinkReferenceDefinition
 import Test.Paragraph
 import Test.BlankLine
 import Test.BlockQuote
@@ -18,6 +18,8 @@ import Test.List
 import Test.Inline.Code
 import Test.Inline.EmphasisStrong
 import Test.Inline.Link
+import Test.Inline.Images
+import Test.Inline.Autolinks
 import Test.Inline.LineBreak
 
 
@@ -32,7 +34,7 @@ tests =
     , ( "4.4 Indented code blocks", Test.IndentedCode.run )
     , ( "4.5 Fenced code blocks", Test.FencedCode.run )
     --, ( "4.6 HTML Blocks", Test.HTMLBlock.run )
-    --, ( "4.7 Link reference definitions", Test.LinkReferenceDefinition.run )
+    , ( "4.7 Link reference definitions", Test.LinkReferenceDefinition.run )
     , ( "4.8 Paragraphs", Test.Paragraph.run )
     , ( "4.9 Blank lines", Test.BlankLine.run )
     , ( "5.1 Block quotes", Test.BlockQuote.run )
@@ -41,6 +43,8 @@ tests =
     , ( "6.3 Code spans", Test.Inline.Code.run )
     , ( "6.4 Emphasis and strong emphasis", Test.Inline.EmphasisStrong.run )
     , ( "6.5 Links", Test.Inline.Link.run )
+    , ( "6.6 Images", Test.Inline.Images.run )
+    , ( "6.7 Autolinks", Test.Inline.Autolinks.run )
     , ( "6.9-11 Line breaks and Textual content", Test.Inline.LineBreak.run )
     --, ( "All", Test.Spec.run )
     ]

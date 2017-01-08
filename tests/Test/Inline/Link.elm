@@ -2,7 +2,7 @@ module Test.Inline.Link exposing (run)
 
 
 import Html exposing (..)
-import Html.Attributes exposing (href, title, src, alt)
+import Html.Attributes exposing (href, title, src, alt, attribute)
 import Test.Helpers exposing (..)
 
 
@@ -488,12 +488,20 @@ run =
     , testEq 504
         []
         "[foo <bar attr=\"][ref]\">\n\n[ref]: /uri\n"
-        []
+        [ p []
+            [ text "[foo "
+            , node "bar" [ attribute "attr" "][ref]" ] []
+            ]
+        ]
 
     , testEq 505
         []
         "[foo`][ref]`\n\n[ref]: /uri\n"
-        []
+        [ p []
+            [ text "[foo"
+            , code [] [ text "][ref]" ]
+            ]
+        ]
 
     , testEq 506
         []
@@ -520,7 +528,7 @@ run =
         [ p []
             [ a [ href "/url" ]
                 [ text "Толпой" ]
-            , text "is a Russian word."
+            , text " is a Russian word."
             ]
         ]
 
@@ -547,7 +555,7 @@ run =
         []
         "[foo]\n[bar]\n\n[bar]: /url \"title\"\n"
         [ p []
-            [ text "[foo]"
+            [ text "[foo]\n"
             , a [ href "/url", title "title" ]
                 [ text "bar" ]
             ]
@@ -627,9 +635,9 @@ run =
         []
         "[\n ]\n\n[\n ]: /uri\n"
         [ p []
-            [ text "[]" ]
+            [ text "[\n]" ]
         , p []
-            [ text "[]: /uri" ]
+            [ text "[\n]: /uri" ]
         ]
 
     , testEq 521
@@ -648,7 +656,7 @@ run =
             [ a [ href "/url", title "title" ]
                 [ em []
                     [ text "foo" ]
-                , text "bar"
+                , text " bar"
                 ]
             ]
         ]
@@ -668,7 +676,7 @@ run =
         [ p []
             [ a [ href "/url", title "title" ]
                 [ text "foo" ]
-            , text "[]"
+            , text "\n[]"
             ]
         ]
 
@@ -688,7 +696,7 @@ run =
             [ a [ href "/url", title "title" ]
                 [ em []
                     [ text "foo" ]
-                , text "bar"
+                , text " bar"
                 ]
             ]
         ]
@@ -701,7 +709,7 @@ run =
             , a [ href "/url", title "title" ]
                 [ em []
                     [ text "foo" ]
-                , text "bar"
+                , text " bar"
                 ]
             , text "]"
             ]
@@ -732,7 +740,7 @@ run =
         [ p []
             [ a [ href "/url" ]
                 [ text "foo" ]
-            , text "bar"
+            , text " bar"
             ]
         ]
 
