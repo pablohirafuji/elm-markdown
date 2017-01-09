@@ -782,17 +782,17 @@ toBlocks rawText =
 ----- Html
 
 -- Expor e codumentar
-type alias Elements msg =
-    { heading : Int -> List (Html msg) -> Html msg
-    , thematicBreak : Html msg
-    , paragraph : Bool -> List (Html msg) -> List (Html msg)
-    , blockQuote : List (Html msg) -> Html msg
-    , code : Maybe String -> String -> Html msg
-    , list : Lists.Type -> List ( Html msg ) -> Html msg
+type alias Elements =
+    { heading : Int -> List (Html Never) -> Html Never
+    , thematicBreak : Html Never
+    , paragraph : Bool -> List (Html Never) -> List (Html Never)
+    , blockQuote : List (Html Never) -> Html Never
+    , code : Maybe String -> String -> Html Never
+    , list : Lists.Type -> List ( Html Never ) -> Html Never
     }
 
 -- Expor e codumentar
-defaultElements : Elements msg
+defaultElements : Elements
 defaultElements =
     { heading = headingHtml
     , thematicBreak = hr [] []
@@ -803,7 +803,7 @@ defaultElements =
     }
 
 
-headingHtml : Int -> List (Html msg) -> Html msg
+headingHtml : Int -> List (Html Never) -> Html Never
 headingHtml level =
     case level of
         1 -> h1 []
@@ -814,7 +814,7 @@ headingHtml level =
         _ -> h6 []
 
 
-paragraphHtml : Bool -> List (Html msg) -> List (Html msg)
+paragraphHtml : Bool -> List (Html Never) -> List (Html Never)
 paragraphHtml textAsParagraph innerHtml =
     if textAsParagraph then
         [ p [] innerHtml ]
@@ -823,10 +823,10 @@ paragraphHtml textAsParagraph innerHtml =
         innerHtml
 
 
-codeHtml : Maybe String -> String -> Html msg
+codeHtml : Maybe String -> String -> Html Never
 codeHtml maybeLanguage codeStr =
     let
-        basicView : List (Html.Attribute msg) -> String -> Html msg
+        basicView : List (Html.Attribute Never) -> String -> Html Never
         basicView attrs codeStr_ =
             pre []
                 [ code attrs
@@ -844,7 +844,7 @@ codeHtml maybeLanguage codeStr =
                 basicView [] codeStr
 
 
-listHtml : Lists.Type -> List (Html msg) -> Html msg
+listHtml : Lists.Type -> List (Html Never) -> Html Never
 listHtml type_ =
     case type_ of
         Lists.Ordered startInt ->
@@ -859,7 +859,7 @@ listHtml type_ =
             ul []
 
 
-blockToHtml : Elements msg -> Bool -> Block -> List (Html msg)
+blockToHtml : Elements -> Bool -> Block -> List (Html Never)
 blockToHtml elements textAsParagraph block =
     case block of
         Heading { level, inlines } ->
@@ -890,14 +890,14 @@ blockToHtml elements textAsParagraph block =
                 |> (\list -> [ list ] )
 
 
-blocksToHtml : Elements msg -> Bool -> List Block -> List (Html msg)
+blocksToHtml : Elements -> Bool -> List Block -> List (Html Never)
 blocksToHtml elements textAsParagraph =
     List.map (blockToHtml elements textAsParagraph)
         >> List.concat
 
 
 -- Expor e codumentar
-customHtml : Elements msg -> String -> List (Html msg)
+customHtml : Elements -> String -> List (Html Never)
 customHtml elements =
     toBlocks
         >> blocksToHtml elements True
@@ -907,11 +907,6 @@ customHtml elements =
 
     toHtml "# Heading title" == [ h1 [] [ text "Heading title"" ] ]
 -}
-toHtml : String -> List (Html msg)
+toHtml : String -> List (Html Never)
 toHtml =
     customHtml defaultElements
-
-
-main : Html msg
-main =
-    p [] [ text "sdfdfs" ]

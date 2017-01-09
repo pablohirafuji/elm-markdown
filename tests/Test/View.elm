@@ -27,7 +27,7 @@ import Test.Inline.LineBreak
 -- Based on http://spec.commonmark.org/0.27/
 
 
-tests : List ( String, List (Output msg) )
+tests : List ( String, List (Output) )
 tests =
     [ ( "1-4 Initial examples", Test.Initial.run )
     , ( "4.1 Thematic breaks", Test.ThematicBreak.run )
@@ -54,7 +54,7 @@ tests =
     ]
 
 
-view : Html msg
+view : Html Never
 view =
     div [] <|
         [ h1 []
@@ -68,10 +68,10 @@ view =
         ] ++ showTests tests
 
 
-totalTestCount : List ( String, List (Output msg) ) -> Int
+totalTestCount : List ( String, List (Output) ) -> Int
 totalTestCount tests =
     let
-        sumTests : ( String, List (Output msg) ) -> Int -> Int
+        sumTests : ( String, List (Output) ) -> Int -> Int
         sumTests ( _, outputs ) count =
             List.length outputs
                 |> (+) count
@@ -80,10 +80,10 @@ totalTestCount tests =
         List.foldl sumTests 0 tests
 
 
-successTestCount : List ( String, List (Output msg) ) -> Int
+successTestCount : List ( String, List (Output) ) -> Int
 successTestCount tests =
     let
-        sumSuccessTests : ( String, List (Output msg) ) -> Int -> Int
+        sumSuccessTests : ( String, List (Output) ) -> Int -> Int
         sumSuccessTests ( _, outputs ) count =
             List.filter (\i -> i == Nothing) outputs
                 |> List.length
@@ -93,12 +93,12 @@ successTestCount tests =
         List.foldl sumSuccessTests 0 tests
 
 
-showTests : List ( String, List (Output msg) ) -> List (Html msg)
+showTests : List ( String, List (Output) ) -> List (Html Never)
 showTests tests =
     List.map showTest tests
 
 
-showTest : ( String, List (Output msg) ) -> Html msg
+showTest : ( String, List (Output) ) -> Html Never
 showTest ( testTitle, outputs ) =
     let
         passed =

@@ -9,7 +9,7 @@ import Test.Helpers exposing (..)
 -- Based on http://spec.commonmark.org/0.27/
 
 
-run : List (Output msg)
+run : List (Output)
 run = 
     [ testEq 13
         [ p [] [ text "A line consisting of 0-3 spaces of indentation, followed by a sequence of three or more matching -, _, or * characters, each followed optionally by any number of spaces, forms a thematic break." ] ]

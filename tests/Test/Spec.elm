@@ -5,7 +5,7 @@ import Html.Attributes exposing (..)
 import Test.Helpers exposing (..)
 
 
-run : List ((Output msg) msg)
+run : List ((Output) msg)
 run =
     [ testEq 1
         []

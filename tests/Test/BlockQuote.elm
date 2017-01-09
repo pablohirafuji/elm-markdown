@@ -9,7 +9,7 @@ import Test.Helpers exposing (..)
 -- Based on http://spec.commonmark.org/0.27/#block-quotes
 
 
-run : List (Output msg)
+run : List (Output)
 run =
     [ testEq 189
         [ p [] [ text "A block quote marker consists of 0-3 spaces of initial indent, plus (a) the character > together with a following space, or (b) a single character > not followed by a space." ]

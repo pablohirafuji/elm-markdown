@@ -9,7 +9,7 @@ import Test.Helpers exposing (..)
 -- Based on http://spec.commonmark.org/0.27/#indented-code-blocks
 
 
-run : List (Output msg)
+run : List (Output)
 run =
     [ testEq 76
         [ p [] [ text "An indented code block is composed of one or more indented chunks separated by blank lines. An indented chunk is a sequence of non-blank lines, each indented four or more spaces. The contents of the code block are the literal contents of the lines, including trailing line endings, minus four spaces of indentation. An indented code block has no info string." ]

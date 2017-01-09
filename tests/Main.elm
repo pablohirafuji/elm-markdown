@@ -31,6 +31,7 @@ init =
 
 type Msg
     = TextAreaInput String
+    | Markdown
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -38,6 +39,9 @@ update msg model =
     case msg of
         TextAreaInput str ->
             { model | textarea = str } ! []
+
+        Markdown ->
+            model ! []
 
 
 view : Model -> Html Msg
@@ -50,7 +54,7 @@ view model =
                 <| toString
                 <| CommonMark.toBlocks model.textarea
             ]
-        , div [] <| CommonMark.toHtml model.textarea
-        , Test.View.view
+        , Html.map (always Markdown) <| div [] <| CommonMark.toHtml model.textarea
+        , Html.map (always Markdown) Test.View.view
         ]
 

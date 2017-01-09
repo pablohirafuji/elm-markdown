@@ -10,7 +10,7 @@ import Test.Helpers exposing (..)
 -- Based on http://spec.commonmark.org/0.27/#autolinks
 
 
-run : List (Output msg)
+run : List (Output)
 run =
     [ testEq 562
         []

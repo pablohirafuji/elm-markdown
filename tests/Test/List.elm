@@ -10,7 +10,7 @@ import Test.Helpers exposing (..)
 -- Based on http://spec.commonmark.org/0.27/#lists
 
 
-run : List (Output msg)
+run : List (Output)
 run =
     [ testEq 262
         [ p [] [ text "A list is a sequence of one or more list items of the same type. The list items may be separated by any number of blank lines." ]
