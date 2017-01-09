@@ -5,7 +5,7 @@ import Html.Attributes exposing (..)
 import Test.Helpers exposing (..)
 
 
-run : List (Output msg)
+run : List ((Output msg) msg)
 run =
     [ testEq 1
         []
@@ -126,7 +126,6 @@ run =
         "*→*→*→\n"
         [ hr []
             []
-        , text ""
         ]
 
     , testEq 12

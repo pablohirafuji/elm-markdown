@@ -3,6 +3,7 @@ module Test.View exposing (..)
 
 import Html exposing (..)
 import Test.Helpers exposing (Output)
+import Test.Initial
 import Test.ThematicBreak
 import Test.ATXHeading
 import Test.SetextHeading
@@ -28,7 +29,8 @@ import Test.Inline.LineBreak
 
 tests : List ( String, List (Output msg) )
 tests =
-    [ ( "4.1 Thematic breaks", Test.ThematicBreak.run )
+    [ ( "1-4 Initial examples", Test.Initial.run )
+    , ( "4.1 Thematic breaks", Test.ThematicBreak.run )
     , ( "4.2 ATX headings", Test.ATXHeading.run )
     , ( "4.3 Setext headings", Test.SetextHeading.run )
     , ( "4.4 Indented code blocks", Test.IndentedCode.run )
@@ -40,13 +42,15 @@ tests =
     , ( "5.1 Block quotes", Test.BlockQuote.run )
     , ( "5.2 List Items", Test.ListItem.run )
     , ( "5.3 Lists", Test.List.run )
+    --, ( "6.1 Backslash escapes", Test.Inline.Backslash.run )
+    --, ( "6.2 Entity and numeric character references", Test.Inline.Code.run )
     , ( "6.3 Code spans", Test.Inline.Code.run )
     , ( "6.4 Emphasis and strong emphasis", Test.Inline.EmphasisStrong.run )
     , ( "6.5 Links", Test.Inline.Link.run )
     , ( "6.6 Images", Test.Inline.Images.run )
     , ( "6.7 Autolinks", Test.Inline.Autolinks.run )
+    --, ( "6.8 Raw HTML", Test.Inline.RawHtml.run )
     , ( "6.9-11 Line breaks and Textual content", Test.Inline.LineBreak.run )
-    --, ( "All", Test.Spec.run )
     ]
 
 

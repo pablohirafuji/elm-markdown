@@ -2,8 +2,6 @@ module CommonMark.List exposing (..)
 
 
 import Regex exposing (Regex)
-import Html exposing (Html, ul, ol, text)
-import Html.Attributes exposing (start)
 
 
 

@@ -6,13 +6,13 @@ import Html.Attributes exposing (..)
 import CommonMark
 
 
-
 type alias Output msg = Maybe (Html msg)
 
 
-testEq : Int -> List (Html msg) -> String -> List (Html msg) -> Output msg
+testEq : Int -> List (Html msg) -> String -> List (Html msg) -> (Output msg)
 testEq number description input expectedResult =
     let
+        result : List (Html msg)
         result =
             CommonMark.toHtml input
 
@@ -26,6 +26,7 @@ testEq number description input expectedResult =
             else
                 "#EEB4B4"
 
+        view : Html msg
         view =
             div [] <|
                 description ++

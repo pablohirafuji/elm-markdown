@@ -353,7 +353,7 @@ run =
         [ p []
             [ em []
                 [ text "foo [bar" ]
-            , text "baz]"
+            , text " baz]"
             ]
         ]
 
@@ -420,7 +420,7 @@ run =
                     , strong []
                         [ text "bar" ]
                     , code []
-                        [ text "#" ]
+                        [ text " #" ]
                     ]
                 ]
             ]

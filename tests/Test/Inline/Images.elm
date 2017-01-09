@@ -154,7 +154,7 @@ run =
         [ p []
             [ img [ alt "foo", src "/url", title "title" ]
                 []
-            , text "[]"
+            , text "\n[]"
             ]
         ]
 

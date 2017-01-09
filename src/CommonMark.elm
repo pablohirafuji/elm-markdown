@@ -526,13 +526,19 @@ maybeContinueParagraph rawLine absSyns =
 ----- References
 
 
+hrefRegex : String
+hrefRegex =
+    "\\s*(?:<([^<>\\s]*)>|([^\\s]*))" ++ Inline.titleRegex ++ "\\s*"
+
+
+
 refRegex : Regex
 refRegex =
     Regex.regex
         (  "^\\s*\\[("
         ++ Inline.insideRegex
         ++ ")\\]:"
-        ++ Inline.hrefRegex
+        ++ hrefRegex
         ++ "(?![^\\n])"
         )
 
@@ -838,7 +844,7 @@ codeHtml maybeLanguage codeStr =
                 basicView [] codeStr
 
 
-listHtml : Lists.Type -> List ( Html msg ) -> Html msg
+listHtml : Lists.Type -> List (Html msg) -> Html msg
 listHtml type_ =
     case type_ of
         Lists.Ordered startInt ->
@@ -905,3 +911,7 @@ toHtml : String -> List (Html msg)
 toHtml =
     customHtml defaultElements
 
+
+main : Html msg
+main =
+    p [] [ text "sdfdfs" ]

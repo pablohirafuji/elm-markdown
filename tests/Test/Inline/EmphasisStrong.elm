@@ -663,7 +663,7 @@ run =
         "**foo\nbar**\n"
         [ p []
             [ strong []
-                [ text "foobar" ]
+                [ text "foo\nbar" ]
             ]
         ]
 
@@ -675,7 +675,7 @@ run =
                 [ text "foo "
                 , em []
                     [ text "bar" ]
-                , text "baz"
+                , text " baz"
                 ]
             ]
         ]
@@ -688,7 +688,7 @@ run =
                 [ text "foo "
                 , strong []
                     [ text "bar" ]
-                , text "baz"
+                , text " baz"
                 ]
             ]
         ]
@@ -700,7 +700,7 @@ run =
             [ strong []
                 [ strong []
                     [ text "foo" ]
-                , text "bar"
+                , text " bar"
                 ]
             ]
         ]
@@ -725,7 +725,7 @@ run =
                 [ text "foo "
                 , em []
                     [ text "bar" ]
-                , text "baz"
+                , text " baz"
                 ]
             ]
         ]
@@ -750,7 +750,7 @@ run =
             [ strong []
                 [ em []
                     [ text "foo" ]
-                , text "bar"
+                , text " bar"
                 ]
             ]
         ]
@@ -777,9 +777,9 @@ run =
                     [ text "bar "
                     , strong []
                         [ text "baz" ]
-                    , text "bim"
+                    , text "\nbim"
                     ]
-                , text "bop"
+                , text " bop"
                 ]
             ]
         ]
@@ -1145,7 +1145,7 @@ run =
         [ p []
             [ em []
                 [ text "foo _bar" ]
-            , text "baz_"
+            , text " baz_"
             ]
         ]
 
@@ -1157,7 +1157,7 @@ run =
                 [ text "foo "
                 , strong []
                     [ text "bar *baz bim" ]
-                , text "bam"
+                , text " bam"
                 ]
             ]
         ]

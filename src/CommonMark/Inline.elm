@@ -3,22 +3,9 @@ module CommonMark.Inline exposing (..)
 
 import Dict exposing (Dict)
 import Html exposing (..)
-import Html.Attributes exposing (href, title)
---import Http exposing (encodeUri)
+import Html.Attributes exposing (href, title, alt, src)
+import Http exposing (encodeUri)
 import Regex exposing (Regex)
-
-
-
-hardBreakRegex : Regex
-hardBreakRegex =
-    Regex.regex " {2,}\\n|\\\\\\n"
-
-
-type Inline
-    = HardBreak
-    | Code
-    | Emphasis Int -- Length
-    | Link ( String, Maybe String) -- ( Url, Maybe Title )
 
 
 
@@ -40,10 +27,75 @@ type alias Match =
     }
 
 
+type Inline
+    = HardBreak
+    | Code
+    | Emphasis Int -- Length
+    | Link ( String, Maybe String) -- ( Url, Maybe Title )
+    | Image ( String, Maybe String) -- ( Src, Maybe Title )
+
+
 regexes : List ( Inline, Regex )
 regexes =
     [ ( HardBreak, hardBreakRegex )
     ]
+
+
+hardBreakRegex : Regex
+hardBreakRegex =
+    Regex.regex " {2,}\\n|\\\\\\n"
+
+
+escapableRegex : Regex
+escapableRegex =
+    Regex.regex "(\\\\+)([!\"#$%&\\'()*+,./:;<=>?@[\\\\\\]^_`{|}~-])"
+
+
+replaceEscapable : String -> String
+replaceEscapable =
+    Regex.replace Regex.All escapableRegex
+        (\regexMatch ->
+            case regexMatch.submatches of
+                Just backslashes :: Just escapedStr :: _ ->
+                    String.repeat
+                        (floor (toFloat (String.length backslashes) / 2))
+                        "\\"
+                            ++ escapedStr
+
+                _ ->
+                    regexMatch.match
+        )
+
+
+-- to decode the following chars: ;,/?:@&=+$#
+decodeUrlRegex : Regex
+decodeUrlRegex =
+    Regex.regex "%(?:3B|2C|2F|3F|3A|40|26|3D|2B|24|23)"
+
+
+encodeUrl : String -> String
+encodeUrl =
+    Http.encodeUri
+        >> Regex.replace Regex.All decodeUrlRegex
+            (\match ->
+                Http.decodeUri match.match
+                    |> Maybe.withDefault match.match
+            )
+
+
+toAST : References -> String -> List AST
+toAST refs rawText =
+    let
+        trimmedText = String.trim rawText
+    
+    in
+        findMatches regexes trimmedText
+            |> \matches ->
+                    .matches (lexer (initLexerModel refs trimmedText))
+                        ++ matches
+            |> List.sortBy .start
+            |> \matches -> parseMatches ( trimmedText, matches, [] )
+            |> reverseASTs
 
 
 findMatches : List ( Inline, Regex ) -> String -> List Match
@@ -193,21 +245,6 @@ addChild parentMatch childMatch =
                 updtParentMatch parentMatch.content
 
 
-toAST : References -> String -> List AST
-toAST refs rawText =
-    let
-        trimmedText = String.trim rawText
-    
-    in
-        findMatches regexes trimmedText
-            |> \matches ->
-                    .matches (lexer (initLexerModel refs trimmedText))
-                        ++ matches
-            |> List.sortBy .start
-            |> \matches -> parseMatches ( trimmedText, matches, [] )
-            |> reverseASTs
-
-
 reverseASTs : List AST -> List AST
 reverseASTs =
     List.reverse
@@ -221,8 +258,8 @@ reverseASTContent ast =
             ASTMatch
                 { match | content = reverseASTs match.content }
 
-        _ ->
-            ast
+        NoMatch rawText ->
+            NoMatch (replaceEscapable rawText)
 
 
 astsToHtml : List AST -> List (Html msg)
@@ -263,11 +300,22 @@ astToHtml ast =
                                 [ text match.text ]
                             ]
 
+                Image ( url, maybeTitle ) ->
+                    case maybeTitle of
+                        Just title_ ->
+                            [ img
+                                [ alt match.text
+                                , src url
+                                , title title_
+                                ] []
+                            ]
 
---toHtml : String -> List (Html msg)
---toHtml =
---    toAST
---        >> astsToHtml
+                        Nothing ->
+                            [ img
+                                [ alt match.text
+                                , src url
+                                ] []
+                            ]
 
 
 
@@ -278,6 +326,7 @@ type alias LexerModel =
     { rawText : String
     , remainText : String
     , lastChar : Maybe Char
+    , isEscaped : Bool
     , tokens : List Token
     , index : Int
     , matches : List Match
@@ -290,6 +339,7 @@ initLexerModel refs rawText  =
     { rawText = rawText
     , remainText = rawText
     , lastChar = Nothing
+    , isEscaped = False
     , tokens = []
     , index = 0
     , matches = []
@@ -324,26 +374,44 @@ lexer model =
                         | remainText = remainTextTail
                         , lastChar = Just char
                         , index = model.index + 1
+                        , isEscaped = False
                     }
 
             in
-                if char == '*' || char == '_' then
-                    emphasisTagFound model
-                        |> Result.withDefault noOpModel
-                        |> lexer
-
-                else if char == '`' then
-                    codeTagFound model
-                        |> Maybe.withDefault noOpModel
-                        |> lexer
-
-                else if char == '[' then
-                    linkTagFound model
-                        |> Maybe.withDefault noOpModel
-                        |> lexer
+                if model.isEscaped then
+                    lexer noOpModel
 
                 else
-                    lexer noOpModel
+                    if char == '*' || char == '_' then
+                        emphasisTagFound model
+                            |> Maybe.withDefault noOpModel
+                            |> lexer
+
+                    else if char == '`' then
+                        codeTagFound model
+                            |> Maybe.withDefault noOpModel
+                            |> lexer
+
+                    else if char == '[' then
+                        linkTagFound model
+                            |> Maybe.withDefault noOpModel
+                            |> lexer
+
+                    else if char == '!' then
+                        imageTagFound model
+                            |> Maybe.withDefault noOpModel
+                            |> lexer
+
+                    else if char == '<' then
+                        autoLinkTagFound model
+                            |> Maybe.withDefault noOpModel
+                            |> lexer
+
+                    else if char == '\\' then
+                        lexer { noOpModel | isEscaped = True }
+
+                    else
+                        lexer noOpModel
 
 
 -- Code Span
@@ -555,6 +623,7 @@ extractRefLinkRegex refs regexMatch =
             Nothing
 
 
+
 -- TODO code backtick have precedence over link - how to do?
 -- TODO: reference labels corta todos os espaços e quebra de linha
         -- String.tim >> Regex.replace
@@ -562,14 +631,16 @@ extractRefLinkRegex refs regexMatch =
 linkTagFound : LexerModel -> Maybe LexerModel
 linkTagFound model =
     let
-        linkMatchToMatch : LinkMatch -> Match
-        linkMatchToMatch { matchLength, inside, url, maybeTitle } =
-            { type_   = Link ( url, maybeTitle ) 
+        linkMatchToMatch : LexerModel -> LinkMatch -> Match
+        linkMatchToMatch model { matchLength, inside, url, maybeTitle } =
+            { type_   = Link
+                            ( encodeUrl (replaceEscapable url)
+                            , Maybe.map replaceEscapable maybeTitle ) 
             , content = []
             , start   = model.index
             , end     = model.index + matchLength
             , rawText = inside
-            , text    = inside
+            , text    = replaceEscapable inside
             }
 
 
@@ -591,7 +662,132 @@ linkTagFound model =
         model.remainText
             |> applyLinkRegex
             |> ifNothing (applyRefLinkRegex model.remainText)
+            |> Maybe.map (linkMatchToMatch model)
+            |> Maybe.map (updateLexerModel model)
+
+
+
+-- Image
+
+
+imageRegex : Regex
+imageRegex =
+    Regex.regex ("^!\\[(" ++ insideRegex ++ ")\\]\\(" ++ hrefRegex ++ "\\)")
+
+
+refImageRegex : Regex
+refImageRegex =
+    Regex.regex ("^!\\[(" ++ insideRegex ++ ")\\](?:\\[(" ++ insideRegex ++ ")\\])?")
+
+
+imageTagFound : LexerModel -> Maybe LexerModel
+imageTagFound model =
+    let
+        linkMatchToMatch : LinkMatch -> Match
+        linkMatchToMatch { matchLength, inside, url, maybeTitle } =
+            { type_   = Image
+                            ( replaceEscapable url
+                            , Maybe.map replaceEscapable maybeTitle )
+            , content = []
+            , start   = model.index
+            , end     = model.index + matchLength
+            , rawText = inside
+            , text    = replaceEscapable inside
+            }
+
+
+        applyImageRegex : String -> Maybe LinkMatch
+        applyImageRegex =
+            Regex.find (Regex.AtMost 1) imageRegex
+                >> List.head
+                >> Maybe.andThen extractLinkRegex
+
+
+        applyRefImageRegex : String -> Maybe LinkMatch
+        applyRefImageRegex =
+            Regex.find (Regex.AtMost 1) refImageRegex
+                >> List.head
+                >> Maybe.andThen (extractRefLinkRegex model.refs)
+
+
+    in
+        model.remainText
+            |> applyImageRegex
+            |> ifNothing (applyRefImageRegex model.remainText)
             |> Maybe.map linkMatchToMatch
+            |> Maybe.map (updateLexerModel model)
+
+
+
+-- Autolink
+
+
+-- From http://spec.commonmark.org/dingus/commonmark.js
+emailAutoLinkRegex : Regex
+emailAutoLinkRegex =
+    Regex.regex "^<([a-zA-Z0-9.!#$%&'*+\\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*)>"
+
+
+-- From http://spec.commonmark.org/dingus/commonmark.js
+autoLinkRegex : Regex
+autoLinkRegex =
+    Regex.regex "^<([A-Za-z][A-Za-z0-9.+-]{1,31}:[^<>\x00-\x20]*)>"
+
+
+autoLinkTagFound : LexerModel -> Maybe LexerModel
+autoLinkTagFound model =
+    let
+        linkMatchToMatch : LexerModel -> LinkMatch -> Match
+        linkMatchToMatch model { matchLength, inside, url, maybeTitle } =
+            { type_   = Link ( url, maybeTitle ) 
+            , content = []
+            , start   = model.index
+            , end     = model.index + matchLength
+            , rawText = inside
+            , text    = inside
+            }
+
+        extractRegex : Regex.Match -> Maybe LinkMatch
+        extractRegex regexMatch =
+            regexMatch.submatches
+                |> List.head
+                |> Maybe.withDefault Nothing
+                |> Maybe.map
+                    (\url ->
+                        { matchLength =
+                            String.length regexMatch.match
+                        , inside = url
+                        , url = encodeUrl url
+                        , maybeTitle = Nothing
+                        }
+                    )
+            
+
+        applyEmailAutoLinkRegex : String -> Maybe LinkMatch
+        applyEmailAutoLinkRegex =
+            Regex.find (Regex.AtMost 1) emailAutoLinkRegex
+                >> List.head
+                >> Maybe.andThen extractRegex
+                >> Maybe.map
+                    (\linkMatch ->
+                        { linkMatch
+                            | url = "mailto:" ++ linkMatch.url
+                        }
+                    )
+
+
+        applyAutoLinkRegex : String -> Maybe LinkMatch
+        applyAutoLinkRegex =
+            Regex.find (Regex.AtMost 1) autoLinkRegex
+                >> List.head
+                >> Maybe.andThen extractRegex
+
+
+    in
+        model.remainText
+            |> applyEmailAutoLinkRegex
+            |> ifNothing (applyAutoLinkRegex model.remainText)
+            |> Maybe.map (linkMatchToMatch model)
             |> Maybe.map (updateLexerModel model)
 
 
@@ -599,7 +795,7 @@ linkTagFound model =
 -- Emphasis
 
 
-emphasisTagFound : LexerModel -> Result String LexerModel
+emphasisTagFound : LexerModel -> Maybe LexerModel
 emphasisTagFound model =
     let
         emSequenceRegex : Regex
@@ -647,85 +843,84 @@ emphasisTagFound model =
             else if isRightPuntuaction then 1
             else 2
 
-    in
-        case maybeEmSequence of
-            Just emSequence ->
-                let
-                    emSequenceLength =
-                        String.length emSequence
+
+        processEmSequence : String -> LexerModel
+        processEmSequence emSequence =
+            let
+                emSequenceLength =
+                    String.length emSequence
 
 
-                    remainText =
-                        model.remainText
-                            |> String.dropLeft emSequenceLength
+                remainText =
+                    model.remainText
+                        |> String.dropLeft emSequenceLength
 
 
-                    lastChar =
-                        String.reverse emSequence
-                            |> String.uncons
-                            |> Maybe.map Tuple.first
+                lastChar =
+                    String.reverse emSequence
+                        |> String.uncons
+                        |> Maybe.map Tuple.first
 
 
-                    char =
-                        String.uncons emSequence
-                            |> Maybe.map Tuple.first
-                            |> Maybe.withDefault '*'
+                char =
+                    String.uncons emSequence
+                        |> Maybe.map Tuple.first
+                        |> Maybe.withDefault '*'
 
 
-                    index =
-                        model.index + emSequenceLength
+                index =
+                    model.index + emSequenceLength
 
 
-                    emToken =
-                        { index = model.index
-                        , length = emSequenceLength
-                        , meaning = EmphasisTag char
-                        }
+                emToken =
+                    { index = model.index
+                    , length = emSequenceLength
+                    , meaning = EmphasisTag char
+                    }
 
 
-                    updtModel =
-                        { model
-                            | remainText = remainText
-                            , lastChar = lastChar
-                            , index = index
-                        }
-                -- Separar em lista ["***", "___"]
-                -- Mapear para EmphasisTag Char
-                -- Adicionar em tokens
-                in
-                    if leftFringeRank == rightFringeRank then
-                        Result.Ok updtModel
+                updtModel =
+                    { model
+                        | remainText = remainText
+                        , lastChar = lastChar
+                        , index = index
+                    }
+            -- Separar em lista ["***", "___"] Testr regex split (.)\1+
+            -- Mapear para EmphasisTag Char
+            -- Adicionar em tokens
+            in
+                if leftFringeRank == rightFringeRank then
+                    updtModel
+                    -- Se rightFringeRank /= 0 pode ser fechamento
+                    -- Se não for, é abertura
 
-                    -- Opening tag
-                    else if leftFringeRank < rightFringeRank then
-                        Result.Ok
+                -- Opening tag
+                else if leftFringeRank < rightFringeRank then
+                    { updtModel
+                        | tokens = emToken :: model.tokens
+                    }
+
+                -- CLosing tag
+                else
+                    case retrieveToken emToken model.tokens of
+                        Just ( openToken, closeToken, updtTokens ) ->
                             { updtModel
-                                | tokens = emToken :: model.tokens
+                                | tokens = updtTokens
+                                , matches =
+                                    tokenToMatch
+                                        model.rawText
+                                        openToken
+                                        closeToken
+                                            :: model.matches
                             }
 
-                    -- CLosing tag
-                    else
-                        case retrieveToken emToken model.tokens of
-                            Just ( openToken, closeToken, updtTokens ) ->
-                                Result.Ok
-                                    { updtModel
-                                        | tokens = updtTokens
-                                        , matches =
-                                            tokenToMatch
-                                                model.rawText
-                                                openToken
-                                                closeToken
-                                                    :: model.matches
-                                    }
-
-                            Nothing ->
-                                Result.Ok updtModel
+                        Nothing ->
+                            updtModel
 
 
-            Nothing ->
-                Result.Err "Invalid emphasis sequence"
-                    |> Debug.log "emphasisTagFound"
-
+    in
+        maybeEmSequence
+            |> Maybe.map processEmSequence
 
 
 retrieveToken : Token -> List Token -> Maybe ( Token, Token, List Token )
@@ -855,23 +1050,3 @@ updateLexerModel model match =
                 |> String.uncons
                 |> Maybe.map Tuple.first
     }
-
-
---testSrt : String
---testSrt = """
---***Pablo* Gustavo** `Daiji` *da Costa* Hirafuji `código com  *negrito*`  
---meio __negrito__ `final`*fsgdfgf* .
---"""
-
---main : Html msg
---main =
---    div []
---        [ p [] (toHtml testSrt)
---        , p [] [ text (toString <| toAST testSrt ) ]
---        , p []
---            [ text
---                <| toString
---                <| lexer
---                <| initLexerModel testSrt
---            ]
---        ]

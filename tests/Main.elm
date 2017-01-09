@@ -46,7 +46,10 @@ view model =
         [ textarea [ onInput TextAreaInput, defaultValue model.textarea ] []
         , br [] []
         , p []
-              [ text <| toString <| CommonMark.toBlocks model.textarea ]
+            [ text
+                <| toString
+                <| CommonMark.toBlocks model.textarea
+            ]
         , div [] <| CommonMark.toHtml model.textarea
         , Test.View.view
         ]
