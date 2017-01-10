@@ -1,7 +1,12 @@
 module CommonMark exposing (toHtml, toBlocks)
 
-{-| This library fills a bunch of important niches in Elm. A `Maybe` can help
-you with optional arguments, error handling, and records with optional fields.
+{-| Pure elm markdown.
+
+Compliance
+ For performance reasons and those that do not make sense in Elm, like escape < and > chars to output
+Performance
+Customization
+
 
 # Common Helpers
 @docs toHtml, toBlocks
@@ -528,8 +533,7 @@ maybeContinueParagraph rawLine absSyns =
 
 hrefRegex : String
 hrefRegex =
-    "\\s*(?:<([^<>\\s]*)>|([^\\s]*))" ++ Inline.titleRegex ++ "\\s*"
-
+    "\\s*(?:<([^<>\\s]*)>|([^\\s]*))"
 
 
 refRegex : Regex
@@ -539,7 +543,8 @@ refRegex =
         ++ Inline.insideRegex
         ++ ")\\]:"
         ++ hrefRegex
-        ++ "(?![^\\n])"
+        ++ Inline.titleRegex
+        ++ "\\s*(?![^\\n])"
         )
 
 
@@ -573,18 +578,21 @@ maybeLinkMatch : String -> Maybe Inline.LinkMatch
 maybeLinkMatch rawText =
     Regex.find (Regex.AtMost 1) refRegex rawText
         |> List.head
-        |> Maybe.andThen Inline.extractLinkRegex
+        |> Maybe.andThen Inline.extractUrlTitleRegex
+        |> Maybe.map
+            (\linkMatch ->
+                { linkMatch
+                    | inside =
+                        Inline.prepareRefLabel linkMatch.inside
+                }
+            )
         |> Maybe.andThen
             (\linkMatch ->
-                if linkMatch.url == ""
-                    || linkMatch.inside == "" then
-                        Nothing
+                if linkMatch.url == "" || linkMatch.inside == "" then
+                    Nothing
 
                 else
-                    Just
-                        { linkMatch | inside =
-                            String.toLower linkMatch.inside
-                        }
+                    Just linkMatch
             )
 
 

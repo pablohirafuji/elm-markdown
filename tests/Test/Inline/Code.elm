@@ -59,10 +59,10 @@ run =
 
     , testEq 317
         []
-        "`a  b`\n"
+        "`a  b`\n"
         [ p []
             [ code []
-                [ text "a  b" ]
+                [ text "a  b" ]
             ]
         ]
 
@@ -119,7 +119,9 @@ run =
     , testEq 323
         []
         "<a href=\"`\">`\n"
-        []
+        [ p []
+            [ a [ href "`" ] [ text "`"] ]
+        ]
 
     , testEq 324
         []

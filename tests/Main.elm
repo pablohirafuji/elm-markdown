@@ -47,14 +47,19 @@ update msg model =
 view : Model -> Html Msg
 view model =
     div []
-        [ textarea [ onInput TextAreaInput, defaultValue model.textarea ] []
+        [ h1 [] [ text "Pure Elm Markdown" ]
+        , textarea
+            [ onInput TextAreaInput
+            , defaultValue model.textarea ] []
         , br [] []
         , p []
             [ text
                 <| toString
                 <| CommonMark.toBlocks model.textarea
             ]
-        , Html.map (always Markdown) <| div [] <| CommonMark.toHtml model.textarea
+        , Html.map (always Markdown)
+            <| div []
+            <| CommonMark.toHtml model.textarea
         , Html.map (always Markdown) Test.View.view
         ]
 

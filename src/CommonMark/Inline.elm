@@ -17,20 +17,22 @@ type AST
     | ASTMatch Match
 
 
-type alias Match =
-    { type_   : Inline
-    , content : List AST
-    , start   : Int
-    , end     : Int
-    , rawText : String
-    , text    : String
-    }
+type Match =
+    Match
+        { type_   : Inline
+        , content : List AST
+        , start   : Int
+        , end     : Int
+        , rawText : String
+        , text    : String
+        , matches : List Match
+        }
 
 
 type Inline
     = HardBreak
     | Code
-    | Emphasis Int -- Length
+    | Emphasis Int -- Tag length
     | Link ( String, Maybe String) -- ( Url, Maybe Title )
     | Image ( String, Maybe String) -- ( Src, Maybe Title )
 
@@ -46,6 +48,19 @@ hardBreakRegex =
     Regex.regex " {2,}\\n|\\\\\\n"
 
 
+whiteSpaceChars : String
+whiteSpaceChars =
+    " \\t\\f\\v\\r\\n"
+
+
+cleanWhitespaces : String -> String
+cleanWhitespaces =
+    String.trim
+        >> Regex.replace Regex.All
+            (Regex.regex ("[" ++ whiteSpaceChars ++ "]+"))
+            (\_ -> " ")
+
+
 escapableRegex : Regex
 escapableRegex =
     Regex.regex "(\\\\+)([!\"#$%&\\'()*+,./:;<=>?@[\\\\\\]^_`{|}~-])"
@@ -59,18 +74,17 @@ replaceEscapable =
                 Just backslashes :: Just escapedStr :: _ ->
                     String.repeat
                         (floor (toFloat (String.length backslashes) / 2))
-                        "\\"
-                            ++ escapedStr
+                        "\\" ++ escapedStr
 
                 _ ->
                     regexMatch.match
         )
 
 
--- to decode the following chars: ;,/?:@&=+$#
+-- to decode the following chars: ;,/?:@&=+$#%
 decodeUrlRegex : Regex
 decodeUrlRegex =
-    Regex.regex "%(?:3B|2C|2F|3F|3A|40|26|3D|2B|24|23)"
+    Regex.regex "%(?:3B|2C|2F|3F|3A|40|26|3D|2B|24|23|25)"
 
 
 encodeUrl : String -> String
@@ -89,23 +103,28 @@ toAST refs rawText =
         trimmedText = String.trim rawText
     
     in
-        findMatches regexes trimmedText
-            |> \matches ->
-                    .matches (lexer (initLexerModel refs trimmedText))
-                        ++ matches
+        findMatches refs trimmedText
             |> List.sortBy .start
             |> \matches -> parseMatches ( trimmedText, matches, [] )
             |> reverseASTs
 
 
-findMatches : List ( Inline, Regex ) -> String -> List Match
-findMatches regexes rawText =
-    List.map (findMatch rawText) regexes
+findMatches : References -> String -> List Match
+findMatches refs rawText =
+    findRegexesMatches regexes rawText
+        |> \matches ->
+                .matches (lexer (initLexerModel refs rawText))
+                    ++ matches
+
+
+findRegexesMatches : List ( Inline, Regex ) -> String -> List Match
+findRegexesMatches regexes rawText =
+    List.map (findRegexMatch rawText) regexes
         |> List.concat
 
 
-findMatch : String -> ( Inline, Regex ) -> List Match
-findMatch rawText ( type_, regex ) =
+findRegexMatch : String -> ( Inline, Regex ) -> List Match
+findRegexMatch rawText ( type_, regex ) =
     Regex.find Regex.All regex rawText
         |> List.map (baseMatch type_)
 
@@ -226,96 +245,30 @@ addChild parentMatch childMatch =
                 , end = childMatch.end - reduction
             }
 
-        updtParentMatch parsedASTs =
+
+        updtParentMatch asts =
             { parentMatch
-                | content =
-                    parseMatches
-                        ( parentMatch.text
-                        , [ updtChildMatch ]
-                        , parsedASTs
-                        )
+                | content = asts
             }
+
+        --updtParentMatch parsedASTs =
+        --    { parentMatch
+        --        | content =
+        --            parseMatches
+        --                ( parentMatch.text
+        --                , [ updtChildMatch ]
+        --                , parsedASTs
+        --                )
+        --    }
 
     in
         case parentMatch.content of
             NoMatch _ :: [] ->
-                updtParentMatch []
+                updtParentMatch [ updtChildMatch ]
 
             _ ->
-                updtParentMatch parentMatch.content
-
-
-reverseASTs : List AST -> List AST
-reverseASTs =
-    List.reverse
-        >> List.map reverseASTContent
-
-
-reverseASTContent : AST -> AST
-reverseASTContent ast =
-    case ast of
-        ASTMatch match ->
-            ASTMatch
-                { match | content = reverseASTs match.content }
-
-        NoMatch rawText ->
-            NoMatch (replaceEscapable rawText)
-
-
-astsToHtml : List AST -> List (Html msg)
-astsToHtml =
-    List.map astToHtml
-        >> List.concat
-
-
-astToHtml : AST -> List (Html msg)
-astToHtml ast =
-    case ast of
-        NoMatch str ->
-            [ text str ]
-
-        ASTMatch match ->
-            case match.type_ of
-                HardBreak ->
-                    [ br [] [] ]
-
-                Code ->
-                    [ code [] [ text match.text ] ]
-
-                Emphasis length ->
-                    case length of
-                        1 -> [ em [] (astsToHtml match.content) ]
-                        2 -> [ strong [] (astsToHtml match.content) ]
-                        _ -> [ strong [] [ em [] (astsToHtml match.content) ] ]
-
-                Link ( url, maybeTitle ) ->
-                    case maybeTitle of
-                        Just title_ ->
-                            [ a [ href url, title title_ ]
-                                [ text match.text ]
-                            ]
-
-                        Nothing ->
-                            [ a [ href url ]
-                                [ text match.text ]
-                            ]
-
-                Image ( url, maybeTitle ) ->
-                    case maybeTitle of
-                        Just title_ ->
-                            [ img
-                                [ alt match.text
-                                , src url
-                                , title title_
-                                ] []
-                            ]
-
-                        Nothing ->
-                            [ img
-                                [ alt match.text
-                                , src url
-                                ] []
-                            ]
+                updtParentMatch
+                    (parentMatch.content ++ [ updtChildMatch ])
 
 
 
@@ -351,7 +304,6 @@ type alias Token =
     { index : Int
     , length : Int
     , meaning : Meaning
-    --, state : State -- Desnecessário?
     }
 
 
@@ -414,6 +366,7 @@ lexer model =
                         lexer noOpModel
 
 
+
 -- Code Span
 
 
@@ -437,14 +390,6 @@ codeTagFound model =
                 >> Maybe.map (.match >> String.length)
 
 
-        formatCode : String -> String
-        formatCode code =
-            String.trim code
-                |> Regex.replace Regex.All
-                    (Regex.regex "[\\s]*\\n+[\\s]*| {2,}")
-                    (\_ -> " ")
-
-
         toMatch : ( String, String ) -> Match
         toMatch ( code, tag ) =
             let
@@ -456,7 +401,7 @@ codeTagFound model =
                 , start   = model.index
                 , end     = model.index + String.length rawText
                 , rawText = rawText
-                , text    = formatCode code
+                , text    = cleanWhitespaces code
                 }
 
 
@@ -513,8 +458,7 @@ codeTagFound model =
 
 
 type alias References =
-    --   RefText ( Url  , Maybe Title  )
-    Dict String ( String, Maybe String )
+    Dict String ( String, Maybe String ) -- Label ( Url, Maybe Title )
 
 
 type alias LinkMatch =
@@ -532,26 +476,45 @@ insideRegex =
 
 titleRegex : String
 titleRegex =
-    "(?:\\s+(?:'([^'\\\\]*(?:\\\\.[^'\\\\]*)*)'|\"([^\"\\\\]*(?:\\\\.[^\"\\\\]*)*)\"|\\(([^\\)\\\\]*(?:\\\\.[^\\)\\\\]*)*)\\)))?"
+    "(?:[" ++ whiteSpaceChars ++ "]+(?:'([^'\\\\]*(?:\\\\.[^'\\\\]*)*)'|\"([^\"\\\\]*(?:\\\\.[^\"\\\\]*)*)\"|\\(([^\\)\\\\]*(?:\\\\.[^\\)\\\\]*)*)\\)))?"
 
 
 hrefRegex : String
 hrefRegex =
-    "\\s*(?:<([^<>\\s]*)>|([^\\s\\(\\)\\\\]*(?:\\\\.[^\\(\\)\\\\]*)*))" ++ titleRegex ++ "\\s*"
+    "\\s*(?:<([^<>"
+    ++ whiteSpaceChars ++ "]*)>|([^"
+    ++ whiteSpaceChars ++ "\\(\\)\\\\]*(?:\\\\.[^\\(\\)\\\\]*)*))"
+
+
+urlTitleRegex : String
+urlTitleRegex =
+    "\\[(" ++ insideRegex
+        ++ ")\\]\\("
+        ++ hrefRegex
+        ++ titleRegex
+        ++ "\\s*\\)"
+
+
+refRegex : String
+refRegex =
+    "\\[(" ++ insideRegex
+        ++ ")\\](?:\\[\\s*("
+        ++ insideRegex
+        ++ ")\\s*\\])?"
 
 
 linkRegex : Regex
 linkRegex =
-    Regex.regex ("^\\[(" ++ insideRegex ++ ")\\]\\(" ++ hrefRegex ++ "\\)")
+    Regex.regex ("^" ++ urlTitleRegex)
 
 
 refLinkRegex : Regex
 refLinkRegex =
-    Regex.regex ("^\\[(" ++ insideRegex ++ ")\\](?:\\[(" ++ insideRegex ++ ")\\])?")
+    Regex.regex ("^" ++ refRegex)
 
 
-extractLinkRegex : Regex.Match -> Maybe LinkMatch
-extractLinkRegex regexMatch =
+extractUrlTitleRegex : Regex.Match -> Maybe LinkMatch
+extractUrlTitleRegex regexMatch =
     case regexMatch.submatches of
         Just rawText
             :: maybeRawUrlAB -- with angle brackets: <http://url.com>
@@ -588,28 +551,28 @@ extractLinkRegex regexMatch =
             Nothing
 
 
-extractRefLinkRegex : References -> Regex.Match -> Maybe LinkMatch
-extractRefLinkRegex refs regexMatch =
+extractRefRegex : References -> Regex.Match -> Maybe LinkMatch
+extractRefRegex refs regexMatch =
     case regexMatch.submatches of
-        Just inside :: maybeRef :: _ ->
+        Just label :: maybeLabel :: _ ->
             let
-                refString : String
-                refString =
-                    case maybeRef of
-                        Nothing -> inside
-                        Just "" -> inside
+                refLabel : String
+                refLabel =
+                    case maybeLabel of
+                        Nothing -> label
+                        Just "" -> label
                         Just ref -> ref
 
 
                 maybeRefItem : Maybe ( String, Maybe String )
                 maybeRefItem =
-                    Dict.get (String.toLower refString) refs
+                    Dict.get (prepareRefLabel refLabel) refs
 
 
                 toReturn : ( String, Maybe String ) -> LinkMatch
                 toReturn ( rawUrl, maybeTitle ) =
                     { matchLength = String.length regexMatch.match
-                    , inside = inside
+                    , inside = label
                     , url = rawUrl
                     , maybeTitle = maybeTitle
                     }
@@ -622,6 +585,11 @@ extractRefLinkRegex refs regexMatch =
         _ ->
             Nothing
 
+
+prepareRefLabel : String -> String
+prepareRefLabel =
+    cleanWhitespaces
+        >> String.toLower
 
 
 -- TODO code backtick have precedence over link - how to do?
@@ -648,14 +616,14 @@ linkTagFound model =
         applyLinkRegex =
             Regex.find (Regex.AtMost 1) linkRegex
                 >> List.head
-                >> Maybe.andThen extractLinkRegex
+                >> Maybe.andThen extractUrlTitleRegex
 
 
         applyRefLinkRegex : String -> Maybe LinkMatch
         applyRefLinkRegex =
             Regex.find (Regex.AtMost 1) refLinkRegex
                 >> List.head
-                >> Maybe.andThen (extractRefLinkRegex model.refs)
+                >> Maybe.andThen (extractRefRegex model.refs)
 
 
     in
@@ -672,12 +640,12 @@ linkTagFound model =
 
 imageRegex : Regex
 imageRegex =
-    Regex.regex ("^!\\[(" ++ insideRegex ++ ")\\]\\(" ++ hrefRegex ++ "\\)")
+    Regex.regex ("^!" ++ urlTitleRegex)
 
 
 refImageRegex : Regex
 refImageRegex =
-    Regex.regex ("^!\\[(" ++ insideRegex ++ ")\\](?:\\[(" ++ insideRegex ++ ")\\])?")
+    Regex.regex ("^!" ++ refRegex)
 
 
 imageTagFound : LexerModel -> Maybe LexerModel
@@ -700,14 +668,14 @@ imageTagFound model =
         applyImageRegex =
             Regex.find (Regex.AtMost 1) imageRegex
                 >> List.head
-                >> Maybe.andThen extractLinkRegex
+                >> Maybe.andThen extractUrlTitleRegex
 
 
         applyRefImageRegex : String -> Maybe LinkMatch
         applyRefImageRegex =
             Regex.find (Regex.AtMost 1) refImageRegex
                 >> List.head
-                >> Maybe.andThen (extractRefLinkRegex model.refs)
+                >> Maybe.andThen (extractRefRegex model.refs)
 
 
     in
@@ -1050,3 +1018,90 @@ updateLexerModel model match =
                 |> String.uncons
                 |> Maybe.map Tuple.first
     }
+
+
+
+-- Finalization
+
+
+reverseASTs : List AST -> List AST
+reverseASTs =
+    List.reverse
+        >> List.map reverseASTContent
+
+
+reverseASTContent : AST -> AST
+reverseASTContent ast =
+    case ast of
+        ASTMatch match ->
+            case match.type_ of
+                Link _ ->
+                    ASTMatch
+                        { match
+                            | content = toAST Dict.empty match.text
+                        }
+
+                _ ->
+                    ASTMatch
+                        { match
+                            | content = reverseASTs match.content
+                        }
+
+        NoMatch rawText ->
+            NoMatch (replaceEscapable rawText)
+
+
+astsToHtml : List AST -> List (Html msg)
+astsToHtml =
+    List.map astToHtml
+        >> List.concat
+
+
+astToHtml : AST -> List (Html msg)
+astToHtml ast =
+    case ast of
+        NoMatch str ->
+            [ text str ]
+
+        ASTMatch match ->
+            case match.type_ of
+                HardBreak ->
+                    [ br [] [] ]
+
+                Code ->
+                    [ code [] [ text match.text ] ]
+
+                Emphasis length ->
+                    case length of
+                        1 -> [ em [] (astsToHtml match.content) ]
+                        2 -> [ strong [] (astsToHtml match.content) ]
+                        _ -> [ strong [] [ em [] (astsToHtml match.content) ] ]
+
+                Link ( url, maybeTitle ) ->
+                    case maybeTitle of
+                        Just title_ ->
+                            [ a [ href url, title title_ ]
+                                (astsToHtml match.content)
+                            ]
+
+                        Nothing ->
+                            [ a [ href url ]
+                                (astsToHtml match.content)
+                            ]
+
+                Image ( url, maybeTitle ) ->
+                    case maybeTitle of
+                        Just title_ ->
+                            [ img
+                                [ alt match.text
+                                , src url
+                                , title title_
+                                ] []
+                            ]
+
+                        Nothing ->
+                            [ img
+                                [ alt match.text
+                                , src url
+                                ] []
+                            ]

@@ -191,7 +191,7 @@ run =
 
     , testEq 475
         []
-        "[link](/url \"title\")\n"
+        "[link](/url \"title\")\n"
         [ p []
             [ a [ href "/url%C2%A0%22title%22" ]
                 [ text "link" ]
