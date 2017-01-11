@@ -142,7 +142,7 @@ run =
         []
         "*foo bar\n*\n"
         [ p []
-            [ text "*foo bar*" ]
+            [ text "*foo bar\n*" ]
         ]
 
     , testEq 345
@@ -288,7 +288,7 @@ run =
         []
         "__\nfoo bar__\n"
         [ p []
-            [ text "__foo bar__" ]
+            [ text "__\nfoo bar__" ]
         ]
 
     , testEq 362
@@ -377,7 +377,7 @@ run =
                 [ text "Gomphocarpus ("
                 , em []
                     [ text "Gomphocarpus physocarpus" ]
-                , text ", syn."
+                , text ", syn.\n"
                 , em []
                     [ text "Asclepias physocarpa" ]
                 , text ")"
@@ -485,7 +485,7 @@ run =
         "*foo\nbar*\n"
         [ p []
             [ em []
-                [ text "foobar" ]
+                [ text "foo\nbar" ]
             ]
         ]
 
@@ -497,7 +497,7 @@ run =
                 [ text "foo "
                 , strong []
                     [ text "bar" ]
-                , text "baz"
+                , text " baz"
                 ]
             ]
         ]
@@ -510,7 +510,7 @@ run =
                 [ text "foo "
                 , em []
                     [ text "bar" ]
-                , text "baz"
+                , text " baz"
                 ]
             ]
         ]
@@ -522,7 +522,7 @@ run =
             [ em []
                 [ em []
                     [ text "foo" ]
-                , text "bar"
+                , text " bar"
                 ]
             ]
         ]
@@ -547,7 +547,7 @@ run =
                 [ text "foo "
                 , strong []
                     [ text "bar" ]
-                , text "baz"
+                , text " baz"
                 ]
             ]
         ]
@@ -572,7 +572,7 @@ run =
             [ em []
                 [ strong []
                     [ text "foo" ]
-                , text "bar"
+                , text " bar"
                 ]
             ]
         ]
@@ -611,9 +611,9 @@ run =
                     [ text "bar "
                     , em []
                         [ text "baz" ]
-                    , text "bim"
+                    , text " bim"
                     ]
-                , text "bop"
+                , text " bop"
                 ]
             ]
         ]

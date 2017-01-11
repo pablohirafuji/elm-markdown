@@ -802,17 +802,17 @@ type alias Elements =
 -- Expor e codumentar
 defaultElements : Elements
 defaultElements =
-    { heading = headingHtml
+    { heading = headingElement
     , thematicBreak = hr [] []
-    , paragraph = paragraphHtml
+    , paragraph = paragraphElement
     , blockQuote = blockquote []
-    , code = codeHtml
-    , list = listHtml
+    , code = codeElement
+    , list = listElement
     }
 
 
-headingHtml : Int -> List (Html Never) -> Html Never
-headingHtml level =
+headingElement : Int -> List (Html Never) -> Html Never
+headingElement level =
     case level of
         1 -> h1 []
         2 -> h2 []
@@ -822,8 +822,8 @@ headingHtml level =
         _ -> h6 []
 
 
-paragraphHtml : Bool -> List (Html Never) -> List (Html Never)
-paragraphHtml textAsParagraph innerHtml =
+paragraphElement : Bool -> List (Html Never) -> List (Html Never)
+paragraphElement textAsParagraph innerHtml =
     if textAsParagraph then
         [ p [] innerHtml ]
 
@@ -831,8 +831,8 @@ paragraphHtml textAsParagraph innerHtml =
         innerHtml
 
 
-codeHtml : Maybe String -> String -> Html Never
-codeHtml maybeLanguage codeStr =
+codeElement : Maybe String -> String -> Html Never
+codeElement maybeLanguage codeStr =
     let
         basicView : List (Html.Attribute Never) -> String -> Html Never
         basicView attrs codeStr_ =
@@ -852,8 +852,8 @@ codeHtml maybeLanguage codeStr =
                 basicView [] codeStr
 
 
-listHtml : Lists.Type -> List (Html Never) -> Html Never
-listHtml type_ =
+listElement : Lists.Type -> List (Html Never) -> Html Never
+listElement type_ =
     case type_ of
         Lists.Ordered startInt ->
             -- To comply with CommonMark tests output

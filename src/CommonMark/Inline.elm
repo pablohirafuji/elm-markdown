@@ -802,6 +802,14 @@ autoLinkTagFound model =
 -- Emphasis
 
 
+type alias EmphasisMatchToken =
+    { openToken : Token
+    , closeToken : Token
+    , tokens : List Token
+    , isMultipleOf3 : Bool
+    }
+
+
 emphasisTagFound : LexerModel -> Maybe LexerModel
 emphasisTagFound model =
     let
@@ -822,7 +830,7 @@ emphasisTagFound model =
 
         emSequenceRegex : Regex
         emSequenceRegex =
-            Regex.regex "^([\\*_]+)([^\\*_])?"
+            Regex.regex "^(\\*+|_+)([^\\*_])?"
 
 
         ( maybeEmSequence, maybeNextString) =
@@ -830,70 +838,58 @@ emphasisTagFound model =
                 |> regexMatchToTuple
 
 
-        isLeftSpace =
-            model.lastChar
-                |> Maybe.map (containSpace << String.fromChar)
-                |> Maybe.withDefault True
+        fringeRank : String -> Int
+        fringeRank string =
+            if containSpace string then 0
+            else if containPuntuaction string then 1
+            else 2
 
-
-        isLeftPuntuaction =
-            model.lastChar
-                |> Maybe.map (containPuntuaction << String.fromChar)
-                |> Maybe.withDefault False
-
-
-        isRightSpace =
-            maybeNextString
-                |> Maybe.map containSpace
-                |> Maybe.withDefault True
-
-
-        isRightPuntuaction =
-            maybeNextString
-                |> Maybe.map containPuntuaction
-                |> Maybe.withDefault False
-
-
+        leftFringeRank : Int
         leftFringeRank =
-            if isLeftSpace then 0
-            else if isLeftPuntuaction then 1
-            else 2
+            model.lastChar
+                |> Maybe.map (fringeRank << String.fromChar)
+                |> Maybe.withDefault 0
 
 
+        rightFringeRank : Int
         rightFringeRank =
-            if isRightSpace then 0
-            else if isRightPuntuaction then 1
-            else 2
+            maybeNextString
+                |> Maybe.map fringeRank
+                |> Maybe.withDefault 0
 
 
         processEmSequence : String -> LexerModel
         processEmSequence emSequence =
             let
+                emSequenceLength : Int
                 emSequenceLength =
                     String.length emSequence
 
 
+                remainText : String
                 remainText =
                     model.remainText
                         |> String.dropLeft emSequenceLength
 
 
+                lastChar : Maybe Char
                 lastChar =
-                    String.reverse emSequence
-                        |> String.uncons
-                        |> Maybe.map Tuple.first
-
-
-                char =
                     String.uncons emSequence
                         |> Maybe.map Tuple.first
+
+
+                char : Char
+                char =
+                    lastChar
                         |> Maybe.withDefault '*'
 
 
+                index : Int
                 index =
                     model.index + emSequenceLength
 
 
+                emToken : Token
                 emToken =
                     { index = model.index
                     , length = emSequenceLength
@@ -901,33 +897,22 @@ emphasisTagFound model =
                     }
 
 
+                updtModel : LexerModel
                 updtModel =
                     { model
                         | remainText = remainText
                         , lastChar = lastChar
                         , index = index
                     }
-            -- Separar em lista ["***", "___"] Testr regex split (.)\1+
-            -- Mapear para EmphasisTag Char
-            -- Adicionar em tokens
-            in
-                if leftFringeRank == rightFringeRank then
-                    updtModel
-                    -- Se rightFringeRank /= 0 pode ser fechamento
-                    -- Se não for, é abertura
 
-                -- Opening tag
-                else if leftFringeRank < rightFringeRank then
-                    { updtModel
-                        | tokens = emToken :: model.tokens
-                    }
 
-                -- CLosing tag
-                else
-                    case retrieveToken emToken model.tokens of
-                        Just ( openToken, closeToken, updtTokens ) ->
-                            { updtModel
-                                | tokens = updtTokens
+                addMatch : LexerModel -> Token -> EmphasisMatchToken -> LexerModel
+                addMatch model rawCloseToken { openToken, closeToken, tokens } =
+                    let
+                        updtModel : LexerModel
+                        updtModel =
+                            { model
+                                | tokens = tokens
                                 , matches =
                                     tokenToMatch
                                         model.rawText
@@ -935,6 +920,82 @@ emphasisTagFound model =
                                         closeToken
                                             :: model.matches
                             }
+
+
+                        remainLength : Int
+                        remainLength =
+                            rawCloseToken.length - closeToken.length
+
+
+                        updtCloseToken : Token
+                        updtCloseToken =
+                            { rawCloseToken
+                                | index  = closeToken.index + closeToken.length
+                                , length = remainLength
+                            }
+
+
+                    in
+                        -- Still has closing token
+                        if remainLength > 0 then
+                            case retrieveToken updtCloseToken tokens of
+                                Just retrTokens ->
+                                    addMatch updtModel updtCloseToken retrTokens
+
+                                Nothing ->
+                                    updtModel
+
+
+                        else
+                            updtModel
+
+
+            in
+                -- Maybe close or opening tag
+                if leftFringeRank == rightFringeRank then
+                    -- If 1) is not surrounded by whitespace and
+                    --    2) is not '_' or is surronded by puntuaction
+                    -- is a close or opening tag
+                    if rightFringeRank /= 0
+                        && (char /= '_' || rightFringeRank == 1) then
+                            -- Search for opening tag and add
+                            -- match if the sum of lengths
+                            -- is not multiple of 3, otherwise add
+                            -- opening tag
+                            case retrieveToken emToken model.tokens of
+                                Just retrToken ->
+                                    if retrToken.isMultipleOf3 then
+                                        { updtModel |
+                                            tokens = emToken :: model.tokens
+                                        }
+
+                                    else
+                                        addMatch updtModel emToken retrToken
+
+
+                                Nothing ->
+                                    { updtModel |
+                                        tokens = emToken :: model.tokens
+                                    }
+
+
+                    else
+                        updtModel
+
+
+                -- Opening tag
+                else if leftFringeRank < rightFringeRank then
+                    { updtModel |
+                        tokens = emToken :: model.tokens
+                    }
+
+
+                -- CLosing tag
+                else
+                    case retrieveToken emToken model.tokens of
+                        Just retrToken ->
+                            addMatch updtModel emToken retrToken
+
 
                         Nothing ->
                             updtModel
@@ -945,7 +1006,7 @@ emphasisTagFound model =
             |> Maybe.map processEmSequence
 
 
-retrieveToken : Token -> List Token -> Maybe ( Token, Token, List Token )
+retrieveToken : Token -> List Token -> Maybe EmphasisMatchToken
 retrieveToken token tokens =
     case tokens of
         [] ->
@@ -954,33 +1015,52 @@ retrieveToken token tokens =
         tokensHead :: tokensTail ->
             if tokensHead.meaning == token.meaning then
                 let
+                    remainLenght : Int
                     remainLenght =
                         tokensHead.length - token.length
 
+
+                    isMultipleOf3 : Bool
+                    isMultipleOf3 =
+                        (tokensHead.length + token.length) % 3 == 0
+
+
+                    toReturn : ( Token, Token, List Token ) -> EmphasisMatchToken
+                    toReturn ( openToken, closeToken, tokens ) =
+                        { openToken = openToken
+                        , closeToken = closeToken
+                        , tokens = tokens
+                        , isMultipleOf3 = isMultipleOf3 
+                        }
+
+
                 in
+                    -- Perfect match
                     if remainLenght == 0 then
-                        Just ( tokensHead, token, tokensTail )
+                        ( tokensHead, token, tokensTail )
+                            |> toReturn
+                            |> Just
 
+                    -- Still has opened token
                     else if remainLenght > 0 then
-                        Just
-                            ( { tokensHead
-                                | index = tokensHead.index + remainLenght
-                                , length = tokensHead.length - remainLenght
-                              }
-                            , token
-                            , { tokensHead | length = remainLenght }
-                                :: tokensTail
-                            )
+                        ( { tokensHead
+                            | index = tokensHead.index + remainLenght
+                            , length = tokensHead.length - remainLenght
+                          }
+                        , token
+                        , { tokensHead | length = remainLenght }
+                            :: tokensTail
+                        )   |> toReturn
+                            |> Just
 
-                    else -- fechar outros abertos
-                        Just
-                            ( tokensHead
-                            , { token
-                                | index = token.index - remainLenght
-                                , length = token.length + remainLenght
-                              }
-                            , tokensTail
-                            )
+                    -- Still has closing token
+                    -- search for more openings in addMatch
+                    else
+                        ( tokensHead
+                        , { token | length = token.length + remainLenght }
+                        , tokensTail
+                        )   |> toReturn
+                            |> Just
 
             else
                 retrieveToken token tokensTail
@@ -1060,7 +1140,14 @@ matchToHtml (Match match) =
             case length of
                 1 -> [ em [] (toHtml match.matches) ]
                 2 -> [ strong [] (toHtml match.matches) ]
-                _ -> [ strong [] [ em [] (toHtml match.matches) ] ]
+                _ ->
+                    [ strong []
+                        <| matchToHtml
+                        <| Match
+                            { match |
+                                type_ = Emphasis (length - 2)
+                            }
+                    ]
 
         Link ( url, maybeTitle ) ->
             case maybeTitle of
