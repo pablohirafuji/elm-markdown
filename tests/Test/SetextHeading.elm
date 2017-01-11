@@ -140,7 +140,7 @@ run =
     , testEq 71
         [ p [] [ text "If you want a heading with > foo as its literal text, you can use backslash escapes:" ] ]
         "\\> foo\n------"
-        [ h2 [] [ text "&gt; foo" ] ]
+        [ h2 [] [ text "> foo" ] ]
 
     , testEq 72
         [ p [] [ text "Compatibility note: Most existing Markdown implementations do not allow the text of setext headings to span multiple lines. But there is no consensus about how to interpret" ]

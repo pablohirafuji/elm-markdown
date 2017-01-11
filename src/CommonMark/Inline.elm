@@ -83,7 +83,7 @@ replaceEscapable =
             case regexMatch.submatches of
                 Just backslashes :: Just escapedStr :: _ ->
                     String.repeat
-                        (floor (toFloat (String.length backslashes) / 2))
+                        (String.length backslashes // 2)
                         "\\" ++ escapedStr
 
                 _ ->
@@ -830,7 +830,7 @@ emphasisTagFound model =
 
         emSequenceRegex : Regex
         emSequenceRegex =
-            Regex.regex "^(\\*+|_+)([^\\*_])?"
+            Regex.regex "^(\\*+|_+)(.)?"
 
 
         ( maybeEmSequence, maybeNextString) =
@@ -1130,11 +1130,14 @@ matchToHtml (Match match) =
         Normal ->
             [ text match.text ]
 
+
         HardBreak ->
             [ br [] [] ]
 
+
         Code ->
             [ code [] [ text match.text ] ]
+
 
         Emphasis length ->
             case length of
@@ -1149,6 +1152,7 @@ matchToHtml (Match match) =
                             }
                     ]
 
+
         Link ( url, maybeTitle ) ->
             case maybeTitle of
                 Just title_ ->
@@ -1160,6 +1164,7 @@ matchToHtml (Match match) =
                     [ a [ href url ]
                         (toHtml match.matches)
                     ]
+
 
         Image ( url, maybeTitle ) ->
             case maybeTitle of

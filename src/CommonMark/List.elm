@@ -39,12 +39,12 @@ type Type
 
 orderedRegex : Regex
 orderedRegex =
-    Regex.regex "^( *(\\d{1,9})([.)])( {0,4}))(?: (.*))?$"
+    Regex.regex "^( *(\\d{1,9})([.)])( {0,4}))(?:[ \\t](.*))?$"
 
 
 unorderedRegex : Regex
 unorderedRegex =
-    Regex.regex "^( *([\\*\\-\\+])( {0,4}))(?: (.*))?$"
+    Regex.regex "^( *([\\*\\-\\+])( {0,4}))(?:[ \\t](.*))?$"
 
 
 initSpacesRegex : Regex
@@ -146,9 +146,10 @@ newLine type_ indentString delimiter indentSpace rawLine =
 
 
 indentLength : String -> Int
-indentLength rawLine =
-    Regex.find (Regex.AtMost 1) initSpacesRegex rawLine
-        |> List.head
-        |> Maybe.map (.match >> String.length)
-        |> Maybe.withDefault 0
+indentLength =
+    Regex.replace Regex.All (Regex.regex "\\t") (\_ -> "    ")
+        >> Regex.find (Regex.AtMost 1) initSpacesRegex
+        >> List.head
+        >> Maybe.map (.match >> String.length)
+        >> Maybe.withDefault 0
 

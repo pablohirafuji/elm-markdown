@@ -16,7 +16,7 @@ run =
         "\tfoo\tbaz\t\tbim\n"
         [ pre []
             [ code []
-                [ text "foo\tbaz\t\tbim" ]
+                [ text "foo\tbaz\t\tbim\n" ]
             ]
         ]
 
@@ -25,7 +25,7 @@ run =
         "  \tfoo\tbaz\t\tbim\n"
         [ pre []
             [ code []
-                [ text "foo\tbaz\t\tbim" ]
+                [ text "foo\tbaz\t\tbim\n" ]
             ]
         ]
 
@@ -34,7 +34,7 @@ run =
         "    a\ta\n    ὐ\ta\n"
         [ pre []
             [ code []
-                [ text "a\taὐ\ta" ]
+                [ text "a\ta\nὐ\ta\n" ]
             ]
         ]
 
@@ -60,7 +60,7 @@ run =
                     [ text "foo" ]
                 , pre []
                     [ code []
-                        [ text "bar" ]
+                        [ text "bar\n" ]
                     ]
                 ]
             ]
@@ -72,7 +72,7 @@ run =
         [ blockquote []
             [ pre []
                 [ code []
-                    [ text "foo" ]
+                    [ text "\tfoo\n" ]
                 ]
             ]
         ]
@@ -84,7 +84,7 @@ run =
             [ li []
                 [ pre []
                     [ code []
-                        [ text "foo" ]
+                        [ text "foo\n" ]
                     ]
                 ]
             ]
@@ -95,7 +95,7 @@ run =
         "    foo\n\tbar\n"
         [ pre []
             [ code []
-                [ text "foobar" ]
+                [ text "foo\nbar\n" ]
             ]
         ]
 

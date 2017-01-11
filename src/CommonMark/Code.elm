@@ -33,7 +33,7 @@ type alias FenceModel =
 
 indentedRegex : Regex
 indentedRegex =
-    Regex.regex "^ {4,4}(.*)$"
+    Regex.regex "^(?: {4,4}| {0,3}\\t)(.*)$"
 
 
 openingFenceRegex : Regex
@@ -43,7 +43,7 @@ openingFenceRegex =
 
 closingFenceRegex : Regex
 closingFenceRegex =
-    Regex.regex "^ {0,3}(`{3,}|~{3,})[ \\t]*$"
+    Regex.regex "^ {0,3}(`{3,}|~{3,})\\s*$"
 
 
 fromIndentedMatch : Regex.Match -> ( List String, String )
@@ -114,10 +114,12 @@ isClosingFenceLine fence =
 
 indentLine : Int -> String -> String
 indentLine indentLength =
-    Regex.replace
-        ( Regex.AtMost 1 )
-        ( Regex.regex ( "^ {0," ++ toString indentLength ++ "}" ) )
-        (\_ -> "" )
+    Regex.replace Regex.All (Regex.regex "\\t") (\_ -> "    ")
+    >> Regex.replace
+        (Regex.AtMost 1)
+        (Regex.regex
+            ("^ {0," ++ toString indentLength ++ "}" ))
+        (\_ -> "")
 
 
 addIndented : ( List String, String ) -> ( List String, String ) -> Model

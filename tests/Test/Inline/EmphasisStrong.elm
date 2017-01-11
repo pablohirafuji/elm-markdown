@@ -37,9 +37,9 @@ run =
 
     , testEq 331
         []
-        "* a *\n"
+        "* a *\n"
         [ p []
-            [ text "* a *" ]
+            [ text "* a *" ]
         ]
 
     , testEq 332
