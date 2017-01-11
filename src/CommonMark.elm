@@ -693,7 +693,7 @@ type Block
 
 type alias HeadingBlock =
     { level : Int
-    , inlines : List Inline.AST
+    , inlines : List Inline.Match
     }
 
 
@@ -704,7 +704,7 @@ type alias CodeBlock =
 
 
 type alias ParagraphBlock =
-    { inlines : List Inline.AST }
+    { inlines : List Inline.Match }
 
 
 type alias BlockQuoteBlock =
@@ -725,7 +725,7 @@ absSynToBlock refs absSyn =
             Just
                 <| Heading
                     { level = lvl
-                    , inlines = Inline.toAST refs rawText
+                    , inlines = Inline.parse refs rawText
                     }
 
 
@@ -736,7 +736,7 @@ absSynToBlock refs absSyn =
         ParagraphAS rawText ->
             Just
                 <| Paragraph
-                    { inlines = Inline.toAST refs rawText }
+                    { inlines = Inline.parse refs rawText }
 
 
         CodeAS codeAS ->
@@ -873,7 +873,7 @@ blockToHtml elements textAsParagraph block =
         Heading { level, inlines } ->
             [ elements.heading
                 level
-                (Inline.astsToHtml inlines)
+                (Inline.toHtml inlines)
             ]
 
         ThematicBreak ->
@@ -882,7 +882,7 @@ blockToHtml elements textAsParagraph block =
         Paragraph { inlines } ->
             elements.paragraph
                 textAsParagraph
-                (Inline.astsToHtml inlines)
+                (Inline.toHtml inlines)
 
         Code { language, code } ->
             [ elements.code language code ]

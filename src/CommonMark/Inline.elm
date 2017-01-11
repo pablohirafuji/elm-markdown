@@ -9,35 +9,45 @@ import Regex exposing (Regex)
 
 
 
--- Abstract Syntax Tree
+----- Match
 
 
-type AST
-    = NoMatch String
-    | ASTMatch Match
+type Match
+    = Match MatchModel
 
 
-type Match =
+type alias MatchModel =
+    { type_   : Type
+    , start   : Int
+    , end     : Int
+    , rawText : String
+    , text    : String
+    , matches : List Match
+    }
+
+
+normalMatch : String -> Match
+normalMatch text =
     Match
-        { type_   : Inline
-        , content : List AST
-        , start   : Int
-        , end     : Int
-        , rawText : String
-        , text    : String
-        , matches : List Match
+        { type_   = Normal
+        , start   = 0
+        , end     = 0
+        , rawText = text
+        , text    = replaceEscapable text
+        , matches = []
         }
 
 
-type Inline
-    = HardBreak
+type Type
+    = Normal
+    | HardBreak
     | Code
     | Emphasis Int -- Tag length
     | Link ( String, Maybe String) -- ( Url, Maybe Title )
     | Image ( String, Maybe String) -- ( Src, Maybe Title )
 
 
-regexes : List ( Inline, Regex )
+regexes : List ( Type, Regex )
 regexes =
     [ ( HardBreak, hardBreakRegex )
     ]
@@ -81,7 +91,7 @@ replaceEscapable =
         )
 
 
--- to decode the following chars: ;,/?:@&=+$#%
+-- Decode the following chars: ;,/?:@&=+$#%
 decodeUrlRegex : Regex
 decodeUrlRegex =
     Regex.regex "%(?:3B|2C|2F|3F|3A|40|26|3D|2B|24|23|25)"
@@ -97,139 +107,108 @@ encodeUrl =
             )
 
 
-toAST : References -> String -> List AST
-toAST refs rawText =
+containSpace : String -> Bool
+containSpace str =
+    Regex.contains
+        (Regex.regex "\\s")
+        str
+
+
+containPuntuaction : String -> Bool
+containPuntuaction str =
+    Regex.contains
+        (Regex.regex "[!-#%-\\*,-/:;\\?@\\[-\\]_\\{\\}]")
+        str
+
+
+returnFirstJust : List (Maybe a) -> Maybe a
+returnFirstJust maybes =
     let
-        trimmedText = String.trim rawText
-    
+        process : Maybe a -> Maybe a -> Maybe a
+        process a maybeFound =
+            case maybeFound of
+                Just found -> Just found
+                Nothing -> a
+
     in
-        findMatches refs trimmedText
-            |> List.sortBy .start
-            |> \matches -> parseMatches ( trimmedText, matches, [] )
-            |> reverseASTs
+        List.foldl process Nothing maybes
+
+
+ifNothing : Maybe a -> Maybe a -> Maybe a
+ifNothing maybe maybe_ =
+    if maybe_ == Nothing then
+        maybe
+
+    else
+        maybe_
 
 
 findMatches : References -> String -> List Match
 findMatches refs rawText =
     findRegexesMatches regexes rawText
-        |> \matches ->
-                .matches (lexer (initLexerModel refs rawText))
-                    ++ matches
+        |> (++) (.matches (lexer (initLexerModel refs rawText)))
 
 
-findRegexesMatches : List ( Inline, Regex ) -> String -> List Match
+findRegexesMatches : List ( Type, Regex ) -> String -> List Match
 findRegexesMatches regexes rawText =
     List.map (findRegexMatch rawText) regexes
         |> List.concat
 
 
-findRegexMatch : String -> ( Inline, Regex ) -> List Match
+findRegexMatch : String -> ( Type, Regex ) -> List Match
 findRegexMatch rawText ( type_, regex ) =
     Regex.find Regex.All regex rawText
-        |> List.map (baseMatch type_)
+        |> List.map (Match << matchModelFromRegex type_)
 
 
-baseMatch : Inline -> Regex.Match -> Match
-baseMatch type_ regexMatch =
+matchModelFromRegex : Type -> Regex.Match -> MatchModel
+matchModelFromRegex type_ regexMatch =
     { type_   = type_
-    , content = []
     , start   = regexMatch.index
     , end     = regexMatch.index + String.length regexMatch.match
     , rawText = regexMatch.match
     , text    = regexMatch.match
+    , matches = []
     }
 
 
-parseMatches : ( String, List Match, List AST ) -> List AST
-parseMatches ( rawText, matches, ast ) =
+organizeMatches : List Match -> List Match
+organizeMatches =
+    List.sortBy (\(Match match) -> match.start)
+        >> List.foldl organizeMatch []
+        >> List.map
+            (\(Match match) -> Match
+                { match | matches =
+                    organizeMatches match.matches
+                }
+            )
+
+
+organizeMatch : Match -> List Match -> List Match
+organizeMatch (Match match) matches =
     case matches of
         [] ->
-            case ast of
-                [] ->
-                    -- No text to parse
-                    if String.isEmpty rawText then
-                        []
+            [ Match match ]
 
-                    -- No match found
-                    else
-                        [ NoMatch rawText ]
-
-
-                -- Add final unmatched string
-                ASTMatch astHead :: _ ->
-                    let
-                        finalStr =
-                            String.dropLeft astHead.end rawText
-
-                    in
-                        if String.isEmpty finalStr then
-                            ast
-
-                        else
-                            NoMatch finalStr :: ast
-
-                _ ->
-                    ast
-
-
-        match :: matchesTail ->
-            parseMatch ( rawText, match, ast )
-                |> (,,) rawText matchesTail
-                |> parseMatches
-   
-
-parseMatch : ( String, Match, List AST ) -> List AST
-parseMatch ( rawText, match, ast ) =
-    case ast of
-        [] ->
-            -- Add initial unmatched string
-            if match.start > 0 then
-                [ newASTMatch match
-                , NoMatch (String.left (match.start) rawText)
-                ]
-
-            else
-                [ newASTMatch match
-                ]
-
-        ASTMatch astHead :: astTail ->
+        Match prevMatch :: matchesTail ->
             -- New Match
-            if astHead.end == match.start then
-                newASTMatch match
-                    :: ast
-            
-            -- New Match and add in between unmatched string
-            else if astHead.end < match.start then
-                newASTMatch match
-                    :: NoMatch (String.slice astHead.end match.start rawText)
-                    :: ast
+            if prevMatch.end <= match.start then
+                Match match :: matches
 
             -- Inside previous Match
-            else if astHead.start < match.start
-                && astHead.end > match.end then
-                    ASTMatch (addChild astHead match)
-                        :: astTail
+            else if prevMatch.start < match.start
+                && prevMatch.end > match.end then
+                    addChild prevMatch match :: matchesTail
 
             -- Overlaping previous Match
             else
-                ast
-
-        _ ->
-            newASTMatch match
-                :: ast
+                matches
 
 
-newASTMatch : Match -> AST
-newASTMatch match =
-    ASTMatch
-        { match
-            | content = [ NoMatch match.text ]
-        }
-
-
-addChild : Match -> Match -> Match
+addChild : MatchModel -> MatchModel -> Match
 addChild parentMatch childMatch =
     let
+        reduction : Int
         reduction =
             case parentMatch.type_ of
                 Emphasis length ->
@@ -239,6 +218,7 @@ addChild parentMatch childMatch =
                     parentMatch.start
 
 
+        updtChildMatch : MatchModel
         updtChildMatch =
             { childMatch
                 | start = childMatch.start - reduction
@@ -246,33 +226,94 @@ addChild parentMatch childMatch =
             }
 
 
-        updtParentMatch asts =
-            { parentMatch
-                | content = asts
+    in
+        Match { parentMatch | matches =
+            Match updtChildMatch :: parentMatch.matches
+        }
+
+
+parseNormalMatches : String -> List Match -> List Match -> List Match
+parseNormalMatches rawText parsedMatches matches =
+    case matches of
+        [] ->
+            case parsedMatches of
+                [] ->
+                    -- No text to parse
+                    if String.isEmpty rawText then
+                        []
+
+                    -- No match found
+                    else
+                        [ normalMatch rawText ]
+
+
+                -- Add initial normal match
+                Match matchModel :: _ ->
+                    if matchModel.start > 0 then
+                        normalMatch (String.left (matchModel.start) rawText)
+                            :: parsedMatches
+
+                    else
+                        parsedMatches
+
+
+        match :: matchesTail ->
+            parseNormalMatches rawText
+                (parseNormalMatch rawText match parsedMatches)
+                matchesTail
+
+
+parseNormalMatch : String -> Match -> List Match -> List Match
+parseNormalMatch rawText (Match matchModel) parsedMatches =
+    let
+        -- TODO se for image ou link, tem que achar os matchs
+        -- Ou fazer sso quando parsar link ou imagem
+        updtMatch : Match
+        updtMatch =
+            Match { matchModel |
+                matches =
+                    parseNormalMatches matchModel.text [] matchModel.matches
             }
 
-        --updtParentMatch parsedASTs =
-        --    { parentMatch
-        --        | content =
-        --            parseMatches
-        --                ( parentMatch.text
-        --                , [ updtChildMatch ]
-        --                , parsedASTs
-        --                )
-        --    }
-
     in
-        case parentMatch.content of
-            NoMatch _ :: [] ->
-                updtParentMatch [ updtChildMatch ]
+        case parsedMatches of
+            [] ->
+                -- Add final normal match
+                let
+                    finalStr =
+                        String.dropLeft matchModel.end rawText
 
-            _ ->
-                updtParentMatch
-                    (parentMatch.content ++ [ updtChildMatch ])
+                in
+                    if String.isEmpty finalStr then
+                        [ updtMatch ]
+
+                    else
+                        [ updtMatch
+                        , normalMatch finalStr
+                        ]
+
+
+            Match matchHead :: matchesTail ->
+                if matchHead.type_ == Normal then
+                    updtMatch :: parsedMatches
+
+                -- New Match
+                else if matchModel.end == matchHead.start then
+                    updtMatch :: parsedMatches
+
+                -- New Match and add in between unmatched string
+                else if matchModel.end < matchHead.start then
+                    updtMatch
+                        :: normalMatch (String.slice matchModel.end matchHead.start rawText)
+                        :: parsedMatches
+
+                -- Overlaping or inside previous Match
+                else
+                    parsedMatches
 
 
 
--- Lexer
+----- Lexer
 
 
 type alias LexerModel =
@@ -397,12 +438,12 @@ codeTagFound model =
 
             in
                 { type_   = Code
-                , content = []
                 , start   = model.index
                 , end     = model.index + String.length rawText
                 , rawText = rawText
                 , text    = cleanWhitespaces code
-                }
+                , matches = []
+                } |> Match
 
 
         verifyCloseTag : String -> Int -> LexerModel
@@ -454,7 +495,7 @@ codeTagFound model =
 
 
 
------ Link
+-- Link
 
 
 type alias References =
@@ -593,8 +634,6 @@ prepareRefLabel =
 
 
 -- TODO code backtick have precedence over link - how to do?
--- TODO: reference labels corta todos os espaços e quebra de linha
-        -- String.tim >> Regex.replace
 -- TODO: Parsar título quando imprimir
 linkTagFound : LexerModel -> Maybe LexerModel
 linkTagFound model =
@@ -604,12 +643,12 @@ linkTagFound model =
             { type_   = Link
                             ( encodeUrl (replaceEscapable url)
                             , Maybe.map replaceEscapable maybeTitle ) 
-            , content = []
             , start   = model.index
             , end     = model.index + matchLength
             , rawText = inside
-            , text    = replaceEscapable inside
-            }
+            , text    = inside
+            , matches = findMatches Dict.empty inside
+            } |> Match
 
 
         applyLinkRegex : String -> Maybe LinkMatch
@@ -656,12 +695,12 @@ imageTagFound model =
             { type_   = Image
                             ( replaceEscapable url
                             , Maybe.map replaceEscapable maybeTitle )
-            , content = []
             , start   = model.index
             , end     = model.index + matchLength
             , rawText = inside
-            , text    = replaceEscapable inside
-            }
+            , text    = inside
+            , matches = []
+            } |> Match
 
 
         applyImageRegex : String -> Maybe LinkMatch
@@ -708,12 +747,12 @@ autoLinkTagFound model =
         linkMatchToMatch : LexerModel -> LinkMatch -> Match
         linkMatchToMatch model { matchLength, inside, url, maybeTitle } =
             { type_   = Link ( url, maybeTitle ) 
-            , content = []
             , start   = model.index
             , end     = model.index + matchLength
             , rawText = inside
             , text    = inside
-            }
+            , matches = []
+            } |> Match
 
         extractRegex : Regex.Match -> Maybe LinkMatch
         extractRegex regexMatch =
@@ -766,6 +805,21 @@ autoLinkTagFound model =
 emphasisTagFound : LexerModel -> Maybe LexerModel
 emphasisTagFound model =
     let
+        regexMatchToTuple : List Regex.Match -> ( Maybe String, Maybe String )
+        regexMatchToTuple matches =
+            case matches of
+                match :: _ ->
+                    case match.submatches of
+                        maybeEmSequence :: maybeNextChar :: _ ->
+                            ( maybeEmSequence, maybeNextChar )
+
+                        _ ->
+                            ( Nothing, Nothing )
+
+                _ ->
+                    ( Nothing, Nothing )
+
+
         emSequenceRegex : Regex
         emSequenceRegex =
             Regex.regex "^([\\*_]+)([^\\*_])?"
@@ -942,76 +996,21 @@ tokenToMatch rawText openToken closeToken =
 
     in
         { type_   = Emphasis openToken.length
-        , content = []
         , start   = start
         , end     = end
         , rawText = String.slice start end rawText -- É necessário??
         , text = String.slice textStart textEnd rawText
-        }
-
-
-
--- Helpers
-
-
-containSpace : String -> Bool
-containSpace str =
-    Regex.contains
-        (Regex.regex "\\s")
-        str
-
-
-containPuntuaction : String -> Bool
-containPuntuaction str =
-    Regex.contains
-        (Regex.regex "[!-#%-\\*,-/:;\\?@\\[-\\]_\\{\\}]")
-        str
-
-
-regexMatchToTuple : List Regex.Match -> ( Maybe String, Maybe String )
-regexMatchToTuple matches =
-    case matches of
-        match :: _ ->
-            case match.submatches of
-                maybeEmSequence :: maybeNextChar :: _ ->
-                    ( maybeEmSequence, maybeNextChar )
-
-                _ ->
-                    ( Nothing, Nothing )
-
-        _ ->
-            ( Nothing, Nothing )
-
-
-returnFirstJust : List (Maybe a) -> Maybe a
-returnFirstJust maybes =
-    let
-        process : Maybe a -> Maybe a -> Maybe a
-        process a maybeFound =
-            case maybeFound of
-                Just found -> Just found
-                Nothing -> a
-
-    in
-        List.foldl process Nothing maybes
-
-
-ifNothing : Maybe a -> Maybe a -> Maybe a
-ifNothing maybe maybe_ =
-    if maybe_ == Nothing then
-        maybe
-
-    else
-        maybe_
+        , matches = []
+        } |> Match
 
 
 updateLexerModel : LexerModel -> Match -> LexerModel
-updateLexerModel model match =
+updateLexerModel model (Match match) =
     { model
         | remainText =
             String.dropLeft (match.end - match.start) model.remainText
         , index = match.end
-        , matches = match :: model.matches
+        , matches = Match match :: model.matches
         , lastChar =
             model.rawText
                 |> String.reverse
@@ -1021,87 +1020,73 @@ updateLexerModel model match =
 
 
 
--- Finalization
+-- Inline
 
 
-reverseASTs : List AST -> List AST
-reverseASTs =
-    List.reverse
-        >> List.map reverseASTContent
+parse : References -> String -> List Match
+parse refs rawText =
+    let
+        trimmedText = String.trim rawText
+
+    in
+        findMatches refs trimmedText
+            |> organizeMatches
+            |> parseNormalMatches trimmedText []
 
 
-reverseASTContent : AST -> AST
-reverseASTContent ast =
-    case ast of
-        ASTMatch match ->
-            case match.type_ of
-                Link _ ->
-                    ASTMatch
-                        { match
-                            | content = toAST Dict.empty match.text
-                        }
 
-                _ ->
-                    ASTMatch
-                        { match
-                            | content = reverseASTs match.content
-                        }
-
-        NoMatch rawText ->
-            NoMatch (replaceEscapable rawText)
+----- Html
 
 
-astsToHtml : List AST -> List (Html msg)
-astsToHtml =
-    List.map astToHtml
+toHtml : List Match -> List (Html Never)
+toHtml =
+    List.map matchToHtml
         >> List.concat
 
 
-astToHtml : AST -> List (Html msg)
-astToHtml ast =
-    case ast of
-        NoMatch str ->
-            [ text str ]
+matchToHtml : Match -> List (Html Never)
+matchToHtml (Match match) =
+    case match.type_ of
+        Normal ->
+            [ text match.text ]
 
-        ASTMatch match ->
-            case match.type_ of
-                HardBreak ->
-                    [ br [] [] ]
+        HardBreak ->
+            [ br [] [] ]
 
-                Code ->
-                    [ code [] [ text match.text ] ]
+        Code ->
+            [ code [] [ text match.text ] ]
 
-                Emphasis length ->
-                    case length of
-                        1 -> [ em [] (astsToHtml match.content) ]
-                        2 -> [ strong [] (astsToHtml match.content) ]
-                        _ -> [ strong [] [ em [] (astsToHtml match.content) ] ]
+        Emphasis length ->
+            case length of
+                1 -> [ em [] (toHtml match.matches) ]
+                2 -> [ strong [] (toHtml match.matches) ]
+                _ -> [ strong [] [ em [] (toHtml match.matches) ] ]
 
-                Link ( url, maybeTitle ) ->
-                    case maybeTitle of
-                        Just title_ ->
-                            [ a [ href url, title title_ ]
-                                (astsToHtml match.content)
-                            ]
+        Link ( url, maybeTitle ) ->
+            case maybeTitle of
+                Just title_ ->
+                    [ a [ href url, title title_ ]
+                        (toHtml match.matches)
+                    ]
 
-                        Nothing ->
-                            [ a [ href url ]
-                                (astsToHtml match.content)
-                            ]
+                Nothing ->
+                    [ a [ href url ]
+                        (toHtml match.matches)
+                    ]
 
-                Image ( url, maybeTitle ) ->
-                    case maybeTitle of
-                        Just title_ ->
-                            [ img
-                                [ alt match.text
-                                , src url
-                                , title title_
-                                ] []
-                            ]
+        Image ( url, maybeTitle ) ->
+            case maybeTitle of
+                Just title_ ->
+                    [ img
+                        [ alt match.text
+                        , src url
+                        , title title_
+                        ] []
+                    ]
 
-                        Nothing ->
-                            [ img
-                                [ alt match.text
-                                , src url
-                                ] []
-                            ]
+                Nothing ->
+                    [ img
+                        [ alt match.text
+                        , src url
+                        ] []
+                    ]

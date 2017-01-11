@@ -275,6 +275,7 @@ run =
                     [ text "foo "
                     , strong []
                         [ text "bar" ]
+                    , text " "
                     , code []
                         [ text "#" ]
                     ]
