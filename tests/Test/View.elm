@@ -16,11 +16,13 @@ import Test.BlankLine
 import Test.BlockQuote
 import Test.ListItem
 import Test.List
+import Test.Inline.Escape
 import Test.Inline.Code
 import Test.Inline.EmphasisStrong
 import Test.Inline.Link
 import Test.Inline.Images
 import Test.Inline.Autolinks
+import Test.Inline.RawHtml
 import Test.Inline.LineBreak
 
 
@@ -42,14 +44,14 @@ tests =
     , ( "5.1 Block quotes", Test.BlockQuote.run )
     , ( "5.2 List Items", Test.ListItem.run )
     , ( "5.3 Lists", Test.List.run )
-    --, ( "6.1 Backslash escapes", Test.Inline.Backslash.run )
+    , ( "6.1 Backslash escapes", Test.Inline.Escape.run )
     --, ( "6.2 Entity and numeric character references", Test.Inline.Code.run )
     , ( "6.3 Code spans", Test.Inline.Code.run )
     , ( "6.4 Emphasis and strong emphasis", Test.Inline.EmphasisStrong.run )
     , ( "6.5 Links", Test.Inline.Link.run )
     , ( "6.6 Images", Test.Inline.Images.run )
     , ( "6.7 Autolinks", Test.Inline.Autolinks.run )
-    --, ( "6.8 Raw HTML", Test.Inline.RawHtml.run )
+    , ( "6.8 Raw HTML", Test.Inline.RawHtml.run )
     , ( "6.9-11 Line breaks and Textual content", Test.Inline.LineBreak.run )
     ]
 

@@ -3,7 +3,7 @@ module Test.Helpers exposing (..)
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import CommonMark
+import Markdown
 
 
 type alias Output = Maybe (Html Never)
@@ -14,7 +14,7 @@ testEq number description input expectedResult =
     let
         result : List (Html Never)
         result =
-            CommonMark.toHtml input
+            Markdown.toHtml input
 
         isValid =
             toString result == toString expectedResult

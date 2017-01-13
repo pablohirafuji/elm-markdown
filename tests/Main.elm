@@ -4,7 +4,7 @@ module Main exposing (..)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
-import CommonMark
+import Markdown
 import Test.View
 
 
@@ -34,6 +34,7 @@ type Msg
     | Markdown
 
 
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
@@ -55,11 +56,11 @@ view model =
         , p []
             [ text
                 <| toString
-                <| CommonMark.toBlocks model.textarea
+                <| Markdown.toBlocks Markdown.defaultOptions model.textarea
             ]
         , Html.map (always Markdown)
             <| div []
-            <| CommonMark.toHtml model.textarea
+            <| Markdown.toHtml model.textarea
         , Html.map (always Markdown) Test.View.view
         ]
 
