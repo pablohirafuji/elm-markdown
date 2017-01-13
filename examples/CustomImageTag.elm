@@ -64,7 +64,11 @@ view model =
             ]
         ]
         [ h1 [] [ text "Pure Elm Markdown" ]
-        , h2 [] [ text "Custom image example | Code" ]
+        , h2 []
+            [ text "Custom image example / "
+            , a [ href "https://github.com/pablohirafuji/elm-markdown/blob/master/examples/CustomImageTag.elm"]
+                [ text "Code" ]
+            ]
         , div [ style [ ("display", "flex") ] ]
             [ div [ style [ ("width", "50%") ] ]
                 [ textarea

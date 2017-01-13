@@ -882,7 +882,9 @@ blocksToHtml options elements textAsParagraph =
 demonstrate how to use it.
 
 - Render `target="_blank"` on links depending on the url.
+[Demo](https://pablohirafuji.github.io/elm-markdown/examples/CustomLinkTag.html) / [Code](https://github.com/pablohirafuji/elm-markdown/blob/master/examples/CustomLinkTag.elm)
 - Render images using `figure` and `figcaption` elements.
+[Demo](https://pablohirafuji.github.io/elm-markdown/examples/CustomImageTag.html) / [Code](https://github.com/pablohirafuji/elm-markdown/blob/master/examples/CustomImageTag.elm)
 -}
 customHtml : Config.Options -> Config.Elements -> String -> List (Html Never)
 customHtml options elements =

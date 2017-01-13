@@ -65,7 +65,11 @@ view model =
             ]
         ]
         [ h1 [] [ text "Pure Elm Markdown" ]
-        , h2 [] [ text "Custom link target example | Code" ]
+        , h2 []
+            [ text "Custom link target example / "
+            , a [ href "https://github.com/pablohirafuji/elm-markdown/blob/master/examples/CustomLinkTag.elm" ]
+                [ text "Code" ]
+            ]
         , div [ style [ ("display", "flex") ] ]
             [ div [ style [ ("width", "50%") ] ]
                 [ textarea
