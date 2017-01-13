@@ -882,9 +882,11 @@ blocksToHtml options elements textAsParagraph =
 demonstrate how to use it.
 
 - Render `target="_blank"` on links depending on the url.
-[Demo](https://pablohirafuji.github.io/elm-markdown/examples/CustomLinkTag.html) / [Code](https://github.com/pablohirafuji/elm-markdown/blob/master/examples/CustomLinkTag.elm)
+[Demo](https://pablohirafuji.github.io/elm-markdown/examples/CustomLinkTag.html)
+/ [Code](https://github.com/pablohirafuji/elm-markdown/blob/master/examples/CustomLinkTag.elm)
 - Render images using `figure` and `figcaption` elements.
-[Demo](https://pablohirafuji.github.io/elm-markdown/examples/CustomImageTag.html) / [Code](https://github.com/pablohirafuji/elm-markdown/blob/master/examples/CustomImageTag.elm)
+[Demo](https://pablohirafuji.github.io/elm-markdown/examples/CustomImageTag.html)
+/ [Code](https://github.com/pablohirafuji/elm-markdown/blob/master/examples/CustomImageTag.elm)
 -}
 customHtml : Config.Options -> Config.Elements -> String -> List (Html Never)
 customHtml options elements =
@@ -892,9 +894,25 @@ customHtml options elements =
         >> blocksToHtml options elements True
 
 
-{-| Customize how soft line breaks (`\n`) are rendered and html
+{-| Customize how soft line breaks (`\n`) are rendered and raw html
 tags are parsed.
-Play with the options of the demo to see what each option does.
+
+```
+customOptions : Options
+customOptions =
+    { softAsHardLineBreak = True
+    , rawHtml = DontParse
+    }
+
+
+view : Html Never
+view =
+    div []
+        <| Markdown.withOptions customOptions model.textarea
+```
+
+The [demo](https://pablohirafuji.github.io/elm-markdown/examples/Demo.html)
+demonstrate how each option affects the output.
 -}
 withOptions : Config.Options -> String -> List (Html Never)
 withOptions options =

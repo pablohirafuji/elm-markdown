@@ -60,7 +60,7 @@ update msg model =
                 options = model.options
                 updtOptions =
                     { options
-                        | html = htmlConfig
+                        | rawHtml = htmlConfig
                     }
             
             in

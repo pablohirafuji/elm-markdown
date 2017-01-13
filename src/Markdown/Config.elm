@@ -39,12 +39,12 @@ import Html.Attributes exposing (start, class, src, alt, title, href)
 particular case. 
 
 - `softAsHardLineBreak`: If set to `True`, will render `\n` as `<br>`.
-- `html`: This determine what to do with raw html elements.
+- `rawHtml`: This determine what to do with raw html elements.
     
 -}
 type alias Options =
     { softAsHardLineBreak : Bool
-    , html : HtmlOption
+    , rawHtml : HtmlOption
     }
 
 
@@ -52,14 +52,14 @@ type alias Options =
 
 ```
 { softAsHardLineBreak = False
-, html = Sanitize defaultSanitizeOptions
+, rawHtml = Sanitize defaultSanitizeOptions
 }
 ```
 -}
 defaultOptions : Options
 defaultOptions =
     { softAsHardLineBreak = False
-    , html = Sanitize defaultSanitizeOptions
+    , rawHtml = Sanitize defaultSanitizeOptions
     }
 
 
@@ -100,6 +100,7 @@ type alias SanitizeOptions =
     , "tfoot", "th", "thead", "title", "tr", "ul" ]
 , allowedHtmlAttributes =
     [ "name", "class" ]
+}
 ```
 -}
 defaultSanitizeOptions : SanitizeOptions

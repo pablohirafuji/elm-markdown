@@ -166,14 +166,10 @@ The following options are available:
 
 
 ```elm
-softAsHardLineBreak : Bool
-```
-
-Default `False`. If set to `True`, will render `\n` as `<br>`.
-
-
-```elm
-html : HtmlOption
+type alias Options =
+    { softAsHardLineBreak : Bool
+    , rawHtml : HtmlOption
+    }
 
 
 type HtmlOption
@@ -188,30 +184,32 @@ type alias SanitizeOptions =
     }
 ```
 
-Default `Sanitize`. You can choose to not parse any
-html tags (`DontParse`) or allow any html tag without
-any sanitization (`ParseUnsafe`).
+- `softAsHardLineBreak`: Default `False`. If set to `True`, will render `\n` as `<br>`.
+- `rawHtml`: Default `Sanitize defaultSanitizeOptions`.
+You can choose to not parse any html tags (`DontParse`) or allow any html tag without any sanitization (`ParseUnsafe`).
 
 
 Default allowed elements and attributes:
 
 ```elm
-{ allowedHtmlElements =
-    [ "address", "article", "aside", "b", "blockquote"
-    , "body","br", "caption", "center", "cite", "code", "col"
-    , "colgroup", "dd", "details", "div", "dl", "dt", "figcaption"
-    , "figure", "footer", "h1", "h2", "h3", "h4", "h5", "h6", "hr"
-    , "i", "legend", "li", "link", "main", "menu", "menuitem"
-    , "nav", "ol", "optgroup", "option", "p", "pre", "section"
-    , "strike", "summary", "small", "table", "tbody", "td"
-    , "tfoot", "th", "thead", "title", "tr", "ul" ]
-, allowedHtmlAttributes =
-    [ "name", "class" ]
-}
+defaultSanitizeOptions : SanitizeOptions
+defaultSanitizeOptions =
+    { allowedHtmlElements =
+        [ "address", "article", "aside", "b", "blockquote"
+        , "body","br", "caption", "center", "cite", "code", "col"
+        , "colgroup", "dd", "details", "div", "dl", "dt", "figcaption"
+        , "figure", "footer", "h1", "h2", "h3", "h4", "h5", "h6", "hr"
+        , "i", "legend", "li", "link", "main", "menu", "menuitem"
+        , "nav", "ol", "optgroup", "option", "p", "pre", "section"
+        , "strike", "summary", "small", "table", "tbody", "td"
+        , "tfoot", "th", "thead", "title", "tr", "ul" ]
+    , allowedHtmlAttributes =
+        [ "name", "class" ]
+    }
 ```
 
 Please note that is provided basic sanitization.
-If you are accepting user submmited content, use a specific library to sanitize.
+If you are accepting user submmited content, use a specific library.
 
 
 ## Customization

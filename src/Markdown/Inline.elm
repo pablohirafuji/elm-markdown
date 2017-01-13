@@ -1136,7 +1136,7 @@ htmlFromRegex model regexMatch =
 
 
             in
-                case model.options.html of
+                case model.options.rawHtml of
                     ParseUnsafe ->
                         Just (match attributes)
 
@@ -1203,7 +1203,7 @@ htmlTagFound model =
 
 
     in
-        case model.options.html of
+        case model.options.rawHtml of
             DontParse ->
                 Nothing
 
