@@ -64,7 +64,11 @@ view model =
             , ("max-width", "1080px")
             ]
         ]
-        [ h1 [] [ text "Pure Elm Markdown" ]
+        [ h1 []
+            [ a
+                [ href "http://package.elm-lang.org/packages/pablohirafuji/elm-markdown/latest" ]
+                [ text "Elm Markdown" ]
+            ]
         , h2 []
             [ text "Custom link target example / "
             , a [ href "https://github.com/pablohirafuji/elm-markdown/blob/master/examples/CustomLinkTag.elm" ]
