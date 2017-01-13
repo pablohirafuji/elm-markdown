@@ -651,13 +651,13 @@ linkTagFound model =
 -- From http://spec.commonmark.org/dingus/commonmark.js
 emailAutoLinkRegex : Regex
 emailAutoLinkRegex =
-    Regex.regex "^<([a-zA-Z0-9.!#$%&'*+\\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*)>"
+    Regex.regex "^<([a-zA-Z0-9.!#$%&'*+\\/=?^_`{|}~\\-]+@[a-zA-Z0-9](?:[a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?)*)>"
 
 
 -- From http://spec.commonmark.org/dingus/commonmark.js
 autoLinkRegex : Regex
 autoLinkRegex =
-    Regex.regex "^<([A-Za-z][A-Za-z0-9.+-]{1,31}:[^<>\x00-\x20]*)>"
+    Regex.regex "^<([A-Za-z][A-Za-z0-9.+\\-]{1,31}:[^<>\\x00-\\x20]*)>"
 
 
 autoLinkTagFound : LexerModel -> Maybe LexerModel
