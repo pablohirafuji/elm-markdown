@@ -1,23 +1,28 @@
 module Markdown exposing
-    (toHtml, toBlocks, defaultOptions
+    ( toHtml
+    , withOptions
+    , customHtml
     )
 
 
-{-|
+{-| A library for markdown parsing and rendering.
 
-# Common Helpers
-@docs toHtml, toBlocks, defaultOptions
+# Parsing Markdown
+@docs toHtml
+
+# Parsing with Custom Options
+@docs withOptions, customHtml
 
 -}
 
 
 import Html exposing (..)
-import Html.Attributes exposing (start, class)
 import Dict exposing (Dict)
 import Regex exposing (Regex)
 import Markdown.Code as Code
 import Markdown.List as Lists
 import Markdown.Inline as Inline exposing (References)
+import Markdown.Config as Config exposing (Elements, defaultElements, Options, defaultOptions)
 
 
 
@@ -38,8 +43,15 @@ type Line
     | UnorderedListLine
 
 
+toRawLines : String -> List String
+toRawLines =
+    String.lines
 
--- Regexes
+
+
+----------------------------------------------------------------------
+------------------------------ Regexes -------------------------------
+----------------------------------------------------------------------
 
 
 lineMinusListRegexes : List ( Line, Regex )
@@ -100,7 +112,9 @@ blockQuoteLineRegex =
 
 
 
--- Regex Matches
+----------------------------------------------------------------------
+----------------------------- Regex Match ----------------------------
+----------------------------------------------------------------------
 
 
 headingAtxMatch : Regex.Match -> ( Int, String )
@@ -133,11 +147,6 @@ blockQuoteFromMatch match =
         |> List.head
         |> Maybe.withDefault Nothing
         |> Maybe.withDefault ""
-
-
-toRawLines : String -> List String
-toRawLines =
-    String.lines
 
 
 
@@ -228,7 +237,7 @@ preParseRawLine ( rawLine, absSyns ) =
 
             else
                 -- parseRawLine with list priority
-                parseRawLineListsFirst rawLine absSyns
+                parseRawLineConfigFirst rawLine absSyns
 
 
         -- No need to typify the line if Fenced CodeAS
@@ -249,8 +258,8 @@ parseRawLine rawLine absSyns =
         |> Maybe.withDefault ( parseTextLine rawLine absSyns )
 
 
-parseRawLineListsFirst : String -> List AS -> List AS
-parseRawLineListsFirst rawLine absSyns =
+parseRawLineConfigFirst : String -> List AS -> List AS
+parseRawLineConfigFirst rawLine absSyns =
     List.foldl (applyRegex rawLine absSyns) Nothing listLineFirstRegexes
         |> Maybe.withDefault ( parseTextLine rawLine absSyns )
 
@@ -291,10 +300,10 @@ parseLine line absSyns match =
             parseBlockQuoteLine match absSyns
 
         OrderedListLine ->
-            parseListLine (Lists.Ordered 0) match absSyns
+            parseListLine (Config.Ordered 0) match absSyns
         
         UnorderedListLine ->
-            parseListLine Lists.Unordered match absSyns
+            parseListLine Config.Unordered match absSyns
 
 
 parseBlankLine : Regex.Match -> List AS -> List AS
@@ -356,7 +365,7 @@ parseSetextHeadingLine match absSyns =
             -- If marker is "-" and length is 1, it's
             -- an empty ListLine.
             else if str == "-" then
-                parseListLine Lists.Unordered match absSyns
+                parseListLine Config.Unordered match absSyns
 
             -- If matches with thematic break line regex, it's
             -- a ThematicBreakAS. Ps: "--" does not match.
@@ -414,7 +423,7 @@ parseBlockQuoteLine match absSyns =
                 :: absSyns
 
 
-parseListLine : Lists.Type -> Regex.Match -> List AS -> List AS
+parseListLine : Config.ListElement -> Regex.Match -> List AS -> List AS
 parseListLine type_ match absSyns =
     let
         ( lineModel, rawLine ) =
@@ -451,10 +460,10 @@ parseListLine type_ match absSyns =
             else
                 case lineModel.type_ of
                     -- Ordered list with start 1 can interrupt.
-                    Lists.Ordered 1 ->
+                    Config.Ordered 1 ->
                         newListAS
 
-                    Lists.Ordered int ->
+                    Config.Ordered int ->
                         addToParagraph paragraph match.match
                             :: absSynsTail
 
@@ -710,9 +719,7 @@ type alias HeadingBlock =
 
 
 type alias CodeBlock =
-    { language : Maybe String
-    , code : String
-    }
+    Config.CodeBlock
 
 
 type alias ParagraphBlock =
@@ -724,7 +731,7 @@ type alias BlockQuoteBlock =
 
 
 type alias ListBlock =
-    { type_ : Lists.Type
+    { type_ : Config.ListElement
     , isLoose : Bool
     , items : List (List Block)
     }
@@ -809,12 +816,6 @@ absSynsToBlocks options ( refs, absSyns ) =
     List.filterMap (absSynToBlock options refs) absSyns
 
 
-
-{-| Documentation
-
-    toBlocks "# Heading title" == [ h1 [] [ text "Heading title"" ] ]
--}
-
 toBlocks : Options -> String -> List Block
 toBlocks options rawText =
     ( toRawLines rawText, [] )
@@ -829,93 +830,13 @@ toBlocks options rawText =
 ----------------------------------------------------------------------
 
 
--- Expor e codumentar
-type alias Elements =
-    { heading : Int -> List (Html Never) -> Html Never
-    , thematicBreak : Html Never
-    , paragraph : Bool -> List (Html Never) -> List (Html Never)
-    , blockQuote : List (Html Never) -> Html Never
-    , code : Maybe String -> String -> Html Never
-    , list : Lists.Type -> List ( Html Never ) -> Html Never
-    , inline : Inline.Elements
-    }
-
-
--- Expor e codumentar
-defaultElements : Elements
-defaultElements =
-    { heading = headingElement
-    , thematicBreak = hr [] []
-    , paragraph = paragraphElement
-    , blockQuote = blockquote []
-    , code = codeElement
-    , list = listElement
-    , inline = Inline.defaultElements
-    }
-
-
-headingElement : Int -> List (Html Never) -> Html Never
-headingElement level =
-    case level of
-        1 -> h1 []
-        2 -> h2 []
-        3 -> h3 []
-        4 -> h4 []
-        5 -> h5 []
-        _ -> h6 []
-
-
-paragraphElement : Bool -> List (Html Never) -> List (Html Never)
-paragraphElement textAsParagraph innerHtml =
-    if textAsParagraph then
-        [ p [] innerHtml ]
-
-    else
-        innerHtml
-
-
-codeElement : Maybe String -> String -> Html Never
-codeElement maybeLanguage codeStr =
-    let
-        basicView : List (Html.Attribute Never) -> String -> Html Never
-        basicView attrs codeStr_ =
-            pre []
-                [ code attrs
-                    [ text codeStr_ ]
-                ]
-
-    in
-        case maybeLanguage of
-            Just language ->
-                basicView
-                    [ class ("language-" ++ language) ]
-                    codeStr
-
-            Nothing ->
-                basicView [] codeStr
-
-
-listElement : Lists.Type -> List (Html Never) -> Html Never
-listElement type_ =
-    case type_ of
-        Lists.Ordered startInt ->
-            if startInt == 1 then
-                ol []
-            
-            else
-                ol [ start startInt ]
-
-        Lists.Unordered ->
-            ul []
-
-
 blockToHtml : Options -> Elements -> Bool -> Block -> List (Html Never)
 blockToHtml options elements textAsParagraph block =
     case block of
         Heading { level, inlines } ->
             [ elements.heading
                 level
-                (Inline.toHtml elements.inline inlines)
+                (Inline.toHtml elements inlines)
             ]
 
 
@@ -926,11 +847,11 @@ blockToHtml options elements textAsParagraph block =
         Paragraph { inlines } ->
             elements.paragraph
                 textAsParagraph
-                (Inline.toHtml elements.inline inlines)
+                (Inline.toHtml elements inlines)
 
 
-        Code { language, code } ->
-            [ elements.code language code ]
+        Code model ->
+            [ elements.code model ]
 
 
         BlockQuote { blocks } ->
@@ -948,7 +869,7 @@ blockToHtml options elements textAsParagraph block =
 
 
         Html { inlines } ->
-            (Inline.toHtml elements.inline inlines)
+            (Inline.toHtml elements inlines)
 
 
 blocksToHtml : Options -> Elements -> Bool -> List Block -> List (Html Never)
@@ -957,43 +878,48 @@ blocksToHtml options elements textAsParagraph =
         >> List.concat
 
 
--- Expor e codumentar
-customHtml : Options -> Elements -> String -> List (Html Never)
+{-| Customize how to render each element. The following examples
+demonstrate how to use it.
+
+- Render `target="_blank"` on links depending on the url.
+- Render images using `figure` and `figcaption` elements.
+-}
+customHtml : Config.Options -> Config.Elements -> String -> List (Html Never)
 customHtml options elements =
     toBlocks options
         >> blocksToHtml options elements True
 
 
--- Expor e codumentar
-withOptions : Options -> String -> List (Html Never)
+{-| Customize how soft line breaks (`\n`) are rendered and html
+tags are parsed.
+Play with the options of the demo to see what each option does.
+-}
+withOptions : Config.Options -> String -> List (Html Never)
 withOptions options =
     customHtml options defaultElements
 
 
-{-| Documentation
+{-| Turn a markdown string into a list of HTML elements,
+using the `Config.defaultOptions` and `Config.defaultElements`.
 
-    toHtml "# Heading title" == [ h1 [] [ text "Heading title"" ] ]
+```
+
+type Msg
+    = MsgOfmyApp1
+    | MsgOfmyApp2
+    | MsgOfmyApp3
+    | Markdown
+
+
+markdownView : Html Msg
+markdownView =
+    Html.map (always Markdown)
+        <| section []
+        <| Markdown.toHtml "# Title with *emphasis*"
+
+```
 -}
 toHtml : String -> List (Html Never)
 toHtml =
     customHtml defaultOptions defaultElements
 
-
-
-----------------------------------------------------------------------
-------------------------------- Options ------------------------------
-----------------------------------------------------------------------
-
-
-type alias Options =
-    Inline.Options
-
-
-{-| Documentation
-
-    toHtml "# Heading title" == [ h1 [] [ text "Heading title"" ] ]
--}
-
-defaultOptions : Options
-defaultOptions =
-    Inline.defaultOptions

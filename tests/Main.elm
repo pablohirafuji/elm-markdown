@@ -53,11 +53,6 @@ view model =
             [ onInput TextAreaInput
             , defaultValue model.textarea ] []
         , br [] []
-        , p []
-            [ text
-                <| toString
-                <| Markdown.toBlocks Markdown.defaultOptions model.textarea
-            ]
         , Html.map (always Markdown)
             <| div []
             <| Markdown.toHtml model.textarea

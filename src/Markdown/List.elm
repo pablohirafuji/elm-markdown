@@ -2,6 +2,7 @@ module Markdown.List exposing (..)
 
 
 import Regex exposing (Regex)
+import Markdown.Config exposing (ListElement(..))
 
 
 
@@ -12,7 +13,7 @@ type alias Line = ( Model, String )
 
 
 type alias Model =
-    { type_ : Type
+    { type_ : ListElement
     , indentLength : Int
     , delimiter : String
     , isLoose : Bool
@@ -26,11 +27,6 @@ initModel =
     , delimiter = "-"
     , isLoose = False
     }
-
-
-type Type
-    = Unordered
-    | Ordered Int
 
 
 
@@ -97,7 +93,7 @@ fromUnorderedMatch match =
             ( initModel, "" )
 
 
-fromMatch : Type -> Regex.Match -> Line
+fromMatch : ListElement -> Regex.Match -> Line
 fromMatch type_ match =
     case type_ of
         Unordered ->
@@ -111,7 +107,7 @@ fromMatch type_ match =
 -- Helpers
 
 
-newLine : Type -> String -> String -> String -> String -> Line
+newLine : ListElement -> String -> String -> String -> String -> Line
 newLine type_ indentString delimiter indentSpace rawLine =
     let
         indentSpaceLenth =

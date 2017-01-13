@@ -1,15 +1,23 @@
 # Elm Markdown
 
-Pure elm markdown.
+Pure elm markdown. This package is for markdown parsing and rendering.
 
-## Usage
-
-```
-import Markdown
-
+## Basic Usage
 
 ```
+type Msg
+    = MsgOfmyApp1
+    | MsgOfmyApp2
+    | MsgOfmyApp3
+    | Markdown
 
+
+markdownView : Html Msg
+markdownView =
+    Html.map (always Markdown)
+        <| section []
+        <| Markdown.toHtml "# Heading with *emphasis*"
+```
 
 ## Supported syntax
 
@@ -84,6 +92,13 @@ Do you know the Elm [slack channel]?
 ```
 
 All examples output the same html.
+
+Autolinks and emails are supported:
+
+```
+Autolink: <http://www.google.com.br>
+Email link: <google@google.com.br>
+```
 
 
 ### Lists
@@ -190,21 +205,18 @@ any sanitization (`ParseUnsafe`).
 Default allowed elements and attributes:
 
 ```elm
-defaultAllowedHtmlElements : List String
-defaultAllowedHtmlElements =
+{ allowedHtmlElements =
     [ "address", "article", "aside", "b", "blockquote"
-    , "body","br", "caption", "center", "code", "col", "colgroup"
-    , "dd", "details", "div", "dl", "dt", "fieldset", "figcaption"
+    , "body","br", "caption", "center", "cite", "code", "col"
+    , "colgroup", "dd", "details", "div", "dl", "dt", "figcaption"
     , "figure", "footer", "h1", "h2", "h3", "h4", "h5", "h6", "hr"
     , "i", "legend", "li", "link", "main", "menu", "menuitem"
     , "nav", "ol", "optgroup", "option", "p", "pre", "section"
-    , "strike", "summary", "table", "tbody", "td", "tfoot", "th"
-    , "thead", "title", "tr", "ul" ]
-
-
-defaultAllowedHtmlAttributes : List String
-defaultAllowedHtmlAttributes =
+    , "strike", "summary", "small", "table", "tbody", "td"
+    , "tfoot", "th", "thead", "title", "tr", "ul" ]
+, allowedHtmlAttributes =
     [ "name", "class" ]
+}
 ```
 
 Please note that is provided basic sanitization.
@@ -213,4 +225,17 @@ If you are accepting user submmited content, use a specific library to sanitize.
 
 ## Customization
 
-example of custom element to add target="_blank"
+You can customize how each markdown element is rendered.
+The following examples demonstrate how to do it.
+
+- Example of rendering all links with `target=_blank` if does not start with a specific string. Demo | Code
+- Example of rendering all images using `figure` and `figcaption`.
+Demo | Code
+
+
+## TODO
+
+- Improve tab parser;
+- Get feedback if encoded characters replacement is needed;
+- Get feedback about missing wanted features;
+- Get feedback about the API;

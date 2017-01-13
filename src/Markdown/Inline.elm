@@ -2,10 +2,11 @@ module Markdown.Inline exposing (..)
 
 
 import Dict exposing (Dict)
-import Html exposing (..)
+import Html exposing (Html, node, text)
 import Html.Attributes exposing (href, title, alt, src, attribute)
 import Http exposing (encodeUri)
 import Regex exposing (Regex)
+import Markdown.Config as Config exposing (Elements, Options, HtmlOption(..))
 
 
 
@@ -50,15 +51,19 @@ type Type
     | Html HtmlModel
 
 
-regexes : List ( Type, Regex )
-regexes =
-    [ ( HardBreak, hardBreakRegex )
+regexes : Options -> List ( Type, Regex )
+regexes options =
+    [ ( HardBreak, lineBreakRegex options )
     ]
 
 
-hardBreakRegex : Regex
-hardBreakRegex =
-    Regex.regex " {2,}\\n|\\\\\\n"
+lineBreakRegex : Options -> Regex
+lineBreakRegex options =
+    if options.softAsHardLineBreak then
+        Regex.regex " *\\\\?\\n *"
+
+    else
+        Regex.regex " {2,}\\n|\\\\\\n"
 
 
 whiteSpaceChars : String
@@ -116,30 +121,31 @@ ifNothing maybe maybe_ =
         maybe_
 
 
-extractText : List Match -> String
-extractText matches =
-    let
-        extract : Match -> String -> String
-        extract (Match match) text =
-            case match.type_ of
-                Normal ->
-                    text ++ match.text
+-- Is useful?
+--extractText : List Match -> String
+--extractText matches =
+--    let
+--        extract : Match -> String -> String
+--        extract (Match match) text =
+--            case match.type_ of
+--                Normal ->
+--                    text ++ match.text
 
 
-                HardBreak ->
-                    text ++ " "
+--                HardBreak ->
+--                    text ++ " "
 
 
-                _ ->
-                    text ++ extractText match.matches
+--                _ ->
+--                    text ++ extractText match.matches
 
-    in
-        List.foldl extract "" matches
+--    in
+--        List.foldl extract "" matches
 
 
 findMatches : Options -> References -> String -> List Match
 findMatches options refs rawText =
-    findRegexesMatches regexes rawText
+    findRegexesMatches (regexes options) rawText
         |> (++) (.matches (lexer (initLexerModel options refs rawText)))
 
 
@@ -299,7 +305,6 @@ lexer model =
 
             in
                 if model.isEscaped then
-                    --if char == '\n'
                     lexer noOpModel
 
                 else
@@ -1310,82 +1315,6 @@ parseNormalMatch rawText (Match matchModel) parsedMatches =
 ----------------------------------------------------------------------
 
 
-type alias Elements =
-    { emphasis : List (Html Never) -> Html Never
-    , strongEmphasis : List (Html Never) -> Html Never
-    , code : String -> Html Never
-    , link : LinkModel -> List (Html Never) -> Html Never
-    , image : ImageModel -> Html Never
-    }
-
-
-defaultElements : Elements
-defaultElements =
-    { emphasis = emphasisElement
-    , strongEmphasis = strongEmphasisElement
-    , code = codeElement
-    , link = linkElement
-    , image = imageElement
-    }
-
-
-emphasisElement : List (Html Never) -> Html Never
-emphasisElement =
-    em []
-
-
-strongEmphasisElement : List (Html Never) -> Html Never
-strongEmphasisElement =
-    strong []
-
-
-codeElement : String -> Html Never
-codeElement codeStr =
-    code [] [ text codeStr ]
-
-
-type alias LinkModel =
-    { url : String
-    , title : Maybe String
-    }
-
-
-linkElement : LinkModel -> List (Html Never) -> Html Never
-linkElement model =
-    case model.title of
-        Just title_ ->
-            a [ href model.url, title title_ ]
-            
-
-        Nothing ->
-            a [ href model.url ]
-
-
-type alias ImageModel =
-    { alt : String
-    , src : String
-    , title : Maybe String
-    }
-
-
-imageElement : ImageModel -> Html Never
-imageElement model =
-    case model.title of
-        Just title_ ->
-            img
-                [ alt model.alt
-                , src model.src
-                , title title_
-                ] []
-            
-
-        Nothing ->
-            img
-                [ alt model.alt
-                , src model.src
-                ] []
-
-
 toHtml : Elements -> List Match -> List (Html Never)
 toHtml elements =
     List.map (matchToHtml elements)
@@ -1399,11 +1328,11 @@ matchToHtml elements (Match match) =
 
 
         HardBreak ->
-            br [] []
+            elements.hardLineBreak
 
 
         Code ->
-            elements.code match.text
+            elements.codeSpan match.text
 
 
         Emphasis length ->
@@ -1419,24 +1348,29 @@ matchToHtml elements (Match match) =
                     
 
                 _ ->
-                    elements.strongEmphasis
-                        <| flip (::) []
-                        <| matchToHtml elements
-                        <| Match
-                            { match |
-                                type_ = Emphasis (length - 2)
-                            }
-                    
+                    if length - 2 > 0 then
+                        elements.strongEmphasis
+                            <| flip (::) []
+                            <| matchToHtml elements
+                            <| Match
+                                { match |
+                                    type_ = Emphasis (length - 2)
+                                }
+
+                    else
+                        elements.emphasis
+                            (toHtml elements match.matches)
+
 
         Link ( url, maybeTitle ) ->
             elements.link
-                (LinkModel url maybeTitle)
+                (Config.Link url maybeTitle)
                 (toHtml elements match.matches)
 
 
         Image ( url, maybeTitle ) ->
             elements.image
-                (ImageModel match.text url maybeTitle)
+                (Config.Image match.text url maybeTitle)
                     
 
         Html { tag, attributes } ->
@@ -1455,64 +1389,4 @@ attributeToAttribute : Attribute -> Html.Attribute Never
 attributeToAttribute ( name, maybeValue ) =
     attribute name (Maybe.withDefault name maybeValue)
 
-
-
-----------------------------------------------------------------------
-------------------------------- Options ------------------------------
-----------------------------------------------------------------------
-
-
-type alias Options =
-    { softAsHardLineBreak : Bool
-    , html : HtmlOption
-    --, headingAnchors : Bool
-    --, targetBlankLinks : Maybe (List String)
-    -- Tem como fazer um exemplo
-    -- target="_blank" rel="noopener" https://mathiasbynens.github.io/rel-noopener/
-    }
-
-
-defaultOptions : Options
-defaultOptions =
-    { softAsHardLineBreak = False
-    , html = Sanitize defaultSanitizeOptions
-    --, headingAnchors = False
-    --, targetBlankLinks = Nothing
-    }
-
-
-type HtmlOption
-    = ParseUnsafe
-    | Sanitize SanitizeOptions
-    | DontParse
-
-
-type alias SanitizeOptions =
-    { allowedHtmlElements : List String
-    , allowedHtmlAttributes : List String
-    }
-
-
-defaultSanitizeOptions : SanitizeOptions
-defaultSanitizeOptions =
-    { allowedHtmlElements = defaultAllowedHtmlElements
-    , allowedHtmlAttributes = defaultAllowedHtmlAttributes
-    }
-
-
-defaultAllowedHtmlElements : List String
-defaultAllowedHtmlElements =
-    [ "address", "article", "aside", "b", "blockquote"
-    , "body","br", "caption", "center", "code", "col", "colgroup"
-    , "dd", "details", "div", "dl", "dt", "fieldset", "figcaption"
-    , "figure", "footer", "h1", "h2", "h3", "h4", "h5", "h6", "hr"
-    , "i", "legend", "li", "link", "main", "menu", "menuitem"
-    , "nav", "ol", "optgroup", "option", "p", "pre", "section"
-    , "strike", "summary", "table", "tbody", "td", "tfoot", "th"
-    , "thead", "title", "tr", "ul" ]
-
-
-defaultAllowedHtmlAttributes : List String
-defaultAllowedHtmlAttributes =
-    [ "name", "class" ]
 
