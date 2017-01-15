@@ -1,6 +1,6 @@
 # Elm Markdown
 
-Pure elm markdown. This package is for markdown parsing and rendering. [Demo](https://pablohirafuji.github.io/elm-markdown/examples/Demo.html).
+Pure Elm markdown parsing and rendering. [Demo](https://pablohirafuji.github.io/elm-markdown/examples/Demo.html).
 
 ## Basic Usage
 
@@ -32,6 +32,13 @@ the size of the heading.
     ## Heading 2
     ###### Heading 6
 
+You can also use `=` or `-` after a paragraph for level 1 or 2 heading.
+
+    Heading 1
+    ==========
+
+    Heading 2
+    ----------
 
 
 ### Quoting
@@ -56,12 +63,12 @@ at least three backticks or four spaces or tab.
         Example of block code
 
     ```optionalLang
-    Example of block code
+    Example of block code with defined language
     ```
 
 If the language in the fenced code block is defined,
 it will be added a `class="language-optionalLang"` to
-the output code element.
+the code element.
 
 
 ### Link
@@ -87,8 +94,8 @@ All examples output the same html.
 
 Autolinks and emails are supported with `< >`:
 
-    Autolink: <http://www.google.com.br>
-    Email link: <google@google.com.br>
+    Autolink: <http://elm-lang.org/>
+    Email link: <google@google.com>
 
 
 ### Lists
@@ -100,7 +107,7 @@ text with `-` or `*`.
     - Unordered list
       * Nested unordered list
     5. Ordered list starting at 5
-        1) Nested ordered list
+        1) Nested ordered list starting at 1
 
 
 ### Paragraphs and line breaks
@@ -117,7 +124,7 @@ between lines of text.
 
 
 By default, soft line break (`\n`) will be rendered as it is,
-unless it's preceded by two spaces or `\`, witch will output
+unless it's preceded by two spaces or `\`, which will output
 hard break line (`<br>`).
 
 You can customize to always render soft line breaks as hard
@@ -150,13 +157,14 @@ Double emphasis is strong emphasis.
 
 ### Image
 
-You can insert image using the following syntax:
+You can insert images using the following syntax:
 
 
     ![alt text](src-url "title")
 
 
-For more information, see [CommonMark Spec](http://spec.commonmark.org/0.27/).
+
+For more information about supported syntax and parsing rules, see [CommonMark Spec](http://spec.commonmark.org/0.27/).
 
 
 
@@ -186,7 +194,7 @@ type alias SanitizeOptions =
 
 - `softAsHardLineBreak`: Default `False`. If set to `True`, will render `\n` as `<br>`.
 - `rawHtml`: Default `Sanitize defaultSanitizeOptions`.
-You can choose to not parse any html tags (`DontParse`) or allow any html tag without any sanitization (`ParseUnsafe`).
+You can choose to not parse any html tags (`DontParse`), parse any html tag without any sanitization (`ParseUnsafe`) or parse only specific html elements and attributes (`Sanitize SanitizeOptions`).
 
 
 Default allowed elements and attributes:
@@ -209,7 +217,7 @@ defaultSanitizeOptions =
 ```
 
 Please note that is provided basic sanitization.
-If you are accepting user submmited content, use a specific library.
+If you are receiving user submitted content, you should use a specific library to sanitize the user input.
 
 
 ## Customization
@@ -217,7 +225,7 @@ If you are accepting user submmited content, use a specific library.
 You can customize how each markdown element is rendered.
 The following examples demonstrate how to do it.
 
-- Example of rendering all links with `target=_blank` if does not start with a specific string. [Demo](https://pablohirafuji.github.io/elm-markdown/examples/CustomLinkTag.html) / [Code](https://github.com/pablohirafuji/elm-markdown/blob/master/examples/CustomLinkTag.elm)
+- Example of rendering all links with `target="_blank"` if does not start with a specific string. [Demo](https://pablohirafuji.github.io/elm-markdown/examples/CustomLinkTag.html) / [Code](https://github.com/pablohirafuji/elm-markdown/blob/master/examples/CustomLinkTag.elm)
 - Example of rendering all images using `figure` and `figcaption`.
 [Demo](https://pablohirafuji.github.io/elm-markdown/examples/CustomImageTag.html) / [Code](https://github.com/pablohirafuji/elm-markdown/blob/master/examples/CustomImageTag.elm)
 
