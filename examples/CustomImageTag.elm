@@ -23,23 +23,21 @@ type alias Model =
 
 init : Model
 init =
-    { textarea = customLinkTargetExample
+    { textarea = initTextarea
     }
 
 
-customLinkTargetExample : String
-customLinkTargetExample = """
+initTextarea : String
+initTextarea ="""
 All images will render with `<figure>` and `<figcaption>` elements.
 
 ![Random cat image](http://thecatapi.com/api/images/get?format=src&type=gif "Like this one")
-
 """
 
 
 type Msg
     = TextAreaInput String
     | Markdown
-
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -54,15 +52,7 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    div
-        [ style
-            [ ("font-family", "sans-serif")
-            , ("color", "rgba(0,0,0,0.8)")
-            , ("margin", "0 auto")
-            , ("padding", "20px")
-            , ("max-width", "1080px")
-            ]
-        ]
+    div [ containerStyle ]
         [  h1 []
             [ a
                 [ href "http://package.elm-lang.org/packages/pablohirafuji/elm-markdown/latest" ]
@@ -73,25 +63,20 @@ view model =
             , a [ href "https://github.com/pablohirafuji/elm-markdown/blob/master/examples/CustomImageTag.elm"]
                 [ text "Code" ]
             ]
-        , div [ style [ ("display", "flex") ] ]
-            [ div [ style [ ("width", "50%") ] ]
+        , div [ displayFlex ]
+            [ div [ width50Style ]
                 [ textarea
                     [ onInput TextAreaInput
                     , defaultValue model.textarea
-                    , style
-                        [ ("width", "90%")
-                        , ("height", "400px")
-                        ]
+                    , textareaStyle
                     ] []
                 ]
-            , div [ style [ ("width", "50%") ] ]
-                [ Html.map (always Markdown)
-                    <| div []
-                    <| Markdown.customHtml
-                        Markdown.Config.defaultOptions
-                        customElements
-                        model.textarea
-                ]
+            , Html.map (always Markdown)
+                <| div [ width50Style ]
+                <| Markdown.customHtml
+                    Markdown.Config.defaultOptions
+                    customElements
+                    model.textarea
             ]
         ]
 
@@ -114,4 +99,35 @@ customImageElement image =
         , figcaption [] [ text (Maybe.withDefault "" image.title) ]
         ]
 
-           
+        
+
+-- Styles
+
+
+containerStyle : Attribute msg
+containerStyle =
+    style
+        [ ("font-family", "sans-serif")
+        , ("color", "rgba(0,0,0,0.8)")
+        , ("margin", "0 auto")
+        , ("padding", "20px")
+        , ("max-width", "1080px")
+        ]
+
+
+displayFlex : Attribute msg
+displayFlex =
+    style [ ("display", "flex") ]
+
+
+width50Style : Attribute msg
+width50Style =
+    style [ ("width", "50%") ]
+
+
+textareaStyle : Attribute msg
+textareaStyle =
+    style
+        [ ("width", "90%")
+        , ("height", "400px")
+        ]

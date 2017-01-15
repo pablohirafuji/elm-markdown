@@ -23,12 +23,12 @@ type alias Model =
 
 init : Model
 init =
-    { textarea = customLinkTargetExample
+    { textarea = initTextarea
     }
 
 
-customLinkTargetExample : String
-customLinkTargetExample = """
+initTextarea : String
+initTextarea = """
 All links starting with `http://www.google.com.br` will not have a `target="_blank"` attribute.
 
 [This link](http://elm-lang.org/docs "Elm docs") have a `target="_blank"` attribute, because starts with `http://elm-lang.org/`.
@@ -55,15 +55,7 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    div
-        [ style
-            [ ("font-family", "sans-serif")
-            , ("color", "rgba(0,0,0,0.8)")
-            , ("margin", "0 auto")
-            , ("padding", "20px")
-            , ("max-width", "1080px")
-            ]
-        ]
+    div [ containerStyle ]
         [ h1 []
             [ a
                 [ href "http://package.elm-lang.org/packages/pablohirafuji/elm-markdown/latest" ]
@@ -74,25 +66,20 @@ view model =
             , a [ href "https://github.com/pablohirafuji/elm-markdown/blob/master/examples/CustomLinkTag.elm" ]
                 [ text "Code" ]
             ]
-        , div [ style [ ("display", "flex") ] ]
-            [ div [ style [ ("width", "50%") ] ]
+        , div [ displayFlex ]
+            [ div [ width50Style ]
                 [ textarea
                     [ onInput TextAreaInput
                     , defaultValue model.textarea
-                    , style
-                        [ ("width", "90%")
-                        , ("height", "400px")
-                        ]
+                    , textareaStyle
                     ] []
                 ]
-            , div [ style [ ("width", "50%") ] ]
-                [ Html.map (always Markdown)
-                    <| div []
-                    <| Markdown.customHtml
-                        Markdown.Config.defaultOptions
-                        customElements
-                        model.textarea
-                ]
+            , Html.map (always Markdown)
+                <| div [ width50Style ]
+                <| Markdown.customHtml
+                    Markdown.Config.defaultOptions
+                    customElements
+                    model.textarea
             ]
         ]
 
@@ -121,3 +108,35 @@ customLinkElement link =
             , title (Maybe.withDefault "" link.title)
             ] ++ additionalAttrs
             
+
+
+-- Styles
+
+
+containerStyle : Attribute msg
+containerStyle =
+    style
+        [ ("font-family", "sans-serif")
+        , ("color", "rgba(0,0,0,0.8)")
+        , ("margin", "0 auto")
+        , ("padding", "20px")
+        , ("max-width", "1080px")
+        ]
+
+
+displayFlex : Attribute msg
+displayFlex =
+    style [ ("display", "flex") ]
+
+
+width50Style : Attribute msg
+width50Style =
+    style [ ("width", "50%") ]
+
+
+textareaStyle : Attribute msg
+textareaStyle =
+    style
+        [ ("width", "90%")
+        , ("height", "400px")
+        ]
