@@ -2,7 +2,7 @@ module Test.Inline.Code exposing (run)
 
 
 import Html exposing (..)
-import Html.Attributes exposing (href)
+import Html.Attributes exposing (href, attribute)
 import Test.Helpers exposing (..)
 
 
@@ -120,7 +120,9 @@ run =
         []
         "<a href=\"`\">`\n"
         [ p []
-            [ a [ href "`" ] [ text "`"] ]
+            [ a [ attribute "href" "`" ] []
+            , text "`"
+            ]
         ]
 
     , testEq 324

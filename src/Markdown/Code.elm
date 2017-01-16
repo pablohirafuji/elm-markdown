@@ -2,6 +2,7 @@ module Markdown.Code exposing (..)
 
 
 import Regex exposing (Regex)
+import Markdown.Inline as Inline
 
 
 
@@ -66,6 +67,7 @@ fromOpeningFenceMatch match =
                     , language =
                         String.words language
                             |> List.head
+                            |> Maybe.map Inline.replaceEscapable
                             |> Maybe.withDefault ""
                     }
                 , ""

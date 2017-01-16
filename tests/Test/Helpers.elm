@@ -4,6 +4,7 @@ module Test.Helpers exposing (..)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Markdown
+import Markdown.Config as Config exposing (defaultOptions)
 
 
 type alias Output = Maybe (Html Never)
@@ -14,7 +15,7 @@ testEq number description input expectedResult =
     let
         result : List (Html Never)
         result =
-            Markdown.toHtml input
+            Markdown.withOptions customOptions input
 
         isValid =
             toString result == toString expectedResult
@@ -51,3 +52,10 @@ testEq number description input expectedResult =
             
         else
             Just view
+
+
+customOptions : Config.Options
+customOptions =
+    { defaultOptions
+        | rawHtml = Config.ParseUnsafe
+    }

@@ -15,29 +15,44 @@ run =
     [ testEq 581
         []
         "<a><bab><c2c>\n"
-        [ a [] [ node "bab" [] [ node "c2c" [] [] ] ] ]
+        [ p []
+            [ a [] []
+            , node "bab" [] []
+            , node "c2c" [] []
+            ]
+        ]
 
     , testEq 582
         []
         "<a/><b2/>\n"
-        []
+        [ p [] [ text "<a/><b2/>" ] ]
 
     , testEq 583
         []
         "<a  /><b2\ndata=\"foo\" >\n"
-        [ a [] [], node "b2" [ attribute "data" "foo" ] [] ]
+        [ p []
+            [ a [] []
+            , node "b2" [ attribute "data" "foo" ] []
+            ]
+        ]
 
     , testEq 584
         []
         "<a foo=\"bar\" bam = 'baz <em>\"</em>'\n_boolean zoop:33=zoop:33 />\n"
-        []
+        [ p []
+            [ text "<a foo=\"bar\" bam = 'baz "
+            , em [] [ text "\"" ]
+            , text "'\n_boolean zoop:33=zoop:33 />"
+            ]
+        ]
 
     , testEq 585
         []
         "Foo <responsive-image src=\"foo.jpg\" />\n"
         [ p []
             [ text "Foo "
-            , node "responsive-image" [ src "foo.jpg" ]
+            , node "responsive-image"
+                [ attribute "src" "foo.jpg" ]
                 []
             ]
         ]
@@ -52,15 +67,22 @@ run =
     , testEq 587
         []
         "<a h*#ref=\"hi\">\n"
-        [ p []
-            [ text "<a h*#ref=\"hi\">" ]
+        [ a [ attribute "h" "h"
+            , attribute "ref" "hi"
+            ] []
         ]
 
     , testEq 588
         []
         "<a href=\"hi'> <a href=hi'>\n"
         [ p []
-            [ text "<a href=\"hi'> <a href=hi'>" ]
+            [ a [ attribute "href" ""
+                , attribute "hi" "hi"
+                ] []
+            , text " "
+            , a [ attribute "href" "hi"
+                ] []
+            ]
         ]
 
     , testEq 589
@@ -73,14 +95,16 @@ run =
     , testEq 590
         []
         "<a href='bar'title=title>\n"
-        [ p []
-            [ text "<a href='bar'title=title>" ]
+        [ a
+            [ attribute "href" "bar"
+            , attribute "title" "title"
+            ] []
         ]
 
     , testEq 591
         []
         "</a></foo >\n"
-        []
+        [ p [] [ text "</a></foo >" ] ]
 
     , testEq 592
         []
@@ -93,7 +117,7 @@ run =
         []
         "foo <!-- this is a\ncomment - with hyphen -->\n"
         [ p []
-            [ text "foo " ]
+            [ text "foo <!-- this is a\ncomment - with hyphen -->" ]
         ]
 
     , testEq 594
@@ -115,32 +139,45 @@ run =
     , testEq 596
         []
         "foo <?php echo $a; ?>\n"
-        []
+        [ p []
+            [ text "foo <?php echo $a; ?>" ]
+        ]
 
     , testEq 597
         []
         "foo <!ELEMENT br EMPTY>\n"
-        []
+        [ p []
+            [ text "foo <!ELEMENT br EMPTY>" ]
+        ]
 
     , testEq 598
         []
         "foo <![CDATA[>&<]]>\n"
-        []
+        [ p []
+            [ text "foo <![CDATA[>&<]]>" ]
+        ]
 
     , testEq 599
         []
         "foo <a href=\"&ouml;\">\n"
-        []
+        [ p []
+            [ text "foo "
+            , a [ attribute "href" "&ouml;" ] []
+            ]
+        ]
 
     , testEq 600
         []
         "foo <a href=\"\\*\">\n"
-        []
+        [ p []
+            [ text "foo "
+            , a [ attribute "href" "\\*" ] []
+            ]
+        ]
 
     , testEq 601
         []
         "<a href=\"\\\"\">\n"
-        [ p []
-            [ text "<a href=\"\"\">" ]
+        [ a [ attribute "href" "\\" ] []
         ]
     ]

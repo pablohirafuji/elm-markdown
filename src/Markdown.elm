@@ -165,6 +165,11 @@ type AS
     | ParagraphAS String
 
 
+----------------------------------------------------------------------
+------------------------------- Parser -------------------------------
+----------------------------------------------------------------------
+
+
 parseRawLines : ( List String, List AS ) -> List AS
 parseRawLines ( rawLines, absSyns ) =
     case rawLines of

@@ -2,7 +2,7 @@ module Test.Inline.Escape exposing (run)
 
 
 import Html exposing (..)
-import Html.Attributes exposing (href, src, class, title)
+import Html.Attributes exposing (href, src, class, title, attribute)
 import Test.Helpers exposing (..)
 
 
@@ -103,7 +103,7 @@ run =
     , testEq 296
         []
         "<a href=\"/bar\\/)\">\n"
-        []
+        [ a [ attribute "href" "/bar\\/)" ] [] ]
 
     , testEq 297
         []

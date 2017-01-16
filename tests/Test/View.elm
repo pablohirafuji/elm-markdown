@@ -2,6 +2,7 @@ module Test.View exposing (..)
 
 
 import Html exposing (..)
+import Html.Attributes exposing (style)
 import Test.Helpers exposing (Output)
 import Test.Initial
 import Test.ThematicBreak
@@ -109,16 +110,28 @@ showTest ( testTitle, outputs ) =
         failed =
             List.filterMap (\i -> i) outputs
 
+        bgStyle =
+            [ style [ ("background-color", bgColor) ] ]
+
+        bgColor =
+            if List.length outputs == passed then
+                "#90EE90"
+
+            else
+                "#EEB4B4"
+
     in
         details [] <|
             [ summary [] <|
-                [ text <|
-                    testTitle
-                        ++ " ("
+                [ text (testTitle ++ " ")
+                , span bgStyle
+                    [ text
+                        <| "("
                         ++ toString passed
                         ++ "/"
                         ++ toString (List.length outputs)
                         ++ ")"
+                    ]
                 ]
             ] ++ failed
 

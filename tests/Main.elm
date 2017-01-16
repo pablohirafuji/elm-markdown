@@ -3,8 +3,9 @@ module Main exposing (..)
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Html.Events exposing (..)
+import Html.Events exposing (onInput)
 import Markdown
+import Markdown.Config as Config exposing (defaultOptions)
 import Test.View
 
 
@@ -55,7 +56,13 @@ view model =
         , br [] []
         , Html.map (always Markdown)
             <| div []
-            <| Markdown.toHtml model.textarea
+            <| Markdown.withOptions customOptions model.textarea
         , Html.map (always Markdown) Test.View.view
         ]
 
+
+customOptions : Config.Options
+customOptions =
+    { defaultOptions
+        | rawHtml = Config.ParseUnsafe
+    }

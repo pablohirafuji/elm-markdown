@@ -2,6 +2,7 @@ module Test.Inline.LineBreak exposing (run)
 
 
 import Html exposing (..)
+import Html.Attributes exposing (href, attribute)
 import Test.Helpers exposing (..)
 
 
@@ -113,12 +114,12 @@ run =
     , testEq 611
         []
         "<a href=\"foo  \nbar\">\n"
-        []
+        [ a [ attribute "href" "foo  \nbar" ] [] ]
 
     , testEq 612
         []
         "<a href=\"foo\\\nbar\">\n"
-        []
+        [ a [ attribute "href" "foo\\\nbar" ] [] ]
 
     , testEq 613
         []

@@ -2,7 +2,7 @@ module Test.Inline.EmphasisStrong exposing (run)
 
 
 import Html exposing (..)
-import Html.Attributes exposing (href, title, src)
+import Html.Attributes exposing (href, title, src, attribute)
 import Test.Helpers exposing (..)
 
 
@@ -1207,20 +1207,34 @@ run =
         "*<img src=\"foo\" title=\"*\"/>\n"
         [ p []
             [ text "*"
-            , img [ src "foo", title "*" ]
-                []
+            , img
+                [ attribute "src" "foo"
+                , attribute "title" "*"
+                ] []
             ]
         ]
 
     , testEq 450
         []
         "**<a href=\"**\">\n"
-        []
+        [ p []
+            [ text "**"
+            , a
+                [ attribute "href" "**"
+                ] []
+            ]
+        ]
 
     , testEq 451
         []
         "__<a href=\"__\">\n"
-        []
+        [ p []
+            [ text "__"
+            , a
+                [ attribute "href" "__"
+                ] []
+            ]
+        ]
 
     , testEq 452
         []
