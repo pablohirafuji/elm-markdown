@@ -46,8 +46,8 @@ type Type
     | HardBreak
     | Code
     | Emphasis Int -- Tag length
-    | Link ( String, Maybe String) -- ( Url, Maybe Title )
-    | Image ( String, Maybe String) -- ( Src, Maybe Title )
+    | Link ( String, Maybe String ) -- ( Url, Maybe Title )
+    | Image ( String, Maybe String ) -- ( Src, Maybe Title )
     | Html HtmlModel
 
 
@@ -121,26 +121,25 @@ ifNothing maybe maybe_ =
         maybe_
 
 
--- Is useful?
---extractText : List Match -> String
---extractText matches =
---    let
---        extract : Match -> String -> String
---        extract (Match match) text =
---            case match.type_ of
---                Normal ->
---                    text ++ match.text
+extractText : List Match -> String
+extractText matches =
+    let
+        extract : Match -> String -> String
+        extract (Match match) text =
+            case match.type_ of
+                Normal ->
+                    text ++ match.text
 
 
---                HardBreak ->
---                    text ++ " "
+                HardBreak ->
+                    text ++ " "
 
 
---                _ ->
---                    text ++ extractText match.matches
+                _ ->
+                    text ++ extractText match.matches
 
---    in
---        List.foldl extract "" matches
+    in
+        List.foldl extract "" matches
 
 
 findMatches : Options -> References -> String -> List Match
@@ -259,6 +258,7 @@ type alias LexerModel =
     , matches : List Match
     , options : Options
     , refs : References
+    , remainChars : List Char
     }
 
 
@@ -273,6 +273,7 @@ initLexerModel options refs rawText  =
     , matches = []
     , options = options
     , refs = refs
+    , remainChars = String.toList rawText
     }
 
 
@@ -285,6 +286,232 @@ type alias Token =
 
 type Meaning
     = EmphasisTag Char
+    | CodeTag
+    | HardLineBreakTag
+    | ImageOpenTag
+
+
+------------------------------- New code
+
+type alias IndexedToken = ( Int, Token )
+
+
+findTokens : LexerModel -> LexerModel
+findTokens model =
+    case model.remainChars of
+        [] ->
+            { model
+                | tokens = List.reverse model.tokens
+            }
+
+        char :: remainCharsTail ->
+            if model.isEscaped then
+                { model
+                    | remainChars = remainCharsTail
+                    , index = model.index + 1
+                    , isEscaped = False
+                    , lastChar = Just char
+                } |> findTokens
+
+            else
+                case model.remainChars of
+                    [] ->
+                        model
+
+
+                    '\\' :: '\n' :: remainCharsTail ->
+                        ( '\n', 2, remainCharsTail )
+                            |> addToken HardLineBreakTag model
+                            |> findTokens
+
+
+                    ' ' :: ' ' :: '\n' :: remainCharsTail ->
+                        ( '\n', 3, remainCharsTail )
+                            |> addToken HardLineBreakTag model
+                            |> findTokens
+
+
+                    '!' :: '[' :: remainCharsTail ->
+                        ( '[', 2, remainCharsTail )
+                            |> addToken ImageOpenTag model
+                            |> findTokens
+
+
+                    '`' :: remainCharsTail ->
+                        ( '`', 1, remainCharsTail )
+                            |> sameCharCount
+                            |> addToken CodeTag model
+                            |> findTokens
+
+
+                    char :: remainCharsTail ->
+                        { model
+                            | remainChars = remainCharsTail
+                            , index = model.index + 1
+                            , isEscaped = char == '\\'
+                            , lastChar = Just char
+                        } |> findTokens
+
+
+sameCharCount : ( Char, Int, List Char ) -> ( Char, Int, List Char )
+sameCharCount ( char, count, chars ) =
+    case chars of
+        char_ :: remainChars ->
+            if char_ == char then
+                sameCharCount ( char, count + 1, remainChars )
+
+            else
+                ( char, count, chars )
+
+        _ ->
+            ( char, count, chars )
+
+
+addToken : Meaning -> LexerModel -> ( Char, Int, List Char ) -> LexerModel
+addToken meaning model ( char, length, remainCharsTail ) =
+    { model
+        | remainChars = remainCharsTail
+        , index = model.index + length
+        , lastChar = Just char
+        , tokens =
+            { index = model.index
+            , length = length
+            , meaning = meaning
+            } :: model.tokens
+    } |> Debug.log "addToken"
+
+
+searchOpenToken : ( Token -> Bool ) -> List Token -> ( List Token, List Token, Maybe Token )
+searchOpenToken isOpenToken tokens =
+    let
+        search : Token -> ( List Token, List Token, Maybe Token ) -> ( List Token, List Token, Maybe Token )
+        search token ( remainTokens, innerTokens, maybeToken ) =
+            case maybeToken of
+                Nothing ->
+                    if isOpenToken token then
+                        ( []
+                        , innerTokens
+                        , Just token )
+
+                    else
+                        ( []
+                        , token :: innerTokens
+                        , Nothing )
+
+                Just _ ->
+                    ( token :: remainTokens
+                    , innerTokens
+                    , maybeToken
+                    )
+
+
+    in
+        List.foldr search ( [], [], Nothing ) tokens
+
+
+tokenPairToMatch : String -> ( String -> String ) -> Type -> Token -> Token -> Match
+tokenPairToMatch rawText processText type_ openToken closeToken =
+    let
+        start = openToken.index
+        end = closeToken.index + closeToken.length
+        textStart = openToken.index + openToken.length
+        textEnd = closeToken.index
+
+    in
+        { type_   = type_
+        , start   = start
+        , end     = end
+        , rawText = "" --String.slice start end rawText -- É necessário??
+        , text =
+            String.slice textStart textEnd rawText
+                |> processText
+        , matches = []
+        } |> Match
+
+
+
+--- Code Span
+
+
+findCodeMatches : LexerModel -> LexerModel
+findCodeMatches model =
+    let
+        findTokenPairs : List ( IndexedToken, IndexedToken ) -> List IndexedToken -> List ( IndexedToken, IndexedToken )
+        findTokenPairs found tokens =
+            case tokens of
+                [] ->
+                    List.reverse found
+                        |> Debug.log "tokens"
+
+                openToken :: tokensTail ->
+                    case findCloseToken openToken tokensTail of
+                        Just ( closeToken, closeTokenRemain ) ->
+                            findTokenPairs
+                                (( openToken, closeToken ) :: found)
+                                closeTokenRemain
+
+                        Nothing ->
+                            findTokenPairs found tokensTail
+
+
+        findCloseToken : IndexedToken -> List IndexedToken -> Maybe ( IndexedToken, List IndexedToken )
+        findCloseToken ( openIndex, openToken ) tokens =
+            case tokens of
+                [] ->
+                    Nothing
+
+                ( closeIndex, closeToken ) :: tokensTail ->
+                    if openToken.length == closeToken.length then
+                        Just ( ( closeIndex, closeToken ), tokensTail )
+
+                    else
+                        findCloseToken ( openIndex, openToken ) tokensTail
+
+
+        removeTokens : Int -> LexerModel -> List ( IndexedToken, IndexedToken ) -> LexerModel
+        removeTokens  removed model tokenPairs =
+            case tokenPairs of
+                [] ->
+                    model
+
+                (( openIndex, openToken ), (closeIndex, closeToken)) :: matchesTail ->
+                    removeTokens (closeIndex - openIndex + 1)
+                        { model
+                            | tokens =
+                                List.take (openIndex - removed) model.tokens
+                                    ++ List.drop (closeIndex - removed + 1) model.tokens
+                        } matchesTail
+
+
+        addMatches : List ( IndexedToken, IndexedToken ) -> LexerModel -> LexerModel
+        addMatches tokenPairs model =
+            let
+                toMatch : ( IndexedToken, IndexedToken ) -> Match
+                toMatch ( ( _, openToken ), ( _, closeToken ) ) =
+                    tokenPairToMatch model.rawText cleanWhitespaces
+                        Code openToken closeToken
+
+            in
+                { model
+                    | matches =
+                        model.matches
+                            ++ List.map toMatch tokenPairs
+                }
+
+
+    in
+        List.indexedMap (,) model.tokens
+            |> List.filter (Tuple.second >> .meaning >> (==) CodeTag)
+            |> findTokenPairs []
+            |> (\tokenPairs ->
+                    removeTokens 0 model tokenPairs
+                        |> addMatches tokenPairs
+                )
+
+
+
+
+------------------------Old version
 
 
 lexer : LexerModel -> LexerModel
@@ -718,6 +945,7 @@ autoLinkTagFound model =
             |> Maybe.map (updateLexerModel model)
 
 
+
 ----------------------------------------------------------------------
 -------------------------------- Image -------------------------------
 ----------------------------------------------------------------------
@@ -745,7 +973,7 @@ imageTagFound model =
             , end     = model.index + matchLength
             , rawText = inside
             , text    = inside
-            , matches = []
+            , matches = findMatches model.options Dict.empty inside
             } |> Match
 
 
@@ -1227,6 +1455,10 @@ parse options refs rawText =
 
     in
         findMatches options refs trimmedText
+        --findTokens (initLexerModel options refs trimmedText)
+        --    |> findCodeMatches
+        --    |> .matches
+
             |> organizeMatches
             |> parseNormalMatches trimmedText []
 
@@ -1364,13 +1596,18 @@ matchToHtml elements (Match match) =
 
         Link ( url, maybeTitle ) ->
             elements.link
-                (Config.Link url maybeTitle)
+                { url = url
+                , title = maybeTitle
+                }
                 (toHtml elements match.matches)
 
 
         Image ( url, maybeTitle ) ->
             elements.image
-                (Config.Image match.text url maybeTitle)
+                { alt = extractText match.matches
+                , src = url
+                , title = maybeTitle
+                }
                     
 
         Html { tag, attributes } ->
@@ -1388,5 +1625,4 @@ attributesToHtmlAttributes =
 attributeToAttribute : Attribute -> Html.Attribute Never
 attributeToAttribute ( name, maybeValue ) =
     attribute name (Maybe.withDefault name maybeValue)
-
 
