@@ -121,26 +121,25 @@ ifNothing maybe maybe_ =
         maybe_
 
 
--- Is useful?
---extractText : List Match -> String
---extractText matches =
---    let
---        extract : Match -> String -> String
---        extract (Match match) text =
---            case match.type_ of
---                Normal ->
---                    text ++ match.text
+extractText : List Match -> String
+extractText matches =
+    let
+        extract : Match -> String -> String
+        extract (Match match) text =
+            case match.type_ of
+                Normal ->
+                    text ++ match.text
 
 
---                HardBreak ->
---                    text ++ " "
+                HardBreak ->
+                    text ++ " "
 
 
---                _ ->
---                    text ++ extractText match.matches
+                _ ->
+                    text ++ extractText match.matches
 
---    in
---        List.foldl extract "" matches
+    in
+        List.foldl extract "" matches
 
 
 findMatches : Options -> References -> String -> List Match
@@ -745,7 +744,7 @@ imageTagFound model =
             , end     = model.index + matchLength
             , rawText = inside
             , text    = inside
-            , matches = []
+            , matches = findMatches model.options Dict.empty inside
             } |> Match
 
 
@@ -1364,13 +1363,18 @@ matchToHtml elements (Match match) =
 
         Link ( url, maybeTitle ) ->
             elements.link
-                (Config.Link url maybeTitle)
+                { url = url
+                , title = maybeTitle
+                }
                 (toHtml elements match.matches)
 
 
         Image ( url, maybeTitle ) ->
             elements.image
-                (Config.Image match.text url maybeTitle)
+                { alt = extractText match.matches
+                , src = url
+                , title = maybeTitle
+                }
                     
 
         Html { tag, attributes } ->
