@@ -470,14 +470,19 @@ insideRegex =
 
 titleRegex : String
 titleRegex =
-    "(?:[" ++ whiteSpaceChars ++ "]+(?:'([^'\\\\]*(?:\\\\.[^'\\\\]*)*)'|\"([^\"\\\\]*(?:\\\\.[^\"\\\\]*)*)\"|\\(([^\\)\\\\]*(?:\\\\.[^\\)\\\\]*)*)\\)))?"
+    "(?:[" ++ whiteSpaceChars ++ "]+"
+    ++ "(?:'([^'\\\\\\x00]*(?:\\\\.[^'\\\\]*)*)'"
+    ++ "|\"([^\"\\\\\\x00]*(?:\\\\.[^\"\\\\]*)*)\""
+    ++ "|\\(([^\\)\\\\\\x00]*(?:\\\\.[^\\)\\\\]*)*)\\)))?"
 
 
 hrefRegex : String
 hrefRegex =
     "\\s*(?:<([^<>"
-    ++ whiteSpaceChars ++ "]*)>|([^"
-    ++ whiteSpaceChars ++ "\\(\\)\\\\]*(?:\\\\.[^\\(\\)\\\\]*)*))"
+    ++ whiteSpaceChars ++ "\\\\]*(?:\\\\.[^<>"
+    ++ whiteSpaceChars ++ "\\\\]*)*)>|([^"
+    ++ whiteSpaceChars ++ "\\(\\)\\\\]*(?:\\\\.[^"
+    ++ whiteSpaceChars ++ "\\(\\)\\\\]*)*))"
 
 
 urlTitleRegex : String
@@ -1082,7 +1087,7 @@ type alias Attribute = ( String, Maybe String )
 
 htmlRegex : Regex
 htmlRegex =
-    Regex.regex "^\\<([a-zA-Z][a-zA-Z0-9\\-]*)(?:\\s+([^<>]*))?\\>(?:([\\s\\S]*?)(?:\\<\\/\\1\\s*\\>))?"
+    Regex.regex "^\\<([a-zA-Z][a-zA-Z0-9\\-]*)(?:\\s+([^<>]*))?\\/?\\>(?:([\\s\\S]*?)(?:\\<\\/\\1\\s*\\>))?"
 
 
 attributesRegex : Regex
