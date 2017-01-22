@@ -815,12 +815,22 @@ parseTextLine : String -> List AS -> List AS
 parseTextLine rawLine absSyns =
     maybeContinueParagraph rawLine absSyns
         |> Maybe.withDefault
-            (ParagraphAS (String.trimLeft rawLine) :: absSyns)
+            (ParagraphAS (formatParagraphLine rawLine) :: absSyns)
 
 
 addToParagraph : String -> String -> AS
 addToParagraph paragraph rawLine =
-    ParagraphAS (paragraph ++ "\n" ++ String.trimLeft rawLine)
+    ParagraphAS (paragraph ++ "\n" ++ formatParagraphLine rawLine)
+
+
+formatParagraphLine : String -> String
+formatParagraphLine rawParagraph =
+    if String.right 2 rawParagraph == "  " then
+        String.trim rawParagraph ++ "  "
+
+    else
+        String.trim rawParagraph
+
 
 
 maybeContinueParagraph : String -> List AS -> Maybe ( List AS )

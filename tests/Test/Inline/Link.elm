@@ -73,7 +73,10 @@ run =
         []
         "[link](<foo\nbar>)\n"
         [ p []
-            [ text "[link](<foo\nbar>)" ]
+            [ text "[link]("
+            , node "foo" [ attribute "bar" "bar" ] []
+            , text ")"
+            ]
         ]
 
     , testEq 464
@@ -420,8 +423,9 @@ run =
                     [ text "foo "
                     , strong []
                         [ text "bar" ]
+                    , text " "
                     , code []
-                        [ text " #" ]
+                        [ text "#" ]
                     ]
                 ]
             ]

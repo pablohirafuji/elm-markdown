@@ -840,7 +840,7 @@ htmlToToken model (Match match) =
 
 htmlRegex : Regex
 htmlRegex =
-    Regex.regex "^(\\/)?([a-zA-Z][a-zA-Z0-9\\-]*)(?:\\s+([^<>]*))?$"
+    Regex.regex "^(\\/)?([a-zA-Z][a-zA-Z0-9\\-]*)(?:\\s+([^<>]*?))?(\\/)?$"
 
 
 htmlFromRegex : Parser -> MatchModel -> Regex.Match -> Maybe Parser
@@ -850,55 +850,68 @@ htmlFromRegex model match regexMatch =
             Nothing
 
 
-        maybeClose :: Just tag :: maybeAttributes :: _ ->
-            let
-                updateModel : List Attribute -> Parser
-                updateModel attrs =
-                    { index = match.start
-                    , length = match.end - match.start
-                    , meaning =
-                        HtmlToken
-                            (maybeClose == Nothing)
-                            (HtmlModel tag attrs)
-                    } |> addToken model
+        maybeClose
+            :: Just tag
+            :: maybeAttributes
+            :: maybeSelfClosing
+            :: _ ->
+                let
+                    updateModel : List Attribute -> Parser
+                    updateModel attrs =
+                        { index = match.start
+                        , length = match.end - match.start
+                        , meaning =
+                            HtmlToken
+                                (maybeClose == Nothing
+                                    && maybeSelfClosing == Nothing)
+                                (HtmlModel tag attrs)
+                        } |> addToken model
 
 
-                attributes : List Attribute
-                attributes =
-                    if maybeClose == Nothing then
+                    attributes : List Attribute
+                    attributes =
                         Maybe.map applyAttributesRegex maybeAttributes
                             |> Maybe.withDefault []
 
-                    else
-                        []
+
+                    filterAttributes : List Attribute -> List String -> List Attribute
+                    filterAttributes attrs allowed =
+                        List.filter (\attr ->
+                                List.member (Tuple.first attr) allowed
+                            ) attrs
 
 
-                filterAttributes : List Attribute -> List String -> List Attribute
-                filterAttributes attrs allowed =
-                    List.filter (\attr ->
-                            List.member (Tuple.first attr) allowed
-                        ) attrs
+                    noAttributesInCloseTag : Bool
+                    noAttributesInCloseTag =
+                        maybeClose == Nothing
+                            || maybeClose /= Nothing
+                            && attributes == []
+
+                in
+                    case model.options.rawHtml of
+                        ParseUnsafe ->
+                            if noAttributesInCloseTag then
+                                Just (updateModel attributes)
 
 
-            in
-                case model.options.rawHtml of
-                    ParseUnsafe ->
-                        Just (updateModel attributes)
+                            else
+                                Nothing
 
 
-                    Sanitize { allowedHtmlElements , allowedHtmlAttributes } ->
-                        if List.member tag allowedHtmlElements then
-                            filterAttributes attributes allowedHtmlAttributes
-                                |> updateModel
-                                |> Just
+                        Sanitize { allowedHtmlElements , allowedHtmlAttributes } ->
+                            if List.member tag allowedHtmlElements
+                                && noAttributesInCloseTag then
+                                    filterAttributes attributes allowedHtmlAttributes
+                                        |> updateModel
+                                        |> Just
 
 
-                        else
+                            else
+                                Nothing
+
+
+                        DontParse ->
                             Nothing
-
-
-                    DontParse ->
-                        Nothing
 
 
         _ ->
@@ -1110,7 +1123,8 @@ hrefRegex : String
 hrefRegex =
     "(?:<([^<>"
     ++ whiteSpaceChars ++ "]*)>|([^"
-    ++ whiteSpaceChars ++ "\\(\\)\\\\]*(?:\\\\.[^\\(\\)\\\\]*)*))"
+    ++ whiteSpaceChars ++ "\\(\\)\\\\]*(?:\\\\.[^"
+    ++ whiteSpaceChars ++ "\\(\\)\\\\]*)*))"
 
 
 titleRegex : String

@@ -25,7 +25,7 @@ run =
     , testEq 582
         []
         "<a/><b2/>\n"
-        [ p [] [ text "<a/><b2/>" ] ]
+        [ p [] [ a [] [], node "b2" [] [] ] ]
 
     , testEq 583
         []
@@ -109,7 +109,7 @@ run =
     , testEq 592
         []
         "</a href=\"foo\">\n"
-        [ a [] []
+        [ p [] [ text "</a href=\"foo\">" ]
         ]
 
     , testEq 593
