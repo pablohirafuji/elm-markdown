@@ -364,7 +364,11 @@ run =
     , testEq 492
         []
         "[foo <bar attr=\"](baz)\">\n"
-        []
+        [ p []
+            [ text "[foo "
+            , node "bar" [ attribute "attr" "](baz)" ] []
+            ]
+        ]
 
     , testEq 493
         []

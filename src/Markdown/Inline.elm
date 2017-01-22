@@ -291,6 +291,7 @@ type alias Token =
 type Meaning
     = EmphasisTag Char
     | CodeToken Bool -- isEscaped
+    | LinkOpenToken Bool -- isActive
     | ImageOpenToken
     | CharToken Char
     | RightAngleBracket Bool -- isEscaped
@@ -520,23 +521,21 @@ unescapedTokenizer model =
                 |> consToken model ImageOpenToken
                 |> tokenizer
 
-
-        '*' :: remainCharsTail ->
-            ( '*', 1, remainCharsTail )
-                |> sameCharCount
-                |> consFringeRankedToken model (EmphasisToken '*')
-                |> tokenizer
-
-
-        '_' :: remainCharsTail ->
-            ( '_', 1, remainCharsTail )
-                |> sameCharCount
-                |> consFringeRankedToken model (EmphasisToken '_')
+        '[' :: remainCharsTail ->
+            ( '[', 1, remainCharsTail )
+                |> consToken model (LinkOpenToken True)
                 |> tokenizer
 
 
         char :: remainCharsTail ->
-            if List.member char [ '<', '[', ']' ] then
+            if char == '*' || char == '_' then
+                ( char, 1, remainCharsTail )
+                    |> sameCharCount
+                    |> consFringeRankedToken model (EmphasisToken char)
+                    |> tokenizer
+
+
+            else if char == '<' || char == ']' then
                 ( char, 1, remainCharsTail )
                     |> consToken model (CharToken char)
                     |> tokenizer
@@ -1065,39 +1064,82 @@ linkImageTTM ( tokens, model ) =
 
 isLinkOrImageOpenToken : Token -> Bool
 isLinkOrImageOpenToken token =
-    token.meaning == CharToken '['
-        || token.meaning == ImageOpenToken
+    case token.meaning of
+        LinkOpenToken _ -> True
+        ImageOpenToken  -> True
+        _               -> False
 
 
 linkOrImageToMatch : Token -> Parser -> ( Token, List Token, List Token ) -> Maybe Parser
 linkOrImageToMatch closeToken model ( openToken, innerTokens, remainTokens ) =
     let
+        args : Bool -> ( String, Match, Parser )
+        args isLink =
+            ( remainText
+            , tempMatch isLink
+            , { model | tokens = remainTokens }
+            )
+
+
         remainText : String
         remainText =
             String.dropLeft (closeToken.index + 1) model.rawText
 
 
-        tempMatch : Match
-        tempMatch =
+        tempMatch : Bool -> Match
+        tempMatch isLink =
             tokenPairToMatch
                 model (\s -> s)
-                (if openToken.meaning == ImageOpenToken then
-                    Image ("", Nothing)
-                else
-                    Link ("", Nothing)
-                )
+                (if isLink then Link ("", Nothing)
+                else Image ("", Nothing))
                 openToken closeToken (List.reverse innerTokens)
 
 
-        updtModel : Parser
-        updtModel =
-            { model | tokens = remainTokens }
+        removedOpenTokenModel : Parser
+        removedOpenTokenModel =
+            { model | tokens = innerTokens ++ remainTokens }
+
+
+        linkOpenTokenToInactive : Parser -> Parser
+        linkOpenTokenToInactive model_ =
+            let
+                process : Token -> Token
+                process token =
+                    case token.meaning of
+                        LinkOpenToken _ ->
+                            { token | meaning = LinkOpenToken False }
+
+                        _ ->
+                            token
+
+
+            in
+                { model_ | tokens = List.map process model_.tokens }
 
 
     in
-        checkForInlineLinkOrImage remainText tempMatch updtModel
-            |> ifNothing (checkForRefLinkOrImage
-                remainText tempMatch updtModel)
+        case openToken.meaning of
+            ImageOpenToken ->
+                checkForInlineLinkOrImage (args False)
+                    |> ifNothing (checkForRefLinkOrImage (args False))
+                    |> ifNothing (Just removedOpenTokenModel)
+
+
+            -- Active opening: set all before to inactive if found
+            LinkOpenToken True ->
+                checkForInlineLinkOrImage (args True)
+                    |> ifNothing (checkForRefLinkOrImage (args True))
+                    |> Maybe.map linkOpenTokenToInactive 
+                    |> ifNothing (Just removedOpenTokenModel)
+
+
+            -- Inactive opening: remove it
+            LinkOpenToken False ->
+                Just removedOpenTokenModel
+
+
+            _ ->
+                Nothing
 
 
 
@@ -1106,8 +1148,8 @@ linkOrImageToMatch closeToken model ( openToken, innerTokens, remainTokens ) =
 ----------------------------------------------------------------------
 
 
-checkForInlineLinkOrImage : String -> Match -> Parser -> Maybe Parser
-checkForInlineLinkOrImage remainText (Match tempMatch) model =
+checkForInlineLinkOrImage : ( String, Match, Parser ) -> Maybe Parser
+checkForInlineLinkOrImage ( remainText, Match tempMatch, model ) =
     Regex.find (Regex.AtMost 1) inlineLinkOrImageRegex remainText
         |> List.head
         |> Maybe.andThen (inlineLinkOrImageRegexToMatch tempMatch model)
@@ -1196,8 +1238,8 @@ prepareUrlAndTitle ( rawUrl, maybeTitle ) =
 ----------------------------------------------------------------------
 
 
-checkForRefLinkOrImage : String -> Match -> Parser -> Maybe Parser
-checkForRefLinkOrImage remainText (Match tempMatch) model =
+checkForRefLinkOrImage : ( String, Match, Parser ) -> Maybe Parser
+checkForRefLinkOrImage ( remainText, Match tempMatch, model ) =
     Regex.find (Regex.AtMost 1) refLabelRegex remainText
         |> List.head
         |> refRegexToMatch tempMatch model

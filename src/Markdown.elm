@@ -5,7 +5,7 @@ module Markdown exposing
     )
 
 
-{-| A library for markdown parsing and rendering.
+{-| A pure Elm package for markdown parsing and rendering.
 
 # Parsing Markdown
 @docs toHtml
