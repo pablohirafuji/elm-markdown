@@ -104,13 +104,12 @@ run =
     , testEq 591
         []
         "</a></foo >\n"
-        [ p [] [ text "</a></foo >" ] ]
+        [ p [] [ a [] [], node "foo" [] [] ] ]
 
     , testEq 592
         []
         "</a href=\"foo\">\n"
-        [ p []
-            [ text "</a href=\"foo\">" ]
+        [ a [] []
         ]
 
     , testEq 593
