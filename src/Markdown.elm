@@ -886,10 +886,10 @@ extractUrlTitleRegex regexMatch =
     case regexMatch.submatches of
         Just rawText
             :: maybeRawUrlAB -- with angle brackets: <http://url.com>
-            :: maybeRawUrlW -- without angle brackets : http://url.com
-            :: maybeTitleSQ -- with single quotes: 'title'
-            :: maybeTitleDQ -- with double quotes: "title"
-            :: maybeTitleP -- with parenthesis: (title)
+            :: maybeRawUrlW  -- without angle brackets : http://url.com
+            :: maybeTitleSQ  -- with single quotes: 'title'
+            :: maybeTitleDQ  -- with double quotes: "title"
+            :: maybeTitleP   -- with parenthesis: (title)
             :: _ ->
                 let
                     maybeRawUrl : Maybe String

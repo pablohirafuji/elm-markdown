@@ -1048,10 +1048,10 @@ linkImageTTM ( tokens, model ) =
                 CharToken ']' ->
                     model.tokens
                         |> findToken isLinkOrImageOpenToken
-                        |> Maybe.andThen
-                            (linkOrImageToMatch token model)
-                        |> Maybe.withDefault model
-                        |> (,) tokensTail
+                        |> Maybe.andThen (linkOrImageToMatch token model)
+                        |> Maybe.map (removeParsedAheadTokens tokensTail)
+                        --|> Maybe.map ((,) tokensTail)
+                        |> Maybe.withDefault ( tokensTail, model )
                         |> linkImageTTM
 
 
@@ -1142,6 +1142,21 @@ linkOrImageToMatch closeToken model ( openToken, innerTokens, remainTokens ) =
                 Nothing
 
 
+-- Remove tokens inside the Parsed ahead regex match
+removeParsedAheadTokens : List Token -> Parser -> ( List Token, Parser)
+removeParsedAheadTokens tokensTail parser =
+    case parser.matches of
+        [] ->
+            ( tokensTail, parser )
+
+        Match match :: _ ->
+            ( List.filter
+                (\token -> token.index >= match.end )
+                tokensTail
+            , parser
+            )
+
+
 
 ----------------------------------------------------------------------
 ------------------------ Inline link or image ------------------------
@@ -1180,11 +1195,11 @@ titleRegex =
 inlineLinkOrImageRegexToMatch : MatchModel -> Parser -> Regex.Match -> Maybe Match
 inlineLinkOrImageRegexToMatch matchModel model regexMatch =
     case regexMatch.submatches of
-        maybeRawUrlAB -- with angle brackets: <http://url.com>
+        maybeRawUrlAB       -- with angle brackets: <http://url.com>
             :: maybeRawUrlW -- without angle brackets : http://url.com
             :: maybeTitleSQ -- with single quotes: 'title'
             :: maybeTitleDQ -- with double quotes: "title"
-            :: maybeTitleP -- with parenthesis: (title)
+            :: maybeTitleP  -- with parenthesis: (title)
             :: _ ->
                 let
                     maybeRawUrl : Maybe String
@@ -1213,7 +1228,6 @@ inlineLinkOrImageRegexToMatch matchModel model regexMatch =
                                         Image _ -> Image
                                         _       -> Link
                             , end = matchModel.end + String.length regexMatch.match
-                            -- TODO: descartar tokens nessa área
                         } |> Match
 
 
@@ -1287,7 +1301,6 @@ refRegexToMatch matchModel model maybeRegexMatch =
                             Image _ -> Image
                             _       -> Link
                 , end = matchModel.end + regexMatchLength
-                -- TODO: descartar tokens nessa área
             } |> Match
 
 

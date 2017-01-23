@@ -60,7 +60,7 @@ run =
                     [ text "foo" ]
                 , pre []
                     [ code []
-                        [ text "bar\n" ]
+                        [ text "  bar\n" ]
                     ]
                 ]
             ]

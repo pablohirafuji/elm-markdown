@@ -1,6 +1,9 @@
 # Elm Markdown
 
-Pure Elm markdown parsing and rendering. [Demo](https://pablohirafuji.github.io/elm-markdown/examples/Demo.html).
+Pure Elm markdown parsing and rendering.
+
+Based on the latest [CommonMark Spec](http://spec.commonmark.org/0.27/), with [some differences](#differences-from-commonmark).
+[Demo](https://pablohirafuji.github.io/elm-markdown/examples/Demo.html).
 
 ## Basic Usage
 
@@ -74,19 +77,19 @@ the code element.
 ### Link
 
 You can create an inline link by wrapping link text in
-brackets `[ ]`, and then wrapping the URL in parentheses `( )`.
+brackets `[ ]`, and then wrapping the URL in parentheses `( )`, with a optional title using single quotes, double quotes or parentheses.
 
-    Do you know the Elm [slack channel](https://elmlang.slack.com/)?
+    Do you know the Elm [slack channel](https://elmlang.slack.com/ "title")?
 
 Or create a reference link:
 
-    [slackLink]: https://elmlang.slack.com/
+    [slackLink]: https://elmlang.slack.com/ 'title'
 
     Do you know the Elm [slack channel][slackLink]?
 
 Or even:
 
-    [slack channel]: https://elmlang.slack.com/
+    [slack channel]: https://elmlang.slack.com/ (title)
 
     Do you know the Elm [slack channel]?
 
@@ -167,6 +170,27 @@ You can insert images using the following syntax:
 For more information about supported syntax and parsing rules, see [CommonMark Spec](http://spec.commonmark.org/0.27/).
 
 
+## Differences from CommonMark
+
+### HTML blocks
+
+- No support for comment tag (`<!-- -->`);
+- No support for CDATA tag (`<![CDATA[ ]]>`);
+- No support for php tag (`<? ?>`);
+- To create a HTML block, wich is not surrounded by paragraph tag (`<p>`), start and finish a paragraph with the html tag you want the HTML block to be, with no blankline between the start and end tag. E.g.:
+
+    <table>
+        <tr>
+            <td>
+                Table element
+            </td>
+        </tr>
+    </table>
+
+### HTML entities encoding and decoding
+
+This package does not encode/decode special characters (e.g.: `<`, `>`, `"`, `&`) to HTML entity (e.g.: `&lt;`, `&gt;`, `&quot;`, `&amp;`), as Elm does not need it.
+
 
 ## Options
 
@@ -203,14 +227,14 @@ Default allowed elements and attributes:
 defaultSanitizeOptions : SanitizeOptions
 defaultSanitizeOptions =
     { allowedHtmlElements =
-        [ "address", "article", "aside", "b", "blockquote"
-        , "body","br", "caption", "center", "cite", "code", "col"
-        , "colgroup", "dd", "details", "div", "dl", "dt", "figcaption"
-        , "figure", "footer", "h1", "h2", "h3", "h4", "h5", "h6", "hr"
-        , "i", "legend", "li", "link", "main", "menu", "menuitem"
-        , "nav", "ol", "optgroup", "option", "p", "pre", "section"
-        , "strike", "summary", "small", "table", "tbody", "td"
-        , "tfoot", "th", "thead", "title", "tr", "ul" ]
+        [ "address", "article", "aside", "b", "blockquote", "br"
+        , "caption", "center", "cite", "code", "col", "colgroup"
+        , "dd", "details", "div", "dl", "dt", "figcaption", "figure"
+        , "footer", "h1", "h2", "h3", "h4", "h5", "h6", "hr", "i"
+        , "legend", "li", "menu", "menuitem", "nav", "ol", "optgroup"
+        , "option", "p", "pre", "section", "strike", "summary"
+        , "small", "table", "tbody", "td", "tfoot", "th", "thead"
+        , "tr", "ul" ]
     , allowedHtmlAttributes =
         [ "name", "class" ]
     }
@@ -229,11 +253,3 @@ The following examples demonstrate how to do it.
 - Example of rendering all images using `figure` and `figcaption`.
 [Demo](https://pablohirafuji.github.io/elm-markdown/examples/CustomImageTag.html) / [Code](https://github.com/pablohirafuji/elm-markdown/blob/master/examples/CustomImageTag.elm)
 
-
-## TODO
-
-- Improve docs;
-- Improve tab parser;
-- Get feedback if encoded characters replacement is needed;
-- Get feedback about missing wanted features;
-- Get feedback about the API;

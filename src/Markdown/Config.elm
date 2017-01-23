@@ -90,14 +90,14 @@ type alias SanitizeOptions =
 
 ```
 { allowedHtmlElements =
-    [ "address", "article", "aside", "b", "blockquote"
-    , "body","br", "caption", "center", "cite", "code", "col"
-    , "colgroup", "dd", "details", "div", "dl", "dt", "figcaption"
-    , "figure", "footer", "h1", "h2", "h3", "h4", "h5", "h6", "hr"
-    , "i", "legend", "li", "link", "main", "menu", "menuitem"
-    , "nav", "ol", "optgroup", "option", "p", "pre", "section"
-    , "strike", "summary", "small", "table", "tbody", "td"
-    , "tfoot", "th", "thead", "title", "tr", "ul" ]
+    [ "address", "article", "aside", "b", "blockquote", "br"
+    , "caption", "center", "cite", "code", "col", "colgroup"
+    , "dd", "details", "div", "dl", "dt", "figcaption", "figure"
+    , "footer", "h1", "h2", "h3", "h4", "h5", "h6", "hr", "i"
+    , "legend", "li", "menu", "menuitem", "nav", "ol", "optgroup"
+    , "option", "p", "pre", "section", "strike", "summary"
+    , "small", "table", "tbody", "td", "tfoot", "th", "thead"
+    , "tr", "ul" ]
 , allowedHtmlAttributes =
     [ "name", "class" ]
 }
@@ -112,14 +112,14 @@ defaultSanitizeOptions =
 
 defaultAllowedHtmlElements : List String
 defaultAllowedHtmlElements =
-    [ "address", "article", "aside", "b", "blockquote"
-    , "body","br", "caption", "center", "cite", "code", "col"
-    , "colgroup", "dd", "details", "div", "dl", "dt", "figcaption"
-    , "figure", "footer", "h1", "h2", "h3", "h4", "h5", "h6", "hr"
-    , "i", "legend", "li", "link", "main", "menu", "menuitem"
-    , "nav", "ol", "optgroup", "option", "p", "pre", "section"
-    , "strike", "summary", "small", "table", "tbody", "td"
-    , "tfoot", "th", "thead", "title", "tr", "ul" ]
+    [ "address", "article", "aside", "b", "blockquote", "br"
+    , "caption", "center", "cite", "code", "col", "colgroup"
+    , "dd", "details", "div", "dl", "dt", "figcaption", "figure"
+    , "footer", "h1", "h2", "h3", "h4", "h5", "h6", "hr", "i"
+    , "legend", "li", "menu", "menuitem", "nav", "ol", "optgroup"
+    , "option", "p", "pre", "section", "strike", "summary"
+    , "small", "table", "tbody", "td", "tfoot", "th", "thead"
+    , "tr", "ul" ]
 
 
 defaultAllowedHtmlAttributes : List String
