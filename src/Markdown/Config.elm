@@ -63,7 +63,7 @@ defaultOptions =
     }
 
 
-{-| Choose what to do with raw html elements.
+{-| Choose what to do with raw html tags.
 
 - `ParseUnsafe`: Will parse any valid html tag and attribute. This includes malicious code like `<script>alert("XSS ALERT!!");</script>`.
 - `Sanitize SanitizeOptions`: Will parse only specific html elements and attributes.
@@ -136,25 +136,25 @@ defaultAllowedHtmlAttributes =
 {-| A record to be used with `customHtml` of how each element
 is rendered to html.
 -}
-type alias Elements =
-    { heading : Int -> List (Html Never) -> Html Never
-    , thematicBreak : Html Never
-    , paragraph : Bool -> List (Html Never) -> List (Html Never)
-    , blockQuote : List (Html Never) -> Html Never
-    , code : CodeBlock -> Html Never
-    , list : ListElement -> List ( Html Never ) -> Html Never
-    , emphasis : List (Html Never) -> Html Never
-    , strongEmphasis : List (Html Never) -> Html Never
-    , codeSpan : String -> Html Never
-    , link : Link -> List (Html Never) -> Html Never
-    , image : Image -> Html Never
-    , hardLineBreak : Html Never
+type alias Elements msg =
+    { heading : Int -> List (Html msg) -> Html msg
+    , thematicBreak : Html msg
+    , paragraph : Bool -> List (Html msg) -> List (Html msg)
+    , blockQuote : List (Html msg) -> Html msg
+    , code : CodeBlock -> Html msg
+    , list : ListElement -> List ( Html msg ) -> Html msg
+    , emphasis : List (Html msg) -> Html msg
+    , strongEmphasis : List (Html msg) -> Html msg
+    , codeSpan : String -> Html msg
+    , link : Link -> List (Html msg) -> Html msg
+    , image : Image -> Html msg
+    , hardLineBreak : Html msg
     }
 
 
 {-| The elements used in `toHtml` and `withOptions`.
 -}
-defaultElements : Elements
+defaultElements : Elements msg
 defaultElements =
     { heading = headingElement
     , thematicBreak = hr [] []
@@ -175,7 +175,7 @@ defaultElements =
 -- Heading
 
 
-headingElement : Int -> List (Html Never) -> Html Never
+headingElement : Int -> List (Html msg) -> Html msg
 headingElement level =
     case level of
         1 -> h1 []
@@ -190,7 +190,7 @@ headingElement level =
 -- Paragraph
 
 
-paragraphElement : Bool -> List (Html Never) -> List (Html Never)
+paragraphElement : Bool -> List (Html msg) -> List (Html msg)
 paragraphElement textAsParagraph innerHtml =
     if textAsParagraph then
         [ p [] innerHtml ]
@@ -212,10 +212,10 @@ type alias CodeBlock =
     }
 
 
-codeElement : CodeBlock -> Html Never
+codeElement : CodeBlock -> Html msg
 codeElement codeBlock =
     let
-        basicView : List (Html.Attribute Never) -> Html Never
+        basicView : List (Html.Attribute msg) -> Html msg
         basicView attrs =
             pre []
                 [ code attrs
@@ -243,7 +243,7 @@ type ListElement
     | Ordered Int
 
 
-listElement : ListElement -> List (Html Never) -> Html Never
+listElement : ListElement -> List (Html msg) -> Html msg
 listElement type_ =
     case type_ of
         Ordered startInt ->
@@ -261,12 +261,12 @@ listElement type_ =
 -- Emphasis
 
 
-emphasisElement : List (Html Never) -> Html Never
+emphasisElement : List (Html msg) -> Html msg
 emphasisElement =
     em []
 
 
-strongEmphasisElement : List (Html Never) -> Html Never
+strongEmphasisElement : List (Html msg) -> Html msg
 strongEmphasisElement =
     strong []
 
@@ -275,7 +275,7 @@ strongEmphasisElement =
 -- Code Span
 
 
-codeSpanElement : String -> Html Never
+codeSpanElement : String -> Html msg
 codeSpanElement codeStr =
     code [] [ text codeStr ]
 
@@ -292,7 +292,7 @@ type alias Link =
     }
 
 
-linkElement : Link -> List (Html Never) -> Html Never
+linkElement : Link -> List (Html msg) -> Html msg
 linkElement model =
     case model.title of
         Just title_ ->
@@ -316,7 +316,7 @@ type alias Image =
     }
 
 
-imageElement : Image -> Html Never
+imageElement : Image -> Html msg
 imageElement model =
     case model.title of
         Just title_ ->

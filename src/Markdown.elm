@@ -1201,7 +1201,7 @@ toBlocks options rawText =
 ----------------------------------------------------------------------
 
 
-blockToHtml : Options -> Elements -> Bool -> Block -> List (Html Never)
+blockToHtml : Options -> Elements msg -> Bool -> Block -> List (Html msg)
 blockToHtml options elements textAsParagraph block =
     case block of
         Heading { level, inlines } ->
@@ -1243,7 +1243,7 @@ blockToHtml options elements textAsParagraph block =
             (Inline.toHtml elements inlines)
 
 
-blocksToHtml : Options -> Elements -> Bool -> List Block -> List (Html Never)
+blocksToHtml : Options -> Elements msg -> Bool -> List Block -> List (Html msg)
 blocksToHtml options elements textAsParagraph =
     List.map (blockToHtml options elements textAsParagraph)
         >> List.concat
@@ -1259,7 +1259,7 @@ demonstrate how to use it.
 [Demo](https://pablohirafuji.github.io/elm-markdown/examples/CustomImageTag.html)
 / [Code](https://github.com/pablohirafuji/elm-markdown/blob/master/examples/CustomImageTag.elm)
 -}
-customHtml : Config.Options -> Config.Elements -> String -> List (Html Never)
+customHtml : Config.Options -> Config.Elements msg -> String -> List (Html msg)
 customHtml options elements =
     toBlocks options
         >> blocksToHtml options elements True
@@ -1276,41 +1276,33 @@ customOptions =
     }
 
 
-view : Html Never
+view : Html msg
 view =
     div []
-        <| Markdown.withOptions customOptions model.textarea
+        <| Markdown.withOptions customOptions myString
 ```
 
 The [demo](https://pablohirafuji.github.io/elm-markdown/examples/Demo.html)
 demonstrate how each option affects the output.
 -}
-withOptions : Config.Options -> String -> List (Html Never)
+withOptions : Config.Options -> String -> List (Html msg)
 withOptions options =
     customHtml options defaultElements
 
 
-{-| Turn a markdown string into a list of HTML elements,
-using the `Config.defaultOptions` and `Config.defaultElements`.
+{-| Turn a markdown string into a list of HTML elements
+using `Config.defaultOptions` and `Config.defaultElements`.
 
 ```
 
-type Msg
-    = MsgOfmyApp1
-    | MsgOfmyApp2
-    | MsgOfmyApp3
-    | Markdown
-
-
-markdownView : Html Msg
+markdownView : Html msg
 markdownView =
-    Html.map (always Markdown)
-        <| section []
+    div []
         <| Markdown.toHtml "# Title with *emphasis*"
 
 ```
 -}
-toHtml : String -> List (Html Never)
+toHtml : String -> List (Html msg)
 toHtml =
     customHtml defaultOptions defaultElements
 

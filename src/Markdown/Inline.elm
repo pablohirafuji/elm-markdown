@@ -1534,12 +1534,12 @@ lineBreakTTM ( tokens, model ) =
 ----------------------------------------------------------------------
 
 
-toHtml : Elements -> List Match -> List (Html Never)
+toHtml : Elements msg -> List Match -> List (Html msg)
 toHtml elements =
     List.map (matchToHtml elements)
 
 
-matchToHtml : Elements -> Match -> Html Never
+matchToHtml : Elements msg -> Match -> Html msg
 matchToHtml elements (Match match) =
     case match.type_ of
         Normal ->
@@ -1612,12 +1612,12 @@ matchToHtml elements (Match match) =
             
 
 
-attributesToHtmlAttributes : List Attribute -> List (Html.Attribute Never)
+attributesToHtmlAttributes : List Attribute -> List (Html.Attribute msg)
 attributesToHtmlAttributes =
     List.map attributeToAttribute
 
 
-attributeToAttribute : Attribute -> Html.Attribute Never
+attributeToAttribute : Attribute -> Html.Attribute msg
 attributeToAttribute ( name, maybeValue ) =
     attribute name (Maybe.withDefault name maybeValue)
 

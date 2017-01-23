@@ -5,6 +5,8 @@ Pure Elm markdown parsing and rendering.
 Based on the latest [CommonMark Spec](http://spec.commonmark.org/0.27/), with [some differences](#differences-from-commonmark).
 [Demo](https://pablohirafuji.github.io/elm-markdown/examples/Demo.html).
 
+
+
 ## Basic Usage
 
 
@@ -22,7 +24,9 @@ Based on the latest [CommonMark Spec](http://spec.commonmark.org/0.27/), with [s
             <| Markdown.toHtml "# Heading with *emphasis*"
 
 
+
 ## Supported syntax
+
 
 
 ### Heading
@@ -42,6 +46,7 @@ You can also use `=` or `-` after a paragraph for level 1 or 2 heading.
 
     Heading 2
     ----------
+
 
 
 ### Quoting
@@ -74,6 +79,7 @@ it will be added a `class="language-optionalLang"` to
 the code element.
 
 
+
 ### Link
 
 You can create an inline link by wrapping link text in
@@ -101,6 +107,7 @@ Autolinks and emails are supported with `< >`:
     Email link: <google@google.com>
 
 
+
 ### Lists
 
 You can make a list by preceding one or more lines of
@@ -111,6 +118,7 @@ text with `-` or `*`.
       * Nested unordered list
     5. Ordered list starting at 5
         1) Nested ordered list starting at 1
+
 
 
 ### Paragraphs and line breaks
@@ -166,11 +174,13 @@ You can insert images using the following syntax:
     ![alt text](src-url "title")
 
 
-
 For more information about supported syntax and parsing rules, see [CommonMark Spec](http://spec.commonmark.org/0.27/).
 
 
+
 ## Differences from CommonMark
+
+
 
 ### HTML blocks
 
@@ -187,9 +197,12 @@ For more information about supported syntax and parsing rules, see [CommonMark S
         </tr>
     </table>
 
+
+
 ### HTML entities encoding and decoding
 
 This package does not encode/decode special characters (e.g.: `<`, `>`, `"`, `&`) to HTML entity (e.g.: `&lt;`, `&gt;`, `&quot;`, `&amp;`), as Elm does not need it.
+
 
 
 ## Options
@@ -242,6 +255,7 @@ defaultSanitizeOptions =
 
 Please note that is provided basic sanitization.
 If you are receiving user submitted content, you should use a specific library to sanitize the user input.
+
 
 
 ## Customization
