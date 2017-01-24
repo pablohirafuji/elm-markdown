@@ -1,25 +1,24 @@
 # Elm Markdown
 
-Pure Elm markdown parsing and rendering. [Demo](https://pablohirafuji.github.io/elm-markdown/examples/Demo.html).
+Pure Elm markdown parsing and rendering.
+
+Based on the latest [CommonMark Spec](http://spec.commonmark.org/0.27/), with [some differences](#differences-from-commonmark).
+[Demo](https://pablohirafuji.github.io/elm-markdown/examples/Demo.html).
+
+
 
 ## Basic Usage
 
 
-    type Msg
-        = MsgOfmyApp1
-        | MsgOfmyApp2
-        | MsgOfmyApp3
-        | Markdown
-
-
-    markdownView : Html Msg
+    markdownView : Html msg
     markdownView =
-        Html.map (always Markdown)
-            <| section []
+        div []
             <| Markdown.toHtml "# Heading with *emphasis*"
 
 
-## Supported syntax
+
+## Supported Syntax
+
 
 
 ### Heading
@@ -39,6 +38,7 @@ You can also use `=` or `-` after a paragraph for level 1 or 2 heading.
 
     Heading 2
     ----------
+
 
 
 ### Quoting
@@ -71,22 +71,23 @@ it will be added a `class="language-optionalLang"` to
 the code element.
 
 
+
 ### Link
 
 You can create an inline link by wrapping link text in
-brackets `[ ]`, and then wrapping the URL in parentheses `( )`.
+brackets `[ ]`, and then wrapping the URL in parentheses `( )`, with a optional title using single quotes, double quotes or parentheses.
 
-    Do you know the Elm [slack channel](https://elmlang.slack.com/)?
+    Do you know the Elm [slack channel](https://elmlang.slack.com/ "title")?
 
 Or create a reference link:
 
-    [slackLink]: https://elmlang.slack.com/
+    [slackLink]: https://elmlang.slack.com/ 'title'
 
     Do you know the Elm [slack channel][slackLink]?
 
 Or even:
 
-    [slack channel]: https://elmlang.slack.com/
+    [slack channel]: https://elmlang.slack.com/ (title)
 
     Do you know the Elm [slack channel]?
 
@@ -96,6 +97,7 @@ Autolinks and emails are supported with `< >`:
 
     Autolink: <http://elm-lang.org/>
     Email link: <google@google.com>
+
 
 
 ### Lists
@@ -108,6 +110,7 @@ text with `-` or `*`.
       * Nested unordered list
     5. Ordered list starting at 5
         1) Nested ordered list starting at 1
+
 
 
 ### Paragraphs and line breaks
@@ -163,8 +166,34 @@ You can insert images using the following syntax:
     ![alt text](src-url "title")
 
 
-
 For more information about supported syntax and parsing rules, see [CommonMark Spec](http://spec.commonmark.org/0.27/).
+
+
+
+## Differences from CommonMark
+
+- No entity references encoding/decoding support (e.g.: `&nbsp;`, `&amp;`, `&copy;`);
+- No decimal numeric characters decoding support (e.g.: `&#35;`, `&#1234;`,  `&#992;`);
+- No hexadecimal numeric character decoding support (e.g.: `&#X22;`, `&#XD06;`, `&#xcab;`);
+- No comment tag support (`<!-- -->`);
+- No CDATA tag support (`<![CDATA[ ]]>`);
+- No processing instruction tag support (`<? ?>`);
+- No declaration tag support (`<! >`);
+- No [malformed](http://spec.commonmark.org/0.27/#example-122) html tag support (e.g.: `<div class`);
+- To create a HTML block, wich is not surrounded by paragraph tag (`<p>`), start and finish a paragraph with the html tag you want the HTML block to be, with no blankline between the start and end tag. E.g.:
+
+      First paragraph.
+
+      <table>
+          <tr>
+              <td>
+                  Table element
+              </td>
+          </tr>
+      </table>
+
+      Next paragraph.
+
 
 
 
@@ -203,21 +232,22 @@ Default allowed elements and attributes:
 defaultSanitizeOptions : SanitizeOptions
 defaultSanitizeOptions =
     { allowedHtmlElements =
-        [ "address", "article", "aside", "b", "blockquote"
-        , "body","br", "caption", "center", "cite", "code", "col"
-        , "colgroup", "dd", "details", "div", "dl", "dt", "figcaption"
-        , "figure", "footer", "h1", "h2", "h3", "h4", "h5", "h6", "hr"
-        , "i", "legend", "li", "link", "main", "menu", "menuitem"
-        , "nav", "ol", "optgroup", "option", "p", "pre", "section"
-        , "strike", "summary", "small", "table", "tbody", "td"
-        , "tfoot", "th", "thead", "title", "tr", "ul" ]
+        [ "address", "article", "aside", "b", "blockquote", "br"
+        , "caption", "center", "cite", "code", "col", "colgroup"
+        , "dd", "details", "div", "dl", "dt", "figcaption", "figure"
+        , "footer", "h1", "h2", "h3", "h4", "h5", "h6", "hr", "i"
+        , "legend", "li", "menu", "menuitem", "nav", "ol", "optgroup"
+        , "option", "p", "pre", "section", "strike", "summary"
+        , "small", "table", "tbody", "td", "tfoot", "th", "thead"
+        , "tr", "ul" ]
     , allowedHtmlAttributes =
         [ "name", "class" ]
     }
 ```
 
-Please note that is provided basic sanitization.
+**Note:** Only basic sanitization is provided.
 If you are receiving user submitted content, you should use a specific library to sanitize the user input.
+
 
 
 ## Customization
@@ -229,11 +259,3 @@ The following examples demonstrate how to do it.
 - Example of rendering all images using `figure` and `figcaption`.
 [Demo](https://pablohirafuji.github.io/elm-markdown/examples/CustomImageTag.html) / [Code](https://github.com/pablohirafuji/elm-markdown/blob/master/examples/CustomImageTag.elm)
 
-
-## TODO
-
-- Improve docs;
-- Improve tab parser;
-- Get feedback if encoded characters replacement is needed;
-- Get feedback about missing wanted features;
-- Get feedback about the API;

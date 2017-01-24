@@ -25,6 +25,7 @@ import Test.Inline.Images
 import Test.Inline.Autolinks
 import Test.Inline.RawHtml
 import Test.Inline.LineBreak
+import Test.Inline.Custom
 
 
 -- Based on http://spec.commonmark.org/0.27/
@@ -54,6 +55,7 @@ tests =
     , ( "6.7 Autolinks", Test.Inline.Autolinks.run )
     , ( "6.8 Raw HTML", Test.Inline.RawHtml.run )
     , ( "6.9-11 Line breaks and Textual content", Test.Inline.LineBreak.run )
+    , ( "Customs", Test.Inline.Custom.run )
     ]
 
 
