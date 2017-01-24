@@ -10,22 +10,14 @@ Based on the latest [CommonMark Spec](http://spec.commonmark.org/0.27/), with [s
 ## Basic Usage
 
 
-    type Msg
-        = MsgOfmyApp1
-        | MsgOfmyApp2
-        | MsgOfmyApp3
-        | Markdown
-
-
-    markdownView : Html Msg
+    markdownView : Html msg
     markdownView =
-        Html.map (always Markdown)
-            <| section []
+        div []
             <| Markdown.toHtml "# Heading with *emphasis*"
 
 
 
-## Supported syntax
+## Supported Syntax
 
 
 
@@ -180,28 +172,28 @@ For more information about supported syntax and parsing rules, see [CommonMark S
 
 ## Differences from CommonMark
 
-
-
-### HTML blocks
-
-- No support for comment tag (`<!-- -->`);
-- No support for CDATA tag (`<![CDATA[ ]]>`);
-- No support for php tag (`<? ?>`);
+- No entity references encoding/decoding support (e.g.: `&nbsp;`, `&amp;`, `&copy;`);
+- No decimal numeric characters decoding support (e.g.: `&#35;`, `&#1234;`,  `&#992;`);
+- No hexadecimal numeric character decoding support (e.g.: `&#X22;`, `&#XD06;`, `&#xcab;`);
+- No comment tag support (`<!-- -->`);
+- No CDATA tag support (`<![CDATA[ ]]>`);
+- No processing instruction tag support (`<? ?>`);
+- No declaration tag support (`<! >`);
+- No [malformed](http://spec.commonmark.org/0.27/#example-122) html tag support (e.g.: `<div class`);
 - To create a HTML block, wich is not surrounded by paragraph tag (`<p>`), start and finish a paragraph with the html tag you want the HTML block to be, with no blankline between the start and end tag. E.g.:
 
-    <table>
-        <tr>
-            <td>
-                Table element
-            </td>
-        </tr>
-    </table>
+      First paragraph.
 
+      <table>
+          <tr>
+              <td>
+                  Table element
+              </td>
+          </tr>
+      </table>
 
+      Next paragraph.
 
-### HTML entities encoding and decoding
-
-This package does not encode/decode special characters (e.g.: `<`, `>`, `"`, `&`) to HTML entity (e.g.: `&lt;`, `&gt;`, `&quot;`, `&amp;`), as Elm does not need it.
 
 
 
@@ -253,7 +245,7 @@ defaultSanitizeOptions =
     }
 ```
 
-Please note that is provided basic sanitization.
+**Note:** Only basic sanitization is provided.
 If you are receiving user submitted content, you should use a specific library to sanitize the user input.
 
 
