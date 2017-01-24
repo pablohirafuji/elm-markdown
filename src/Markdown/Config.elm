@@ -6,7 +6,6 @@ module Markdown.Config exposing
     , defaultSanitizeOptions
     , Elements
     , defaultElements
-    , CodeBlock
     , ListElement(..)
     , Image
     , Link
@@ -20,7 +19,7 @@ module Markdown.Config exposing
 @docs Options, HtmlOption, SanitizeOptions, defaultOptions, defaultSanitizeOptions
 
 # Elements
-@docs Elements, defaultElements, CodeBlock, ListElement, Image, Link
+@docs Elements, defaultElements, ListElement, Image, Link
 
 -}
 
@@ -141,7 +140,7 @@ type alias Elements msg =
     , thematicBreak : Html msg
     , paragraph : Bool -> List (Html msg) -> List (Html msg)
     , blockQuote : List (Html msg) -> Html msg
-    , code : CodeBlock -> Html msg
+    , code : Maybe String -> String -> Html msg
     , list : ListElement -> List ( Html msg ) -> Html msg
     , emphasis : List (Html msg) -> Html msg
     , strongEmphasis : List (Html msg) -> Html msg
@@ -203,27 +202,18 @@ paragraphElement textAsParagraph innerHtml =
 -- Code Block
 
 
-{-| Code block element model. If you want to use a highlight package,
-you have access to the code here.
--}
-type alias CodeBlock =
-    { language : Maybe String
-    , code : String
-    }
-
-
-codeElement : CodeBlock -> Html msg
-codeElement codeBlock =
+codeElement : Maybe String -> String -> Html msg
+codeElement maybeLanguage codeStr =
     let
         basicView : List (Html.Attribute msg) -> Html msg
         basicView attrs =
             pre []
                 [ code attrs
-                    [ text codeBlock.code ]
+                    [ text codeStr ]
                 ]
 
     in
-        case codeBlock.language of
+        case maybeLanguage of
             Just language ->
                 basicView [ class ("language-" ++ language) ]
 

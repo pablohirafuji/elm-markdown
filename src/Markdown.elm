@@ -17,6 +17,7 @@ module Markdown exposing
 
 
 import Html exposing (..)
+import Html.Attributes exposing (class)
 import Dict exposing (Dict)
 import Regex exposing (Regex)
 import Markdown.Inline as Inline exposing (References)
@@ -619,26 +620,20 @@ appendIndentedCode ( _, lineCode ) ( blankLines, blockCode ) =
             ( [], blockCode ++ blankLinesStr ++ lineCode ++ "\n" )
 
 
-codeASToBlock : CodeASModel -> CodeBlock
+codeASToBlock : CodeASModel -> Block a
 codeASToBlock model =
     case model of
         Indented ( _, codeStr ) ->
-            { language = Nothing
-            , code = codeStr
-            }
+            Code Nothing codeStr
 
 
         Fenced ( _, { language }, codeStr ) ->
             if String.length language > 0 then
-                { language = Just language
-                , code = codeStr
-                }
+                Code (Just language) codeStr
 
 
             else
-                { language = Nothing
-                , code = codeStr
-                }
+                Code Nothing codeStr
 
 
 
@@ -1073,54 +1068,28 @@ parseReferences refs =
 ----------------------------------------------------------------------
 
 
-type Block
+type alias AST customBlock customInline =
+    List (Block customBlock customInline)
+
+
+type Block customBlock
     = ThematicBreak
-    | Heading HeadingBlock
-    | Code CodeBlock
-    | Paragraph ParagraphBlock
-    | BlockQuote BlockQuoteBlock
-    | List ListBlock
-    | Html HtmlBlock 
+    | Heading Int (List Inline.Match)
+    | Code (Maybe String) String
+    | Paragraph (List Inline.Match)
+    | BlockQuote (List (Block customBlock))
+    | List Config.ListElement Bool (List (List (Block customBlock)))
+    | Html (List Inline.Match) 
+    | CustomBlock customBlock
 
 
-type alias HeadingBlock =
-    { level : Int
-    , inlines : List Inline.Match
-    }
-
-
-type alias CodeBlock =
-    Config.CodeBlock
-
-
-type alias ParagraphBlock =
-    { inlines : List Inline.Match }
-
-
-type alias BlockQuoteBlock =
-    { blocks : List Block }
-
-
-type alias ListBlock =
-    { type_ : Config.ListElement
-    , isLoose : Bool
-    , items : List (List Block)
-    }
-
-
-type alias HtmlBlock =
-    { inlines : List Inline.Match }
-
-
-absSynToBlock : Options -> References -> AS -> Maybe Block
+absSynToBlock : Options -> References -> AS -> Maybe (Block b)
 absSynToBlock options refs absSyn =
     case absSyn of
         HeadingAS ( lvl, rawText ) ->
-            Just
-                <| Heading
-                    { level = lvl
-                    , inlines = Inline.parse options refs rawText
-                    }
+            Inline.parse options refs rawText
+                |> Heading lvl
+                |> Just
 
 
         ThematicBreakAS ->
@@ -1133,9 +1102,9 @@ absSynToBlock options refs absSyn =
                 parsedInline =
                     Inline.parse options refs rawText
 
-                returnParagraph : Maybe Block
+                returnParagraph : Maybe (Block b)
                 returnParagraph =
-                    Just (Paragraph { inlines = parsedInline })
+                    Just (Paragraph parsedInline)
 
 
             in
@@ -1143,7 +1112,7 @@ absSynToBlock options refs absSyn =
                     [ Inline.Match match ] ->
                         case match.type_ of
                             Inline.Html _ ->
-                                Just (Html { inlines = parsedInline })
+                                Just (Html parsedInline)
 
                             _ ->
                                 returnParagraph
@@ -1153,41 +1122,31 @@ absSynToBlock options refs absSyn =
 
 
         CodeAS codeAS ->
-            Just
-                <| Code
-                <| codeASToBlock codeAS
+            Just (codeASToBlock codeAS)
 
 
         BlockQuoteAS absSyns ->
-            Just
-                <| BlockQuote
-                    { blocks =
-                        absSynsToBlocks options ( refs, absSyns )
-                    }
+            absSynsToBlocks options ( refs, absSyns )
+                |> BlockQuote
+                |> Just
 
 
-        ListAS model absSynsList ->
-            Just
-                <| List
-                    { type_ = model.type_
-                    , isLoose = model.isLoose
-                    , items =
-                        List.map
-                            (absSynsToBlocks options << (,) refs)
-                            absSynsList
-                    }
+        ListAS model assList ->
+            List.map (absSynsToBlocks options << (,) refs) assList
+                |> List model.type_ model.isLoose
+                |> Just
 
 
         BlankAS ->
             Nothing
 
 
-absSynsToBlocks : Options -> ( References, List AS ) -> List Block
+absSynsToBlocks : Options -> ( References, List AS ) -> List (Block b)
 absSynsToBlocks options ( refs, absSyns ) =
     List.filterMap (absSynToBlock options refs) absSyns
 
 
-toBlocks : Options -> String -> List Block
+toBlocks : Options -> String -> List (Block b)
 toBlocks options rawText =
     ( toRawLines rawText, [] )
         |> parseRawLines
@@ -1201,10 +1160,10 @@ toBlocks options rawText =
 ----------------------------------------------------------------------
 
 
-blockToHtml : Options -> Elements msg -> Bool -> Block -> List (Html msg)
+blockToHtml : Options -> Elements msg -> Bool -> Block b -> List (Html msg)
 blockToHtml options elements textAsParagraph block =
     case block of
-        Heading { level, inlines } ->
+        Heading level inlines ->
             [ elements.heading
                 level
                 (Inline.toHtml elements inlines)
@@ -1215,35 +1174,39 @@ blockToHtml options elements textAsParagraph block =
             [ elements.thematicBreak ]
 
 
-        Paragraph { inlines } ->
+        Paragraph inlines ->
             elements.paragraph
                 textAsParagraph
                 (Inline.toHtml elements inlines)
 
 
-        Code model ->
-            [ elements.code model ]
+        Code maybeLanguage codeStr ->
+            [ elements.code maybeLanguage codeStr ]
 
 
-        BlockQuote { blocks } ->
+        BlockQuote blocks ->
             blocksToHtml options elements True blocks
                 |> elements.blockQuote
                 |> flip (::) []
 
 
-        List { type_, isLoose, items } ->
+        List type_ isLoose items ->
             List.map
                 (blocksToHtml options elements isLoose
                     >> li []) items
                 |> elements.list type_
-                |> (\list -> [ list ] )
+                |> flip (::) []
 
 
-        Html { inlines } ->
-            (Inline.toHtml elements inlines)
+        Html inlines ->
+            Inline.toHtml elements inlines
 
 
-blocksToHtml : Options -> Elements msg -> Bool -> List Block -> List (Html msg)
+        CustomBlock name ->
+            [ Html.div [ class (toString name) ] [] ]
+
+
+blocksToHtml : Options -> Elements msg -> Bool -> List (Block b) -> List (Html msg)
 blocksToHtml options elements textAsParagraph =
     List.map (blockToHtml options elements textAsParagraph)
         >> List.concat
