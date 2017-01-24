@@ -25,7 +25,11 @@ run =
     , testEq 582
         []
         "<a/><b2/>\n"
-        [ p [] [ a [] [], node "b2" [] [] ] ]
+        [ p []
+            [ node "a" [] []
+            , node "b2" [] []
+            ]
+        ]
 
     , testEq 583
         []
