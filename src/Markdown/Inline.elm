@@ -1048,9 +1048,8 @@ linkImageTTM ( tokens, model ) =
                 CharToken ']' ->
                     model.tokens
                         |> findToken isLinkOrImageOpenToken
-                        |> Maybe.andThen (linkOrImageToMatch token model)
-                        |> Maybe.map (removeParsedAheadTokens tokensTail)
-                        --|> Maybe.map ((,) tokensTail)
+                        |> Maybe.andThen
+                            (linkOrImageToMatch token tokensTail model)
                         |> Maybe.withDefault ( tokensTail, model )
                         |> linkImageTTM
 
@@ -1070,8 +1069,8 @@ isLinkOrImageOpenToken token =
         _               -> False
 
 
-linkOrImageToMatch : Token -> Parser -> ( Token, List Token, List Token ) -> Maybe Parser
-linkOrImageToMatch closeToken model ( openToken, innerTokens, remainTokens ) =
+linkOrImageToMatch : Token -> List Token -> Parser -> ( Token, List Token, List Token ) -> Maybe ( List Token, Parser )
+linkOrImageToMatch closeToken tokensTail model ( openToken, innerTokens, remainTokens ) =
     let
         args : Bool -> ( String, Match, Parser )
         args isLink =
@@ -1095,9 +1094,12 @@ linkOrImageToMatch closeToken model ( openToken, innerTokens, remainTokens ) =
                 openToken closeToken (List.reverse innerTokens)
 
 
-        removedOpenTokenModel : Parser
-        removedOpenTokenModel =
-            { model | tokens = innerTokens ++ remainTokens }
+        removeOpenToken : Maybe ( List Token, Parser )
+        removeOpenToken =
+            Just
+                ( tokensTail
+                , { model | tokens = innerTokens ++ remainTokens }
+                )
 
 
         linkOpenTokenToInactive : Parser -> Parser
@@ -1122,27 +1124,58 @@ linkOrImageToMatch closeToken model ( openToken, innerTokens, remainTokens ) =
             ImageOpenToken ->
                 checkForInlineLinkOrImage (args False)
                     |> ifNothing (checkForRefLinkOrImage (args False))
-                    |> ifNothing (Just removedOpenTokenModel)
+                    |> Maybe.andThen checkParsedAheadOverlapping
+                    |> Maybe.map (removeParsedAheadTokens tokensTail)
+                    |> ifNothing removeOpenToken
 
 
             -- Active opening: set all before to inactive if found
             LinkOpenToken True ->
                 checkForInlineLinkOrImage (args True)
                     |> ifNothing (checkForRefLinkOrImage (args True))
-                    |> Maybe.map linkOpenTokenToInactive 
-                    |> ifNothing (Just removedOpenTokenModel)
+                    |> Maybe.andThen checkParsedAheadOverlapping
+                    |> Maybe.map linkOpenTokenToInactive
+                    |> Maybe.map (removeParsedAheadTokens tokensTail)
+                    |> ifNothing removeOpenToken
 
 
-            -- Inactive opening: remove it
+            -- Inactive opening: just remove open and close tokens
             LinkOpenToken False ->
-                Just removedOpenTokenModel
+                removeOpenToken
 
 
             _ ->
                 Nothing
 
 
--- Remove tokens inside the Parsed ahead regex match
+-- Check if is overlapping previous parsed matches (code, html or autolink)
+checkParsedAheadOverlapping : Parser -> Maybe Parser
+checkParsedAheadOverlapping parser =
+    case parser.matches of
+        [] ->
+            Nothing
+
+        Match match :: remainMatches ->
+            let
+                overlappingMatches : List Match
+                overlappingMatches =
+                    List.filter
+                        (\(Match testMatch) ->
+                            match.end > testMatch.start
+                                && match.end < testMatch.end
+                        )
+                        remainMatches
+
+            in
+                if List.isEmpty remainMatches
+                    || List.isEmpty overlappingMatches then
+                        Just parser
+
+                else
+                    Nothing
+
+
+-- Remove tokens inside the parsed ahead regex match
 removeParsedAheadTokens : List Token -> Parser -> ( List Token, Parser)
 removeParsedAheadTokens tokensTail parser =
     case parser.matches of
