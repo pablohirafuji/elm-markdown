@@ -2,8 +2,6 @@ module Markdown.Inline exposing (..)
 
 
 import Dict exposing (Dict)
-import Html exposing (Html, node, text)
-import Html.Attributes exposing (href, title, alt, src, attribute)
 import Http exposing (encodeUri)
 import Regex exposing (Regex)
 import Markdown.Config as Config exposing (Elements, Options, HtmlOption(..))
@@ -190,11 +188,11 @@ type Type
     = Normal
     | HardLineBreak
     | Code
-    | Emphasis Int -- Tag length
     | Autolink ( String, String ) -- ( Text, Url )
     | Link ( String, Maybe String ) -- ( Url, Maybe Title )
     | Image ( String, Maybe String ) -- ( Src, Maybe Title )
     | Html HtmlModel
+    | Emphasis Int -- Tag length
 
 
 extractText : List Match -> String
@@ -1560,100 +1558,6 @@ lineBreakTTM ( tokens, model ) =
                     , addToken model token
                     )
         
-
-
-----------------------------------------------------------------------
----------------------------- Html Renderer ---------------------------
-----------------------------------------------------------------------
-
-
-toHtml : Elements msg -> List Match -> List (Html msg)
-toHtml elements =
-    List.map (matchToHtml elements)
-
-
-matchToHtml : Elements msg -> Match -> Html msg
-matchToHtml elements (Match match) =
-    case match.type_ of
-        Normal ->
-            text match.text
-
-
-        HardLineBreak ->
-            elements.hardLineBreak
-
-
-        Code ->
-            elements.codeSpan match.text
-
-
-        Emphasis length ->
-            case length of
-                1 ->
-                    elements.emphasis
-                        (toHtml elements match.matches)
-
-
-                2 ->
-                    elements.strongEmphasis
-                        (toHtml elements match.matches)
-                    
-
-                _ ->
-                    if length - 2 > 0 then
-                        elements.strongEmphasis
-                            <| flip (::) []
-                            <| matchToHtml elements
-                            <| Match
-                                { match |
-                                    type_ = Emphasis (length - 2)
-                                }
-
-                    else
-                        elements.emphasis
-                            (toHtml elements match.matches)
-
-
-        Autolink ( text_, url ) ->
-            elements.link
-                { url = url
-                , title = Nothing
-                }
-                [ text text_ ]            
-
-
-        Link ( url, maybeTitle ) ->
-            elements.link
-                { url = url
-                , title = maybeTitle
-                }
-                (toHtml elements match.matches)
-
-
-        Image ( url, maybeTitle ) ->
-            elements.image
-                { alt = extractText match.matches
-                , src = url
-                , title = maybeTitle
-                }
-                    
-
-        Html { tag, attributes } ->
-            node tag
-                (attributesToHtmlAttributes attributes)
-                (toHtml elements match.matches)
-            
-
-
-attributesToHtmlAttributes : List Attribute -> List (Html.Attribute msg)
-attributesToHtmlAttributes =
-    List.map attributeToAttribute
-
-
-attributeToAttribute : Attribute -> Html.Attribute msg
-attributeToAttribute ( name, maybeValue ) =
-    attribute name (Maybe.withDefault name maybeValue)
-
 
 
 ----------------------------------------------------------------------

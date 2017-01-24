@@ -16,8 +16,8 @@ module Markdown exposing
 -}
 
 
-import Html exposing (..)
-import Html.Attributes exposing (class)
+import Html exposing (Html, node, text, em, br, hr, a, img, code, li)
+import Html.Attributes exposing (class, href, alt, src, title, attribute)
 import Dict exposing (Dict)
 import Regex exposing (Regex)
 import Markdown.Inline as Inline exposing (References)
@@ -620,7 +620,7 @@ appendIndentedCode ( _, lineCode ) ( blankLines, blockCode ) =
             ( [], blockCode ++ blankLinesStr ++ lineCode ++ "\n" )
 
 
-codeASToBlock : CodeASModel -> Block a
+codeASToBlock : CodeASModel -> Block b i
 codeASToBlock model =
     case model of
         Indented ( _, codeStr ) ->
@@ -1072,22 +1072,23 @@ type alias AST customBlock customInline =
     List (Block customBlock customInline)
 
 
-type Block customBlock
+type Block customBlock customInline
     = ThematicBreak
-    | Heading Int (List Inline.Match)
+    | Heading Int (List (Inline customInline))
     | Code (Maybe String) String
-    | Paragraph (List Inline.Match)
-    | BlockQuote (List (Block customBlock))
-    | List Config.ListElement Bool (List (List (Block customBlock)))
-    | Html (List Inline.Match) 
-    | CustomBlock customBlock
+    | Paragraph (List (Inline customInline))
+    | BlockQuote (List (Block customBlock customInline))
+    | List Config.ListElement Bool (List (List (Block customBlock customInline)))
+    | Html (List (Inline customInline))
+    | CustomBlock customBlock (List (Inline customInline))
 
 
-absSynToBlock : Options -> References -> AS -> Maybe (Block b)
+absSynToBlock : Options -> References -> AS -> Maybe (Block b i)
 absSynToBlock options refs absSyn =
     case absSyn of
         HeadingAS ( lvl, rawText ) ->
             Inline.parse options refs rawText
+                |> inlineMatchesToInlines
                 |> Heading lvl
                 |> Just
 
@@ -1098,27 +1099,20 @@ absSynToBlock options refs absSyn =
 
         ParagraphAS rawText ->
             let
-                parsedInline : List Inline.Match
-                parsedInline =
+                inlines : List (Inline i)
+                inlines =
                     Inline.parse options refs rawText
-
-                returnParagraph : Maybe (Block b)
-                returnParagraph =
-                    Just (Paragraph parsedInline)
+                        |> inlineMatchesToInlines
 
 
             in
-                case parsedInline of
-                    [ Inline.Match match ] ->
-                        case match.type_ of
-                            Inline.Html _ ->
-                                Just (Html parsedInline)
+                case inlines of
+                    HtmlInline _ _ _ :: [] ->
+                        Just (Html inlines)
 
-                            _ ->
-                                returnParagraph
 
                     _ ->
-                        returnParagraph
+                        Just (Paragraph inlines)
 
 
         CodeAS codeAS ->
@@ -1141,12 +1135,12 @@ absSynToBlock options refs absSyn =
             Nothing
 
 
-absSynsToBlocks : Options -> ( References, List AS ) -> List (Block b)
+absSynsToBlocks : Options -> ( References, List AS ) -> List (Block b i)
 absSynsToBlocks options ( refs, absSyns ) =
     List.filterMap (absSynToBlock options refs) absSyns
 
 
-toBlocks : Options -> String -> List (Block b)
+toBlocks : Options -> String -> List (Block b i)
 toBlocks options rawText =
     ( toRawLines rawText, [] )
         |> parseRawLines
@@ -1156,28 +1150,128 @@ toBlocks options rawText =
 
 
 ----------------------------------------------------------------------
+------------------------------- Inline -------------------------------
+----------------------------------------------------------------------
+
+
+type Inline customInline
+    = Text String
+    | HardLineBreak
+    | CodeInline String
+    | Link String (Maybe String) (List (Inline customInline))
+    | Image String (Maybe String) (List (Inline customInline))
+    | HtmlInline String (List ( String, Maybe String )) (List (Inline customInline))
+    | Emphasis Int (List (Inline customInline))
+    | CustomInline customInline
+
+
+inlineMatchesToInlines : List Inline.Match -> List (Inline customInline)
+inlineMatchesToInlines matches =
+    List.map inlineMatchToInline matches
+
+
+inlineMatchToInline : Inline.Match -> Inline customInline
+inlineMatchToInline (Inline.Match match) =
+    case match.type_ of
+        Inline.Normal ->
+            Text match.text
+
+
+        Inline.HardLineBreak ->
+            HardLineBreak
+
+
+        Inline.Code ->
+            CodeInline match.text
+
+
+        Inline.Autolink ( text, url ) ->
+            Link url Nothing [ Text text ]
+
+
+        Inline.Link ( url, maybeTitle ) ->
+            Link url maybeTitle
+                (inlineMatchesToInlines match.matches)
+
+
+        Inline.Image ( url, maybeTitle ) ->
+            Image url maybeTitle
+                (inlineMatchesToInlines match.matches)
+
+
+        Inline.Html model ->
+            HtmlInline model.tag model.attributes
+                (inlineMatchesToInlines match.matches)
+
+
+        Inline.Emphasis length ->
+            Emphasis length
+                (inlineMatchesToInlines match.matches)
+
+
+extractText : List (Inline i) -> String
+extractText inlines =
+    List.foldl extractTextHelp "" inlines
+
+
+extractTextHelp : Inline i -> String -> String
+extractTextHelp inline text =
+    case inline of
+        Text str ->
+            text ++ str
+
+
+        HardLineBreak ->
+            text ++ " "
+
+
+        CodeInline str ->
+            text ++ str
+
+
+        Link _ _ inlines ->
+            text ++ extractText inlines
+
+
+        Image _ _ inlines ->
+            text ++ extractText inlines
+
+        HtmlInline _ _ inlines ->
+            text ++ extractText inlines
+
+
+        Emphasis _ inlines ->
+            text ++ extractText inlines
+
+
+        CustomInline _ ->
+            text
+
+
+
+----------------------------------------------------------------------
 ----------------------------- Html Render ----------------------------
 ----------------------------------------------------------------------
 
 
-blockToHtml : Options -> Elements msg -> Bool -> Block b -> List (Html msg)
+blockToHtml : Options -> Elements msg -> Bool -> Block b i -> List (Html msg)
 blockToHtml options elements textAsParagraph block =
     case block of
         Heading level inlines ->
             [ elements.heading
                 level
-                (Inline.toHtml elements inlines)
+                (inlinesToHtml elements inlines)
             ]
 
 
         ThematicBreak ->
-            [ elements.thematicBreak ]
+            [ hr [] [] ]
 
 
         Paragraph inlines ->
             elements.paragraph
                 textAsParagraph
-                (Inline.toHtml elements inlines)
+                (inlinesToHtml elements inlines)
 
 
         Code maybeLanguage codeStr ->
@@ -1199,14 +1293,14 @@ blockToHtml options elements textAsParagraph block =
 
 
         Html inlines ->
-            Inline.toHtml elements inlines
+            inlinesToHtml elements inlines
 
 
-        CustomBlock name ->
+        CustomBlock name inlines ->
             [ Html.div [ class (toString name) ] [] ]
 
 
-blocksToHtml : Options -> Elements msg -> Bool -> List (Block b) -> List (Html msg)
+blocksToHtml : Options -> Elements msg -> Bool -> AST b i -> List (Html msg)
 blocksToHtml options elements textAsParagraph =
     List.map (blockToHtml options elements textAsParagraph)
         >> List.concat
@@ -1269,3 +1363,102 @@ toHtml : String -> List (Html msg)
 toHtml =
     customHtml defaultOptions defaultElements
 
+
+
+----------------------------------------------------------------------
+------------------------ Inline Html Renderer ------------------------
+----------------------------------------------------------------------
+
+
+inlinesToHtml : Elements msg -> List (Inline i) -> List (Html msg)
+inlinesToHtml elements =
+    List.map (inlineToHtml elements)
+
+
+inlineToHtml : Elements msg -> Inline i -> Html msg
+inlineToHtml elements inline =
+    case inline of
+        Text str ->
+            text str
+
+
+        HardLineBreak ->
+            br [] []
+
+
+        CodeInline codeStr ->
+            code [] [ text codeStr ]
+
+
+        Link url maybeTitle inlines ->
+            case maybeTitle of
+                Just title_ ->
+                    a [ href url, title title_ ]
+                        (inlinesToHtml elements inlines)
+
+
+                Nothing ->
+                    a [ href url ]
+                        (inlinesToHtml elements inlines)
+    
+
+        Image url maybeTitle inlines ->
+            case maybeTitle of
+                Just title_ ->
+                    img
+                        [ alt (extractText inlines)
+                        , src url
+                        , title title_
+                        ] []
+
+
+                Nothing ->
+                    img
+                        [ alt (extractText inlines)
+                        , src url
+                        ] []
+
+
+        HtmlInline tag attrs inlines ->
+            node tag
+                (attributesToHtmlAttributes attrs)
+                (inlinesToHtml elements inlines)
+
+
+        Emphasis length inlines ->
+            case length of
+                1 ->
+                    elements.emphasis
+                        (inlinesToHtml elements inlines)
+
+
+                2 ->
+                    elements.strongEmphasis
+                        (inlinesToHtml elements inlines)
+                    
+
+                _ ->
+                    if length - 2 > 0 then
+                        elements.strongEmphasis
+                            <| flip (::) []
+                            <| inlineToHtml elements
+                            <| Emphasis (length - 2) inlines
+
+
+                    else
+                        elements.emphasis
+                            (inlinesToHtml elements inlines)
+
+        CustomInline _ ->
+            text ""
+
+          
+
+attributesToHtmlAttributes : List Inline.Attribute -> List (Html.Attribute msg)
+attributesToHtmlAttributes =
+    List.map attributeToAttribute
+
+
+attributeToAttribute : Inline.Attribute -> Html.Attribute msg
+attributeToAttribute ( name, maybeValue ) =
+    attribute name (Maybe.withDefault name maybeValue)
