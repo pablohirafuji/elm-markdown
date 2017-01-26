@@ -9,7 +9,7 @@ import Test.Helpers exposing (..)
 -- Based on http://spec.commonmark.org/0.27/
 
 
-run : List (Output)
+run : List (Output msg)
 run =
     [ testEq 50
         [ p [] [ text "A setext heading consists of one or more lines of text, each containing at least one non-whitespace character, with no more than 3 spaces indentation, followed by a setext heading underline. The lines of text must be such that, were they not followed by the setext heading underline, they would be interpreted as a paragraph: they cannot be interpretable as a code fence, ATX heading, block quote, thematic break, list item, or HTML block." ]

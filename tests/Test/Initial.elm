@@ -9,7 +9,7 @@ import Test.Helpers exposing (..)
 -- Based on http://spec.commonmark.org/0.27/
 
 
-run : List (Output)
+run : List (Output msg)
 run =
     [ testEq 1
         []

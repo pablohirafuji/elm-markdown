@@ -1,429 +1,230 @@
 module Markdown exposing
     ( toHtml
+    , toAST
     , withOptions
-    , customHtml
     )
 
 
 {-| A pure Elm package for markdown parsing and rendering.
 
 # Parsing Markdown
-@docs toHtml
+@docs toHtml, toAST
 
 # Parsing with Custom Options
-@docs withOptions, customHtml
+@docs withOptions
 
 -}
 
 
-import Html exposing (Html, node, text, em, br, hr, a, img, code, li)
-import Html.Attributes exposing (class, href, alt, src, title, attribute)
-import Dict exposing (Dict)
+import Dict
+import Html exposing (Html, node, text, em, br, hr, a, img, code, li, em, strong, ol, ul)
+import Html.Attributes exposing (class, href, alt, src, title, attribute, start)
 import Regex exposing (Regex)
-import Markdown.Inline as Inline exposing (References)
-import Markdown.Config as Config exposing (Elements, defaultElements, Options, defaultOptions, ListElement(..))
+import Markdown.Inline as Inline exposing (ifNothing, References)
+import Markdown.Config exposing (Elements, defaultElements, Options, defaultOptions)
 
 
 
 ----------------------------------------------------------------------
--------------------------------- Line --------------------------------
+-------------------------------- Model -------------------------------
 ----------------------------------------------------------------------
 
 
-type Line
-    = BlankLine
-    | ATXHeadingLine
-    | SetextHeadingLine
-    | ThematicBreakLine
-    | IndentedCodeLine
-    | OpeningFenceCodeLine
-    | BlockQuoteLine
-    | OrderedListLine
-    | UnorderedListLine
+type alias AST b i =
+    List (Block b i)
 
 
-toRawLines : String -> List String
-toRawLines =
-    String.lines
+type Block b i
+    = BlankLine String
+    | ThematicBreak
+    | Heading String Int (List (Inline i))
+    | CodeBlock CodeBlock String
+    | Paragraph String (List (Inline i))
+    | BlockQuote (AST b i)
+    | List ListBlock (List (AST b i))
+    | HtmlBlock (List (Inline i))
+    | CustomBlock b (List (Inline i))
+
+
+type Inline i
+    = Text String
+    | HardLineBreak
+    | CodeInline String
+    | Link String (Maybe String) (List (Inline i))
+    | Image String (Maybe String) (List (Inline i))
+    | HtmlInline String (List ( String, Maybe String )) (List (Inline i))
+    | Emphasis Int (List (Inline i))
+    | CustomInline i
+
+
+type CodeBlock
+    = Indented
+    | Fenced Bool Fence -- isOpen Fence
+
+
+type alias Fence =
+    { indentLength : Int
+    , fenceLength : Int
+    , fenceChar : String
+    , language : Maybe String
+    }
+
+
+type alias ListBlock =
+    { type_ : ListType
+    , indentLength : Int
+    , delimiter : String
+    , isLoose : Bool
+    }
+
+
+type ListType
+    = Unordered
+    | Ordered Int
+
+
+
+{-| Turn a markdown string into a list of HTML elements
+using `Config.defaultOptions` and `Config.defaultElements`.
+
+```
+
+markdownView : Html msg
+markdownView =
+    div []
+        <| Markdown.toHtml "# Title with *emphasis*"
+
+```
+-}
+toHtml : String -> List (Html msg)
+toHtml =
+    withOptions defaultOptions
+
+
+
+{-| Customize how soft line breaks (`\n`) are rendered and raw html
+tags are parsed.
+
+```
+customOptions : Options
+customOptions =
+    { softAsHardLineBreak = True
+    , rawHtml = DontParse
+    }
+
+
+view : Html msg
+view =
+    div []
+        <| Markdown.withOptions customOptions myString
+```
+
+The [demo](https://pablohirafuji.github.io/elm-markdown/examples/Demo.html)
+demonstrate how each option affects the output.
+-}
+
+
+withOptions : Options -> String -> List (Html msg)
+withOptions options =
+    toAST options
+        >> blocksToHtml options defaultElements True
+
+
+{-| Customize how soft line breaks (`\n`) are rendered and raw html
+tags are parsed.
+
+```
+customOptions : Options
+customOptions =
+    { softAsHardLineBreak = True
+    , rawHtml = DontParse
+    }
+
+
+view : Html msg
+view =
+    div []
+        <| Markdown.withOptions customOptions myString
+```
+
+The [demo](https://pablohirafuji.github.io/elm-markdown/examples/Demo.html)
+demonstrate how each option affects the output.
+-}
+
+
+toAST : Options -> String -> AST b i
+toAST options rawText =
+    linesToAST (toRawLines rawText) []
+        |> parseReferences Dict.empty
+        |> parseInlines options
 
 
 
 ----------------------------------------------------------------------
------------------------------- Regexes -------------------------------
+---------------------------- Block Parser ----------------------------
 ----------------------------------------------------------------------
 
 
-lineMinusListRegexes : List ( Line, Regex )
-lineMinusListRegexes =
-    [ ( BlankLine           , blankLineRegex )
-    , ( IndentedCodeLine    , indentedCodeLineRegex )
-    , ( OpeningFenceCodeLine, openingFenceCodeLineRegex )
-    , ( SetextHeadingLine   , headingSetextLineRegex )
-    , ( ATXHeadingLine      , headingAtxLineRegex )
-    , ( BlockQuoteLine      , blockQuoteLineRegex )
-    ]
-
-
-listLineRegexes : List ( Line, Regex )
-listLineRegexes =
-    -- When both a thematic break and a list item are possible
-    -- interpretations of a line, the thematic break takes
-    -- precedence
-    [ ( ThematicBreakLine, thematicBreakLineRegex )
-    , ( OrderedListLine  , orderedListRegex )
-    , ( UnorderedListLine, unorderedListRegex )
-    ]
-
-
-lineRegexes : List ( Line, Regex )
-lineRegexes =
-    lineMinusListRegexes ++ listLineRegexes
-
-
-listLineFirstRegexes : List ( Line, Regex )
-listLineFirstRegexes =
-    listLineRegexes ++ lineMinusListRegexes
-
-
-blankLineRegex : Regex
-blankLineRegex =
-    Regex.regex "^\\s*$"
-
-
-headingAtxLineRegex : Regex
-headingAtxLineRegex =
-    Regex.regex "^ {0,3}(#{1,6})(?:[ \\t]+[ \\t#]+$|[ \\t]+|$)(.*?)(?:\\s+[ \\t#]*)?$"
-
-
-headingSetextLineRegex : Regex
-headingSetextLineRegex =
-    Regex.regex "^ {0,3}(=+|-+)[ \\t]*$"
-
-
-thematicBreakLineRegex : Regex
-thematicBreakLineRegex =
-    Regex.regex "^ {0,3}(?:(?:\\*[ \\t]*){3,}|(?:_[ \\t]*){3,}|(?:-[ \\t]*){3,})[ \\t]*$"
-
-
-blockQuoteLineRegex : Regex
-blockQuoteLineRegex =
-    Regex.regex "^ {0,3}(?:>[ ]?)(.*)$"
-
-
-indentedCodeLineRegex : Regex
-indentedCodeLineRegex =
-    Regex.regex "^(?: {4,4}| {0,3}\\t)(.*)$"
-
-
-openingFenceCodeLineRegex : Regex
-openingFenceCodeLineRegex =
-    Regex.regex "^( {0,3})(`{3,}(?!.*`)|~{3,}(?!.*~))(.*)$"
-
-
-closingFenceCodeLineRegex : Regex
-closingFenceCodeLineRegex =
-    Regex.regex "^ {0,3}(`{3,}|~{3,})\\s*$"
-
-
-orderedListRegex : Regex
-orderedListRegex =
-    Regex.regex "^( *(\\d{1,9})([.)])( {0,4}))(?:[ \\t](.*))?$"
-
-
-unorderedListRegex : Regex
-unorderedListRegex =
-    Regex.regex "^( *([\\*\\-\\+])( {0,4}))(?:[ \\t](.*))?$"
-
-
-initSpacesRegex : Regex
-initSpacesRegex =
-    Regex.regex "^ +"
-
-
-
-----------------------------------------------------------------------
------------------------------ Regex Match ----------------------------
-----------------------------------------------------------------------
-
--- TODO: Return maybe or result
-
-headingAtxMatch : Regex.Match -> ( Int, String )
-headingAtxMatch match =
-    case match.submatches of
-        Just lvl :: Just heading :: _ ->
-            ( String.length lvl, heading )
-
-        _ ->
-            ( 1, match.match )
-
-
-headingSetextMatch : Regex.Match -> ( Int, String )
-headingSetextMatch match =
-    case match.submatches of
-        Just str :: _ ->
-            if String.startsWith "=" str then
-                ( 1, str )
-
-            else
-                ( 2, str )
-
-        _ ->
-            ( 1, "" )
-
-
-blockQuoteMatch : Regex.Match -> String
-blockQuoteMatch match =
-    match.submatches
-        |> List.head
-        |> Maybe.withDefault Nothing
-        |> Maybe.withDefault ""
-
-
-indentedCodeMatch : Regex.Match -> ( List String, String )
-indentedCodeMatch =
-    .submatches
-        >> List.head
-        >> Maybe.withDefault Nothing
-        >> Maybe.map ( (,) [] )
-        >> Maybe.withDefault ( [], "" )
-
-
-openingFenceCodeMatch : Regex.Match -> Fence
-openingFenceCodeMatch match =
-    case match.submatches of
-        Just indent :: Just fence :: Just language :: _ ->
-                ( True
-                ,   { indentLength = String.length indent
-                    , fenceLength = String.length fence
-                    , fenceChar = String.left 1 fence
-                    , language =
-                        String.words language
-                            |> List.head
-                            |> Maybe.map Inline.replaceEscapable
-                            |> Maybe.withDefault ""
-                    }
-                , ""
-                )
-
-        _ ->
-            ( True, FenceModel 0 0 "`" "", "" )
-
-
-
-orderedListMatch : Regex.Match -> ListLine
-orderedListMatch match =
-    case match.submatches of
-        Just indentString
-            :: Just start
-            :: Just delimiter
-            :: Just indentSpace
-            :: maybeRawLine
-            :: _ ->
-                let type_ =
-                    String.toInt start
-                        |> Result.map Ordered
-                        |> Result.withDefault Unordered
-
-                in
-                    newListLine
-                        type_
-                        indentString
-                        delimiter
-                        indentSpace
-                        (Maybe.withDefault "" maybeRawLine)
-
-        _ ->
-            ( initListASModel, "" )
-
-
-unorderedListMatch : Regex.Match -> ListLine
-unorderedListMatch match =
-    case match.submatches of
-        Just indentString
-            :: Just delimiter
-            :: Just indentSpace
-            :: maybeRawLine
-            :: [] ->
-                newListLine
-                    (Unordered)
-                    indentString
-                    delimiter
-                    indentSpace
-                    (Maybe.withDefault "" maybeRawLine)
-
-        _ ->
-            ( initListASModel, "" )
-
-
-listMatch : ListElement -> Regex.Match -> ListLine
-listMatch type_ match =
-    case type_ of
-        Unordered ->
-            unorderedListMatch match
-
-        Ordered _ ->
-            orderedListMatch match
-
-
-----------------------------------------------------------------------
---------------------------- Abstract Syntax --------------------------
-----------------------------------------------------------------------
-
-
-type AS
-    = BlankAS
-    | HeadingAS ( Int, String )
-    | ThematicBreakAS
-    | CodeAS CodeASModel
-    | BlockQuoteAS (List AS)
-    | ListAS ListASModel (List (List AS))
-    | ParagraphAS String
-
-
-----------------------------------------------------------------------
-------------------------------- Parser -------------------------------
-----------------------------------------------------------------------
-
-
-parseRawLines : ( List String, List AS ) -> List AS
-parseRawLines ( rawLines, absSyns ) =
+linesToAST : List String -> AST b i -> AST b i
+linesToAST rawLines ast =
     case rawLines of
         [] ->
-            absSyns
+            ast
+
 
         rawLine :: rawLinesTail ->
-            preParseRawLine ( rawLine, absSyns )
-                |> (,) rawLinesTail
-                |> parseRawLines
+            lineToAST rawLine ast
+                |> linesToAST rawLinesTail
 
 
-preParseRawLine : ( String, List AS ) -> List AS
-preParseRawLine ( rawLine, absSyns ) =
-    case absSyns of
-        ListAS model absSynsList :: absSynsTail ->
+lineToAST : String -> AST b i -> AST b i
+lineToAST rawLine ast =
+    case ast of
+        -- No need to typify the line if Fenced Code
+        -- is open, just check for closing fence.
+        CodeBlock (Fenced True fence) code :: astTail ->
+            continueOrCloseCodeFence fence code rawLine
+                |> flip (::) astTail
+
+
+        List model items :: astTail ->
             if indentLength rawLine >= model.indentLength then
-                case absSynsList of
-                    absSyns_ :: absSynsListTail ->
-                        let
-                            unindentedRawLine : String
-                            unindentedRawLine =
-                                indentLine model.indentLength rawLine
-
-
-                            updtListAS : ListASModel -> List AS
-                            updtListAS model_ =
-                                ListAS model_
-                                    ( parseRawLines ( [ unindentedRawLine ], absSyns_ )
-                                        :: absSynsListTail
-                                    ) :: absSynsTail
-
-
-                        in case absSyns_ of
-                            -- A list item can begin with at most
-                            -- one blank line without begin loose.
-                            [ BlankAS ] ->
-                                updtListAS model
-
-
-                            BlankAS :: absSynsTail_ ->
-                                if List.all ((==) BlankAS) absSynsTail_ then
-                                    parseRawLine rawLine absSyns
-
-                                else
-                                    updtListAS { model | isLoose = True }
-
-
-                            ListAS model_ absSynsList_ :: absSynsTail_ ->
-                                if indentLength unindentedRawLine >= model_.indentLength then
-                                    updtListAS model
-
-                                else
-                                    if isBlankASLast absSynsList_ then
-                                        updtListAS { model | isLoose = True }
-
-                                    else
-                                        updtListAS model
-
-
-                            _ ->
-                                updtListAS model
-
-
-                    [] ->
-                        ListAS model
-                            ( [ parseRawLines ( [ indentLine model.indentLength rawLine ], [] ) ]
-                            ) :: absSynsTail
+                parseIndentedListLine rawLine model items ast astTail
 
 
             else
-                -- parseRawLine with list priority
-                parseRawLineConfigFirst rawLine absSyns
-
-
-        -- No need to typify the line if Fenced CodeAS
-        -- is open, just check for closing fence.
-        CodeAS (Fenced (True, fence, lines_)) :: absSynsTail ->
-            continueOrCloseFence fence lines_ rawLine
-                |> CodeAS
-                |> \codeAS -> codeAS :: absSynsTail
+                -- After a list, check for lists before
+                -- indented code.
+                -- When both a thematic break and a list item are
+                -- possible interpretations of a line, the
+                -- thematic break takes precedence.
+                checkThematicBreakLine rawLine ast
+                    |> ifNothing (checkListLine rawLine ast)
+                    |> ifNothing (checkBlankLine rawLine ast)
+                    |> ifNothing (checkIndentedCode rawLine ast)
+                    |> ifNothing (checkOpenCodeFenceLine rawLine ast)
+                    |> ifNothing (checkSetextHeadingLine rawLine ast)
+                    |> ifNothing (checkATXHeadingLine rawLine ast)
+                    |> ifNothing (checkBlockQuote rawLine ast)
+                    |> Maybe.withDefault (parseTextLine rawLine ast)
 
 
         _ ->
-            parseRawLine rawLine absSyns
+            parseRawLine rawLine ast
 
 
-parseRawLine : String -> List AS -> List AS
-parseRawLine rawLine absSyns =
-    List.foldl (applyRegex rawLine absSyns) Nothing lineRegexes
-        |> Maybe.withDefault ( parseTextLine rawLine absSyns )
-
-
-parseRawLineConfigFirst : String -> List AS -> List AS
-parseRawLineConfigFirst rawLine absSyns =
-    List.foldl (applyRegex rawLine absSyns) Nothing listLineFirstRegexes
-        |> Maybe.withDefault ( parseTextLine rawLine absSyns )
-
-
-applyRegex : String -> List AS -> ( Line, Regex ) -> Maybe (List AS) -> Maybe (List AS)
-applyRegex rawLine absSyns ( line, regex ) maybeASs =
-    if maybeASs == Nothing then
-        Regex.find ( Regex.AtMost 1 ) regex rawLine
-            |> List.head
-            |> Maybe.map ( parseLine line absSyns )
-
-    else
-        maybeASs
-
-
-parseLine : Line -> List AS -> Regex.Match -> List AS
-parseLine line absSyns match =
-    case line of
-        BlankLine ->
-            parseBlankLine match absSyns
-
-        ATXHeadingLine ->
-            HeadingAS (headingAtxMatch match) :: absSyns
-
-        SetextHeadingLine ->
-            parseSetextHeadingLine match absSyns
-
-        ThematicBreakLine ->
-            ThematicBreakAS :: absSyns
-
-        IndentedCodeLine ->
-            parseIndentedCodeLine match absSyns
-
-        OpeningFenceCodeLine ->
-            parseFencedCodeLine match absSyns
-
-        BlockQuoteLine ->
-            parseBlockQuoteLine match absSyns
-
-        OrderedListLine ->
-            parseListLine (Config.Ordered 0) match absSyns
-        
-        UnorderedListLine ->
-            parseListLine Config.Unordered match absSyns
+-- Default parsing precedence
+parseRawLine : String -> AST b i -> AST b i
+parseRawLine rawLine ast =
+    checkBlankLine rawLine ast
+        |> ifNothing (checkIndentedCode rawLine ast)
+        |> ifNothing (checkOpenCodeFenceLine rawLine ast)
+        |> ifNothing (checkSetextHeadingLine rawLine ast)
+        |> ifNothing (checkATXHeadingLine rawLine ast)
+        |> ifNothing (checkBlockQuote rawLine ast)
+        |> ifNothing (checkThematicBreakLine rawLine ast)
+        |> ifNothing (checkListLine rawLine ast)
+        |> Maybe.withDefault (parseTextLine rawLine ast)
 
 
 
@@ -432,208 +233,147 @@ parseLine line absSyns match =
 ----------------------------------------------------------------------
 
 
-parseBlankLine : Regex.Match -> List AS -> List AS
-parseBlankLine match absSyns =
-    case absSyns of
-        -- BlankLine after Indented CodeAS may be added to
-        -- the CodeAS if another Indented CodeAS is found
-        CodeAS (Indented ( blankLines, code ))
-            :: absSynsTail ->
-                Indented ( match.match :: blankLines, code )
-                    |> CodeAS
-                    |> \b -> b :: absSynsTail
+checkBlankLine : String -> AST b i -> Maybe (AST b i)
+checkBlankLine rawLine ast =
+    Regex.find (Regex.AtMost 1) blankLineRegex rawLine
+        |> List.head
+        |> Maybe.map (parseBlankLine ast)
 
 
-        CodeAS (Fenced ( True, fence, code ))
-            :: absSynsTail ->
-                Fenced ( True, fence, code ++ "\n" )
-                    |> CodeAS
-                    |> \b -> b :: absSynsTail
+blankLineRegex : Regex
+blankLineRegex =
+    Regex.regex "^\\s*$"
 
 
-        ListAS model absSynsList :: absSynsTail ->
-            ListAS
-                model
-                (addBlankLineToASsList match absSynsList)
-                    :: absSynsTail
+parseBlankLine : AST b i -> Regex.Match -> AST b i
+parseBlankLine ast match =
+    case ast of
+        CodeBlock (Fenced True fence) code :: astTail ->
+            code ++ "\n"
+                |> CodeBlock (Fenced True fence)
+                |> flip (::) astTail
+
+
+        List model items :: astTail ->
+            List model (addBlankLineToListBlock match items)
+                :: astTail
 
 
         _ ->
-            BlankAS :: absSyns
+            BlankLine match.match :: ast
 
 
-addBlankLineToASsList : Regex.Match -> List (List AS) -> List (List AS)
-addBlankLineToASsList match absSynsList =
-    case absSynsList of
-        absSyns :: absSynsListTail ->
-            parseBlankLine match absSyns
-                :: absSynsListTail
-
+addBlankLineToListBlock : Regex.Match -> List (AST b i) -> List (AST b i)
+addBlankLineToListBlock match asts =
+    case asts of
         [] ->
-            [ [ BlankAS ] ]
+            [ [ BlankLine match.match ] ]
+
+
+        ast :: astsTail ->
+            parseBlankLine ast match
+                :: astsTail
 
 
 
 ----------------------------------------------------------------------
----------------------------- SetextHeading ---------------------------
+----------------------------- ATX Heading ----------------------------
 ----------------------------------------------------------------------
 
 
-parseSetextHeadingLine : Regex.Match -> List AS -> List AS
-parseSetextHeadingLine match absSyns =
-    let ( lvl, str ) =
-        headingSetextMatch match
+checkATXHeadingLine : String -> AST b i -> Maybe (AST b i)
+checkATXHeadingLine rawLine ast =
+    Regex.find (Regex.AtMost 1) atxHeadingLineRegex rawLine
+        |> List.head
+        |> Maybe.andThen extractATXHeadingRM
+        |> Maybe.map (flip (::) ast)
 
-    in case absSyns of
-        -- Only occurs after ParagraphAS.
-        ParagraphAS paragraph :: absSynsTail ->
-            HeadingAS ( lvl, paragraph ) :: absSynsTail
+
+atxHeadingLineRegex : Regex
+atxHeadingLineRegex =
+    Regex.regex ("^ {0,3}(#{1,6})"
+        ++ "(?:[ \\t]+[ \\t#]+$|[ \\t]+|$)"
+        ++ "(.*?)(?:\\s+[ \\t#]*)?$")
+
+
+extractATXHeadingRM : Regex.Match -> Maybe (Block b i)
+extractATXHeadingRM match =
+    case match.submatches of
+        Just lvl :: Just heading :: _ ->
+            Heading heading (String.length lvl) []
+                |> Just
+
 
         _ ->
-            -- If marker is "=" (lvl == 1), always parse as TextLine.
-            if lvl == 1 then
-                parseTextLine match.match absSyns
+            Nothing
+            
 
-            -- If marker is "-" and length is 1, it's
-            -- an empty ListLine.
-            else if str == "-" then
-                parseListLine Config.Unordered match absSyns
 
-            -- If matches with thematic break line regex, it's
-            -- a ThematicBreakAS. Ps: "--" does not match.
-            else if Regex.contains thematicBreakLineRegex match.match then
-                ThematicBreakAS :: absSyns
+----------------------------------------------------------------------
+--------------------------- Setext Heading ---------------------------
+----------------------------------------------------------------------
 
-            -- Otherwise, parse as TextLine
+
+checkSetextHeadingLine : String -> AST b i -> Maybe (AST b i)
+checkSetextHeadingLine rawLine ast =
+    Regex.find (Regex.AtMost 1) setextHeadingLineRegex rawLine
+        |> List.head
+        |> Maybe.andThen extractSetextHeadingRM
+        |> Maybe.andThen (parseSetextHeadingLine rawLine ast)
+
+
+setextHeadingLineRegex : Regex
+setextHeadingLineRegex =
+    Regex.regex "^ {0,3}(=+|-+)[ \\t]*$"
+
+
+extractSetextHeadingRM : Regex.Match -> Maybe ( Int, String )
+extractSetextHeadingRM match =
+    case match.submatches of
+        Just delimiter :: _ ->
+            if String.startsWith "=" delimiter then
+                Just ( 1, delimiter )
+
             else
-                parseTextLine match.match absSyns
+                Just ( 2, delimiter )
 
-
-
-----------------------------------------------------------------------
--------------------------------- Code --------------------------------
-----------------------------------------------------------------------
-
-
-type CodeASModel
-    = Indented ( List String, String ) -- ( After Blanklines lines, Code )
-    | Fenced Fence
-
-
-type alias Fence =
-    ( Bool, FenceModel, String ) -- ( isOpen, FenceModel, Code )
-
-
-type alias FenceModel =
-    { indentLength : Int
-    , fenceLength : Int
-    , fenceChar : String
-    , language : String
-    }
-
-
-parseIndentedCodeLine : Regex.Match -> List AS -> List AS
-parseIndentedCodeLine match absSyns =
-    let ( blankLines, codeLine ) =
-        indentedCodeMatch match
-
-    in case absSyns of
-        CodeAS (Indented indentedModel) :: absSynsTail ->
-            CodeAS
-                ( appendIndentedCode
-                    ( blankLines, codeLine ) indentedModel
-                ) :: absSynsTail  
 
         _ ->
-            maybeContinueParagraph codeLine absSyns
-                |> Maybe.withDefault
-                    (CodeAS
-                        (Indented ( [], codeLine ++ "\n" ))
-                            :: absSyns)
+            Nothing
 
 
-parseFencedCodeLine : Regex.Match -> List AS -> List AS
-parseFencedCodeLine match absSyns =
-    openingFenceCodeMatch match
-        |> Fenced
-        |> CodeAS
-        |> flip (::) absSyns
+parseSetextHeadingLine : String -> AST b i -> ( Int, String ) -> Maybe (AST b i)
+parseSetextHeadingLine rawLine ast ( lvl, delimiter ) =
+    case ast of
+        -- Only occurs after a paragraph
+        Paragraph rawText _ :: astTail ->
+            Heading rawText lvl [] :: astTail
+                |> Just
 
 
-continueOrCloseFence : FenceModel -> String -> String -> CodeASModel
-continueOrCloseFence fence previousCode rawLine =
-    if isClosingFenceLine fence rawLine then
-        Fenced ( False, fence, previousCode )
-
-    else
-        Fenced
-            ( True
-            , fence
-            , previousCode
-                ++ indentLine fence.indentLength rawLine
-                ++ "\n"
-            )
+        _ ->
+            Nothing
 
 
-isClosingFenceLine : FenceModel -> String -> Bool
-isClosingFenceLine fence =
-    Regex.find (Regex.AtMost 1) closingFenceCodeLineRegex
-        >> List.head
-        >> Maybe.map
-            (\match ->
-                case match.submatches of
-                    Just fenceStr :: _ ->
-                        String.length fenceStr >= fence.fenceLength
-                            && String.left 1 fenceStr == fence.fenceChar
 
-                    _ ->
-                        False
-            )
-        >> Maybe.withDefault False
+----------------------------------------------------------------------
+--------------------------- Thematic Break ---------------------------
+----------------------------------------------------------------------
 
 
-indentLine : Int -> String -> String
-indentLine indentLength =
-    Regex.replace Regex.All (Regex.regex "\\t") (\_ -> "    ")
-        >> Regex.replace
-            (Regex.AtMost 1)
-            (Regex.regex ("^ {0," ++ toString indentLength ++ "}" ))
-            (\_ -> "")
+checkThematicBreakLine : String -> AST b i -> Maybe (AST b i)
+checkThematicBreakLine rawLine ast =
+    Regex.find (Regex.AtMost 1) thematicBreakLineRegex rawLine
+        |> List.head
+        |> Maybe.map (\_ -> ThematicBreak :: ast)
 
 
-appendIndentedCode : ( List String, String ) -> ( List String, String ) -> CodeASModel
-appendIndentedCode ( _, lineCode ) ( blankLines, blockCode ) =
-    let
-        indentBL : String -> String
-        indentBL blankLine = 
-            indentLine 4 blankLine ++ "\n"
-
-
-        blankLinesStr : String
-        blankLinesStr =
-            List.reverse blankLines
-                |> List.map indentBL
-                |> String.concat
-
-    in
-        Indented
-            ( [], blockCode ++ blankLinesStr ++ lineCode ++ "\n" )
-
-
-codeASToBlock : CodeASModel -> Block b i
-codeASToBlock model =
-    case model of
-        Indented ( _, codeStr ) ->
-            Code Nothing codeStr
-
-
-        Fenced ( _, { language }, codeStr ) ->
-            if String.length language > 0 then
-                Code (Just language) codeStr
-
-
-            else
-                Code Nothing codeStr
+thematicBreakLineRegex : Regex
+thematicBreakLineRegex =
+    Regex.regex ("^ {0,3}(?:"
+        ++ "(?:\\*[ \\t]*){3,}"
+        ++ "|(?:_[ \\t]*){3,}"
+        ++ "|(?:-[ \\t]*){3,})[ \\t]*$")
 
 
 
@@ -642,20 +382,195 @@ codeASToBlock model =
 ----------------------------------------------------------------------
 
 
-parseBlockQuoteLine : Regex.Match -> List AS -> List AS
-parseBlockQuoteLine match absSyns =
-    let rawLine =
-        blockQuoteMatch match
+checkBlockQuote : String -> AST b i -> Maybe (AST b i)
+checkBlockQuote rawLine ast =
+    Regex.find (Regex.AtMost 1) blockQuoteLineRegex rawLine
+        |> List.head
+        |> Maybe.map (.submatches >> List.head)
+        |> Maybe.withDefault Nothing
+        |> Maybe.withDefault Nothing
+        |> Maybe.map (parseBlockQuoteLine ast)
 
-    in case absSyns of
-        BlockQuoteAS absSyns_ :: absSynsTail ->
-            BlockQuoteAS
-                (parseRawLines ( [ rawLine ], absSyns_ ))
-                    :: absSynsTail
+
+blockQuoteLineRegex : Regex
+blockQuoteLineRegex =
+    Regex.regex "^ {0,3}(?:>[ ]?)(.*)$"
+
+
+parseBlockQuoteLine : AST b i -> String -> AST b i
+parseBlockQuoteLine ast rawLine =
+    case ast of
+        BlockQuote bqAST :: astTail ->
+            lineToAST rawLine bqAST
+                |> BlockQuote
+                |> flip (::) astTail
+
 
         _ ->
-            BlockQuoteAS (parseRawLines ( [ rawLine ], [] ))
-                :: absSyns
+            lineToAST rawLine []
+                |> BlockQuote
+                |> flip (::) ast
+
+
+
+----------------------------------------------------------------------
+---------------------------- Indented Code ---------------------------
+----------------------------------------------------------------------
+
+
+checkIndentedCode : String -> AST b i -> Maybe (AST b i)
+checkIndentedCode rawLine ast =
+    Regex.find (Regex.AtMost 1) indentedCodeLineRegex rawLine
+        |> List.head
+        |> Maybe.map (.submatches >> List.head)
+        |> Maybe.withDefault Nothing
+        |> Maybe.withDefault Nothing
+        |> Maybe.map (parseIndentedCodeLine ast)
+
+
+indentedCodeLineRegex : Regex
+indentedCodeLineRegex =
+    Regex.regex "^(?: {4,4}| {0,3}\\t)(.*)$"
+
+
+parseIndentedCodeLine : AST b i -> String -> AST b i
+parseIndentedCodeLine ast codeLine =
+    case ast of
+        -- Continue indented code block
+        CodeBlock Indented codeStr :: astTail ->
+            codeStr ++ codeLine ++ "\n"
+                |> CodeBlock Indented
+                |> flip (::) astTail
+
+
+        -- Possible blankline inside a indented code block
+        BlankLine blankStr :: astTail ->
+            [ blankStr ]
+                |> blocksAfterBlankLines astTail
+                |> resumeIndentedCodeBlock codeLine
+                |> Maybe.withDefault
+                    (codeLine ++ "\n"
+                        |> CodeBlock Indented
+                        |> flip (::) ast)
+
+
+        -- Continue paragraph or New indented code block
+        _ ->
+             maybeContinueParagraph codeLine ast
+                |> Maybe.withDefault
+                    (codeLine ++ "\n"
+                        |> CodeBlock Indented
+                        |> flip (::) ast)
+
+
+-- Return the blocks after blanklines
+-- and the blanklines content in between
+blocksAfterBlankLines : AST b i -> List String -> ( AST b i, List String )
+blocksAfterBlankLines ast blankLines =
+    case ast of
+        BlankLine blankStr :: astTail ->
+            blocksAfterBlankLines astTail
+                (blankStr :: blankLines)
+
+
+        _ ->
+            ( ast, blankLines )
+
+
+resumeIndentedCodeBlock : String -> ( AST b i, List String ) -> Maybe (AST b i)
+resumeIndentedCodeBlock codeLine ( remainBlocks, blankLines ) =
+    case remainBlocks of
+        CodeBlock Indented codeStr :: remainBlocksTail ->
+            blankLines
+                |> List.map (\bl -> indentLine 4 bl ++ "\n")
+                |> String.concat
+                |> (++) codeStr
+                |> flip (++) (codeLine ++ "\n")
+                |> CodeBlock Indented
+                |> flip (::) remainBlocksTail
+                |> Just
+
+
+        _ ->
+            Nothing
+
+
+
+----------------------------------------------------------------------
+----------------------------- Fenced Code ----------------------------
+----------------------------------------------------------------------
+
+
+checkOpenCodeFenceLine : String -> AST b i -> Maybe (AST b i)
+checkOpenCodeFenceLine rawLine ast =
+    Regex.find (Regex.AtMost 1) openCodeFenceLineRegex rawLine
+        |> List.head
+        |> Maybe.andThen extractOpenCodeFenceRM
+        |> Maybe.map (\f -> CodeBlock f "")
+        |> Maybe.map (flip (::) ast)
+
+
+openCodeFenceLineRegex : Regex
+openCodeFenceLineRegex =
+    Regex.regex "^( {0,3})(`{3,}(?!.*`)|~{3,}(?!.*~))(.*)$"
+
+
+extractOpenCodeFenceRM : Regex.Match -> Maybe CodeBlock
+extractOpenCodeFenceRM match =
+    case match.submatches of
+        Just indent :: Just fence :: Just language :: _ ->
+                Fenced True
+                    { indentLength = String.length indent
+                    , fenceLength = String.length fence
+                    , fenceChar = String.left 1 fence
+                    , language =
+                        String.words language
+                            |> List.head
+                            |> Maybe.andThen
+                                (\lang ->
+                                    if lang == "" then Nothing
+                                    else Just lang
+                                )
+                            |> Maybe.map Inline.replaceEscapable
+                    } |> Just
+
+
+        _ ->
+            Nothing
+
+
+continueOrCloseCodeFence : Fence -> String -> String -> Block b i
+continueOrCloseCodeFence fence previousCode rawLine =
+    if isCloseFenceLine fence rawLine then
+        CodeBlock (Fenced False fence) previousCode
+
+    else
+        previousCode ++ indentLine fence.indentLength rawLine ++ "\n"
+            |> CodeBlock (Fenced True fence)
+
+
+isCloseFenceLine : Fence -> String -> Bool
+isCloseFenceLine fence =
+    Regex.find (Regex.AtMost 1) closeCodeFenceLineRegex
+        >> List.head
+        >> Maybe.map (isCloseFenceLineHelp fence)
+        >> Maybe.withDefault False
+
+
+closeCodeFenceLineRegex : Regex
+closeCodeFenceLineRegex =
+    Regex.regex "^ {0,3}(`{3,}|~{3,})\\s*$"
+
+
+isCloseFenceLineHelp : Fence -> Regex.Match -> Bool
+isCloseFenceLineHelp fence match =
+    case match.submatches of
+        Just fenceStr :: _ ->
+            String.length fenceStr >= fence.fenceLength
+                && String.left 1 fenceStr == fence.fenceChar
+
+        _ ->
+            False
 
 
 
@@ -664,140 +579,272 @@ parseBlockQuoteLine match absSyns =
 ----------------------------------------------------------------------
 
 
-type alias ListLine = ( ListASModel, String )
+parseIndentedListLine : String -> ListBlock -> List (AST b i) -> AST b i -> AST b i -> AST b i
+parseIndentedListLine rawLine model items ast astTail =
+    case items of
+        [] ->
+            indentLine model.indentLength rawLine
+                |> flip lineToAST []
+                |> flip (::) []
+                |> List model
+                |> flip (::) astTail
 
 
-type alias ListASModel =
-    { type_ : ListElement
-    , indentLength : Int
-    , delimiter : String
-    , isLoose : Bool
-    }
+        item :: itemsTail ->
+            let
+                indentedRawLine : String
+                indentedRawLine =
+                    indentLine model.indentLength rawLine
 
 
-initListASModel : ListASModel
-initListASModel =
-    { type_ = Unordered
-    , indentLength = 2
-    , delimiter = "-"
-    , isLoose = False
-    }
+                updateList : ListBlock -> AST b i
+                updateList model_ =
+                    lineToAST indentedRawLine item
+                        |> flip (::) itemsTail
+                        |> List model_
+                        |> flip (::) astTail
 
 
-parseListLine : Config.ListElement -> Regex.Match -> List AS -> List AS
-parseListLine type_ match absSyns =
-    let
-        ( lineModel, rawLine ) =
-            listMatch type_ match
-
-        parsedRawLine =
-            parseRawLines ( [ rawLine ], [] )
-
-        newListAS =
-            ListAS lineModel [ parsedRawLine ] :: absSyns
-
-    in case absSyns of
-        ListAS absSynModel absSynsList :: absSynsTail ->
-            if lineModel.delimiter == absSynModel.delimiter then
-                ListAS
-                    { absSynModel
-                        | indentLength = lineModel.indentLength
-                        , isLoose =
-                            absSynModel.isLoose
-                                || isBlankASLast absSynsList
-                    }
-                    (parsedRawLine :: absSynsList)
-                        :: absSynsTail
-
-            else
-                newListAS
-
-        ParagraphAS paragraph :: absSynsTail ->
-            -- Empty list item cannot interrupt a paragraph.
-            if parsedRawLine == [ BlankAS ] then
-                addToParagraph paragraph match.match
-                    :: absSynsTail
-
-            else
-                case lineModel.type_ of
-                    -- Ordered list with start 1 can interrupt.
-                    Config.Ordered 1 ->
-                        newListAS
-
-                    Config.Ordered int ->
-                        addToParagraph paragraph match.match
-                            :: absSynsTail
-
-                    _ ->
-                        newListAS
-
-        _ ->
-            newListAS
+            in case item of
+                -- A list item can begin with at most
+                -- one blank line without begin loose.
+                BlankLine _ :: [] ->
+                    updateList model
 
 
-isBlankASLast : List (List AS) -> Bool
-isBlankASLast absSynsList =
-    case absSynsList of
-        absSyns :: absSynsListTail ->
-            case absSyns of
-                -- Ignore if it's an empty list item (example 242)
-                BlankAS :: [] ->
-                    False
+                BlankLine _ :: itemTail ->
+                    if List.all (\block ->
+                            case block of
+                                BlankLine _ -> True
+                                _           -> False
+                        ) itemTail then
+                            parseRawLine rawLine ast
 
-                BlankAS :: _ ->
-                    True
 
-                ListAS _ absSynsList_ :: _ ->
-                    isBlankASLast absSynsList_
+                    else
+                        updateList { model | isLoose = True }
+
+
+                List model_ items_ :: itemTail ->
+                    if indentLength indentedRawLine
+                        >= model_.indentLength then
+                            updateList model
+
+
+                    else
+                        if isBlankLineLast items_ then
+                            updateList { model | isLoose = True }
+
+                        else
+                            updateList model
+
 
                 _ ->
-                    False
-        
-        [] ->
-            False
+                    updateList model
 
 
-indentLength : String -> Int
-indentLength =
-    Regex.replace Regex.All (Regex.regex "\\t") (\_ -> "    ")
-        >> Regex.find (Regex.AtMost 1) initSpacesRegex
-        >> List.head
-        >> Maybe.map (.match >> String.length)
-        >> Maybe.withDefault 0
+
+checkListLine : String -> AST b i -> Maybe (AST b i)
+checkListLine rawLine ast =
+    checkOrderedListLine rawLine
+        |> ifNothing (checkUnorderedListLine rawLine)
+        |> Maybe.map calcListIndentLength
+        |> Maybe.map (parseListLine rawLine ast)
 
 
-newListLine : ListElement -> String -> String -> String -> String -> ListLine
-newListLine type_ indentString delimiter indentSpace rawLine =
+-- Ordered list
+checkOrderedListLine : String -> Maybe ( ListBlock, String, String )
+checkOrderedListLine rawLine =
+    Regex.find (Regex.AtMost 1) orderedListLineRegex rawLine
+        |> List.head
+        |> Maybe.andThen extractOrderedListRM
+
+
+orderedListLineRegex : Regex
+orderedListLineRegex =
+    Regex.regex "^( *(\\d{1,9})([.)])( {0,4}))(?:[ \\t](.*))?$"
+
+
+extractOrderedListRM : Regex.Match -> Maybe ( ListBlock, String, String )
+extractOrderedListRM match =
+    case match.submatches of
+        Just indentString
+            :: Just start
+            :: Just delimiter
+            :: Just indentSpace
+            :: maybeRawLine
+            :: _ ->
+                ( { type_ =
+                        String.toInt start
+                            |> Result.map Ordered
+                            |> Result.withDefault Unordered
+                  , indentLength = String.length indentString + 1
+                  , delimiter = delimiter
+                  , isLoose = False
+                  }
+                , indentSpace
+                , Maybe.withDefault "" maybeRawLine
+                ) |> Just
+
+
+        _ ->
+            Nothing
+
+
+-- Unordered list
+checkUnorderedListLine : String -> Maybe ( ListBlock, String, String )
+checkUnorderedListLine rawLine =
+    Regex.find (Regex.AtMost 1) unorderedListLineRegex rawLine
+        |> List.head
+        |> Maybe.andThen extractUnorderedListRM
+
+
+unorderedListLineRegex : Regex
+unorderedListLineRegex =
+    Regex.regex "^( *([\\*\\-\\+])( {0,4}))(?:[ \\t](.*))?$"
+
+
+extractUnorderedListRM : Regex.Match -> Maybe ( ListBlock, String, String )
+extractUnorderedListRM match =
+    case match.submatches of
+        Just indentString
+            :: Just delimiter
+            :: Just indentSpace
+            :: maybeRawLine
+            :: [] ->
+                ( { type_ = Unordered
+                  , indentLength = String.length indentString + 1
+                  , delimiter = delimiter
+                  , isLoose = False
+                  }
+                , indentSpace
+                , Maybe.withDefault "" maybeRawLine
+                ) |> Just
+
+
+        _ ->
+            Nothing
+
+
+calcListIndentLength : ( ListBlock, String, String ) -> ( ListBlock, String )
+calcListIndentLength ( listBlock, indentSpace, rawLine ) =
     let
-        indentSpaceLenth =
+        indentSpaceLength : Int
+        indentSpaceLength =
             String.length indentSpace
 
-        isIndentedCode =
-            indentSpaceLenth >= 4
 
-        indentLength = 
-            if isIndentedCode then
-                1 + String.length indentString
-                    - String.length indentSpace
+        isIndentedCode : Bool
+        isIndentedCode =
+            indentSpaceLength >= 4
+
+
+        indentLength : Int
+        indentLength =
+            if isIndentedCode
+                || Regex.contains blankLineRegex rawLine then
+                    listBlock.indentLength - indentSpaceLength
 
             else
-                1 + String.length indentString
+                listBlock.indentLength
 
-        rawLine_ =
+
+        updtRawLine : String
+        updtRawLine =
             if isIndentedCode then
                 indentSpace ++ rawLine
 
             else
                 rawLine
 
+
     in
-        ( { initListASModel
-            | type_ = type_
-            , delimiter = delimiter
-            , indentLength = indentLength
-          }
-        , rawLine_
+        ( { listBlock | indentLength = indentLength }
+        , updtRawLine
         )
+
+
+parseListLine : String -> AST b i -> ( ListBlock, String ) -> AST b i
+parseListLine rawLine ast ( listBlock, listRawLine ) =
+    let
+        parsedRawLine : AST b i
+        parsedRawLine =
+            lineToAST listRawLine []
+
+
+        newList : AST b i
+        newList =
+            List listBlock [ parsedRawLine ] :: ast
+
+
+    in
+        case ast of
+            List model items :: astTail ->
+                if listBlock.delimiter == model.delimiter then
+                    parsedRawLine :: items
+                        |> List
+                            { model
+                                | indentLength =
+                                    listBlock.indentLength
+                                , isLoose =
+                                    model.isLoose
+                                        || isBlankLineLast items
+                            }
+                        |> flip (::) astTail
+
+
+                else
+                    newList
+
+
+            Paragraph rawText inlines :: astTail ->
+                case parsedRawLine of
+                    BlankLine _ :: [] ->
+                        -- Empty list item cannot interrupt a paragraph.
+                        addToParagraph rawText rawLine
+                            :: astTail
+
+                    _ ->
+                        case listBlock.type_ of
+                            -- Ordered list with start 1 can interrupt.
+                            Ordered 1 ->
+                                newList
+
+
+                            Ordered int ->
+                                addToParagraph rawText rawLine
+                                    :: astTail
+
+
+                            _ ->
+                                newList
+
+
+            _ ->
+                newList
+
+
+isBlankLineLast : List (AST b i) -> Bool
+isBlankLineLast items =
+    case items of
+        [] ->
+            False
+
+
+        item :: itemsTail ->
+            case item of
+                -- Ignore if it's an empty list item (example 242)
+                BlankLine _ :: [] ->
+                    False
+
+                BlankLine _ :: _ ->
+                    True
+
+                List _ items_ :: _ ->
+                    isBlankLineLast items_
+
+                _ ->
+                    False
 
 
 
@@ -806,16 +853,18 @@ newListLine type_ indentString delimiter indentSpace rawLine =
 ----------------------------------------------------------------------
 
 
-parseTextLine : String -> List AS -> List AS
-parseTextLine rawLine absSyns =
-    maybeContinueParagraph rawLine absSyns
+parseTextLine : String -> AST b i -> AST b i
+parseTextLine rawLine ast =
+    maybeContinueParagraph rawLine ast
         |> Maybe.withDefault
-            (ParagraphAS (formatParagraphLine rawLine) :: absSyns)
+            (Paragraph (formatParagraphLine rawLine) [] :: ast)
 
 
-addToParagraph : String -> String -> AS
+addToParagraph : String -> String -> Block b i
 addToParagraph paragraph rawLine =
-    ParagraphAS (paragraph ++ "\n" ++ formatParagraphLine rawLine)
+    Paragraph
+        (paragraph ++ "\n" ++ formatParagraphLine rawLine)
+        []
 
 
 formatParagraphLine : String -> String
@@ -827,37 +876,33 @@ formatParagraphLine rawParagraph =
         String.trim rawParagraph
 
 
-
-maybeContinueParagraph : String -> List AS -> Maybe ( List AS )
-maybeContinueParagraph rawLine absSyns =
-    case absSyns of
-        ParagraphAS paragraph :: absSynsTail ->
+maybeContinueParagraph : String -> AST b i -> Maybe (AST b i)
+maybeContinueParagraph rawLine ast =
+    case ast of
+        Paragraph paragraph _ :: astTail ->
             addToParagraph paragraph rawLine
-                :: absSynsTail
-                    |> Just
+                :: astTail |> Just
 
 
-        BlockQuoteAS absSyns_ :: absSynsTail ->
-            maybeContinueParagraph rawLine absSyns_
-                |> Maybe.map
-                    (\updtASs_ ->
-                        BlockQuoteAS updtASs_ :: absSynsTail
-                    )
+        BlockQuote bqAST :: astTail ->
+            maybeContinueParagraph rawLine bqAST
+                |> Maybe.map (\updtBqAST ->
+                    BlockQuote updtBqAST :: astTail)
 
 
-        ListAS model absSynsList :: absSynsTail ->
-            case absSynsList of
-                absSyns_ :: absSynsListTail ->
-                    maybeContinueParagraph rawLine absSyns_
+        List model items :: astTail ->
+            case items of
+                itemAST :: itemASTTail ->
+                    maybeContinueParagraph rawLine itemAST
                         |> Maybe.map
-                            (\updtASs_ ->
-                                ListAS model
-                                    (updtASs_ :: absSynsListTail)
-                                        :: absSynsTail
-                            )
+                            (flip (::) itemASTTail
+                                >> List model
+                                >> flip (::) astTail)
+
 
                 _ ->
                     Nothing
+
 
         _ ->
             Nothing
@@ -868,12 +913,94 @@ maybeContinueParagraph rawLine absSyns =
 ----------------------------- References -----------------------------
 ----------------------------------------------------------------------
 
+
 type alias LinkMatch =
     { matchLength : Int
     , inside : String
     , url : String
     , maybeTitle : Maybe String
     }
+
+
+parseReferences : References -> AST b i -> ( References, AST b i )
+parseReferences refs =
+    List.foldl parseReferencesHelp ( refs, [] )
+
+
+parseReferencesHelp : Block b i -> ( References, AST b i ) -> ( References, AST b i )
+parseReferencesHelp block ( refs, parsedAST ) =
+    case block of
+        Paragraph rawText _ ->
+            let
+                ( paragraphRefs, maybeUpdtText ) =
+                    parseReference Dict.empty rawText
+
+                updtRefs =
+                    Dict.union paragraphRefs refs
+            
+            in
+                case maybeUpdtText of
+                    Just updtText ->
+                        ( updtRefs
+                        , Paragraph updtText []
+                            :: parsedAST
+                        )
+
+                    Nothing ->
+                        ( updtRefs, parsedAST )
+
+
+        List model absSynsList ->
+            let
+                ( updtRefs, updtAbsSynsList ) =
+                    List.foldl
+                        (\absSyns ( refs__, parsedASsList ) ->
+                            parseReferences refs__ absSyns
+                                |> Tuple.mapSecond
+                                    (flip (::) parsedASsList)
+                        )
+                        ( refs, [] )
+                        absSynsList
+
+            in
+                ( updtRefs
+                , List model updtAbsSynsList
+                    :: parsedAST
+                )
+
+
+        BlockQuote bqAST ->
+            parseReferences refs bqAST
+                |> Tuple.mapSecond BlockQuote
+                |> Tuple.mapSecond (flip (::) parsedAST)
+
+
+        _ ->
+            ( refs, block :: parsedAST )
+
+
+parseReference : References -> String -> ( References, Maybe String )
+parseReference refs rawText =
+    case maybeLinkMatch rawText of
+        Just linkMatch ->
+            let
+                maybeStrippedText =
+                    dropRefString rawText linkMatch
+
+                updtRefs =
+                    insertLinkMatch refs linkMatch
+
+            in
+                case maybeStrippedText of
+                    Just strippedText ->
+                        parseReference updtRefs strippedText
+
+                    Nothing ->
+                        ( updtRefs, Nothing ) 
+
+
+        Nothing ->
+            ( refs, Just rawText )
 
 
 extractUrlTitleRegex : Regex.Match -> Maybe LinkMatch
@@ -980,124 +1107,27 @@ maybeLinkMatch rawText =
             )
 
 
-parseReference : References -> String -> ( References, Maybe String )
-parseReference refs rawText =
-    case maybeLinkMatch rawText of
-        Just linkMatch ->
-            let
-                maybeStrippedText =
-                    dropRefString rawText linkMatch
-
-                updtRefs =
-                    insertLinkMatch refs linkMatch
-
-            in
-                case maybeStrippedText of
-                    Just strippedText ->
-                        parseReference updtRefs strippedText
-
-                    Nothing ->
-                        ( updtRefs, Nothing ) 
-
-
-        Nothing ->
-            ( refs, Just rawText )
-
-
-parseReferences : References -> List AS -> ( References, List AS )
-parseReferences refs =
-    let
-        applyParser : AS -> ( References, List AS ) -> ( References, List AS )
-        applyParser absSyn ( refs_, parsedASs ) =
-            case absSyn of
-                ParagraphAS rawText ->
-                    let
-                        ( paragraphRefs, maybeUpdtText ) =
-                            parseReference Dict.empty rawText
-
-                        updtRefs =
-                            Dict.union paragraphRefs refs_
-                    
-                    in
-                        case maybeUpdtText of
-                            Just updtText ->
-                                ( updtRefs
-                                , ParagraphAS updtText
-                                    :: parsedASs
-                                )
-
-                            Nothing ->
-                                ( updtRefs, parsedASs )
-
-
-                ListAS model absSynsList ->
-                    let
-                        ( updtRefs, updtAbsSynsList ) =
-                            List.foldl
-                                (\absSyns ( refs__, parsedASsList ) ->
-                                    parseReferences refs__ absSyns
-                                        |> Tuple.mapSecond
-                                            (flip (::) parsedASsList)
-                                )
-                                ( refs_, [] )
-                                absSynsList
-
-                    in
-                        ( updtRefs
-                        , ListAS model updtAbsSynsList
-                            :: parsedASs
-                        )
-
-
-                BlockQuoteAS absSyns ->
-                    parseReferences refs_ absSyns
-                        |> Tuple.mapSecond BlockQuoteAS
-                        |> Tuple.mapSecond (flip (::) parsedASs)
-
-
-                _ ->
-                    ( refs_, absSyn :: parsedASs )
-
-    in
-        List.foldl applyParser ( refs, [] )
-
-
 
 ----------------------------------------------------------------------
--------------------------------- Block -------------------------------
+---------------------------- Parse Inlines ---------------------------
 ----------------------------------------------------------------------
 
 
-type alias AST customBlock customInline =
-    List (Block customBlock customInline)
+parseInlines : Options -> ( References, AST b i ) -> AST b i
+parseInlines options ( refs, ast ) =
+    List.map (parseInline options refs) ast
 
 
-type Block customBlock customInline
-    = ThematicBreak
-    | Heading Int (List (Inline customInline))
-    | Code (Maybe String) String
-    | Paragraph (List (Inline customInline))
-    | BlockQuote (List (Block customBlock customInline))
-    | List Config.ListElement Bool (List (List (Block customBlock customInline)))
-    | Html (List (Inline customInline))
-    | CustomBlock customBlock (List (Inline customInline))
-
-
-absSynToBlock : Options -> References -> AS -> Maybe (Block b i)
-absSynToBlock options refs absSyn =
-    case absSyn of
-        HeadingAS ( lvl, rawText ) ->
+parseInline : Options -> References -> Block b i -> Block b i
+parseInline options refs block =
+    case block of
+        Heading rawText lvl _ ->
             Inline.parse options refs rawText
                 |> inlineMatchesToInlines
-                |> Heading lvl
-                |> Just
+                |> Heading rawText lvl
 
 
-        ThematicBreakAS ->
-            Just ThematicBreak
-
-
-        ParagraphAS rawText ->
+        Paragraph rawText _ ->
             let
                 inlines : List (Inline i)
                 inlines =
@@ -1108,61 +1138,25 @@ absSynToBlock options refs absSyn =
             in
                 case inlines of
                     HtmlInline _ _ _ :: [] ->
-                        Just (Html inlines)
+                        HtmlBlock inlines
 
 
                     _ ->
-                        Just (Paragraph inlines)
+                        Paragraph rawText inlines
 
 
-        CodeAS codeAS ->
-            Just (codeASToBlock codeAS)
-
-
-        BlockQuoteAS absSyns ->
-            absSynsToBlocks options ( refs, absSyns )
+        BlockQuote bqAST ->
+            parseInlines options ( refs, bqAST )
                 |> BlockQuote
-                |> Just
 
 
-        ListAS model assList ->
-            List.map (absSynsToBlocks options << (,) refs) assList
-                |> List model.type_ model.isLoose
-                |> Just
+        List model items ->
+            List.map (parseInlines options << (,) refs) items
+                |> List model
 
 
-        BlankAS ->
-            Nothing
-
-
-absSynsToBlocks : Options -> ( References, List AS ) -> List (Block b i)
-absSynsToBlocks options ( refs, absSyns ) =
-    List.filterMap (absSynToBlock options refs) absSyns
-
-
-toBlocks : Options -> String -> List (Block b i)
-toBlocks options rawText =
-    ( toRawLines rawText, [] )
-        |> parseRawLines
-        |> parseReferences Dict.empty
-        |> absSynsToBlocks options
-
-
-
-----------------------------------------------------------------------
-------------------------------- Inline -------------------------------
-----------------------------------------------------------------------
-
-
-type Inline customInline
-    = Text String
-    | HardLineBreak
-    | CodeInline String
-    | Link String (Maybe String) (List (Inline customInline))
-    | Image String (Maybe String) (List (Inline customInline))
-    | HtmlInline String (List ( String, Maybe String )) (List (Inline customInline))
-    | Emphasis Int (List (Inline customInline))
-    | CustomInline customInline
+        block_ ->
+            block_
 
 
 inlineMatchesToInlines : List Inline.Match -> List (Inline customInline)
@@ -1209,55 +1203,26 @@ inlineMatchToInline (Inline.Match match) =
                 (inlineMatchesToInlines match.matches)
 
 
-extractText : List (Inline i) -> String
-extractText inlines =
-    List.foldl extractTextHelp "" inlines
-
-
-extractTextHelp : Inline i -> String -> String
-extractTextHelp inline text =
-    case inline of
-        Text str ->
-            text ++ str
-
-
-        HardLineBreak ->
-            text ++ " "
-
-
-        CodeInline str ->
-            text ++ str
-
-
-        Link _ _ inlines ->
-            text ++ extractText inlines
-
-
-        Image _ _ inlines ->
-            text ++ extractText inlines
-
-        HtmlInline _ _ inlines ->
-            text ++ extractText inlines
-
-
-        Emphasis _ inlines ->
-            text ++ extractText inlines
-
-
-        CustomInline _ ->
-            text
-
-
 
 ----------------------------------------------------------------------
 ----------------------------- Html Render ----------------------------
 ----------------------------------------------------------------------
 
 
+blocksToHtml : Options -> Elements msg -> Bool -> AST b i -> List (Html msg)
+blocksToHtml options elements textAsParagraph =
+    List.map (blockToHtml options elements textAsParagraph)
+        >> List.concat
+
+
 blockToHtml : Options -> Elements msg -> Bool -> Block b i -> List (Html msg)
 blockToHtml options elements textAsParagraph block =
     case block of
-        Heading level inlines ->
+        BlankLine _ ->
+            []
+
+
+        Heading _ level inlines ->
             [ elements.heading
                 level
                 (inlinesToHtml elements inlines)
@@ -1268,14 +1233,18 @@ blockToHtml options elements textAsParagraph block =
             [ hr [] [] ]
 
 
-        Paragraph inlines ->
+        Paragraph _ inlines ->
             elements.paragraph
                 textAsParagraph
                 (inlinesToHtml elements inlines)
 
 
-        Code maybeLanguage codeStr ->
-            [ elements.code maybeLanguage codeStr ]
+        CodeBlock (Fenced _ model) codeStr ->
+            [ elements.code model.language codeStr ]
+
+
+        CodeBlock Indented codeStr ->
+            [ elements.code Nothing codeStr ]
 
 
         BlockQuote blocks ->
@@ -1284,84 +1253,29 @@ blockToHtml options elements textAsParagraph block =
                 |> flip (::) []
 
 
-        List type_ isLoose items ->
+        List model items ->
             List.map
-                (blocksToHtml options elements isLoose
+                (blocksToHtml options elements model.isLoose
                     >> li []) items
-                |> elements.list type_
+                |> (case model.type_ of
+                        Ordered startInt ->
+                            if startInt == 1 then
+                                ol []
+                            
+                            else
+                                ol [ start startInt ]
+
+                        Unordered ->
+                            ul [])
                 |> flip (::) []
 
 
-        Html inlines ->
+        HtmlBlock inlines ->
             inlinesToHtml elements inlines
 
 
         CustomBlock name inlines ->
             [ Html.div [ class (toString name) ] [] ]
-
-
-blocksToHtml : Options -> Elements msg -> Bool -> AST b i -> List (Html msg)
-blocksToHtml options elements textAsParagraph =
-    List.map (blockToHtml options elements textAsParagraph)
-        >> List.concat
-
-
-{-| Customize how to render each element. The following examples
-demonstrate how to use it.
-
-- Render `target="_blank"` on links depending on the url.
-[Demo](https://pablohirafuji.github.io/elm-markdown/examples/CustomLinkTag.html)
-/ [Code](https://github.com/pablohirafuji/elm-markdown/blob/master/examples/CustomLinkTag.elm)
-- Render images using `figure` and `figcaption` elements.
-[Demo](https://pablohirafuji.github.io/elm-markdown/examples/CustomImageTag.html)
-/ [Code](https://github.com/pablohirafuji/elm-markdown/blob/master/examples/CustomImageTag.elm)
--}
-customHtml : Config.Options -> Config.Elements msg -> String -> List (Html msg)
-customHtml options elements =
-    toBlocks options
-        >> blocksToHtml options elements True
-
-
-{-| Customize how soft line breaks (`\n`) are rendered and raw html
-tags are parsed.
-
-```
-customOptions : Options
-customOptions =
-    { softAsHardLineBreak = True
-    , rawHtml = DontParse
-    }
-
-
-view : Html msg
-view =
-    div []
-        <| Markdown.withOptions customOptions myString
-```
-
-The [demo](https://pablohirafuji.github.io/elm-markdown/examples/Demo.html)
-demonstrate how each option affects the output.
--}
-withOptions : Config.Options -> String -> List (Html msg)
-withOptions options =
-    customHtml options defaultElements
-
-
-{-| Turn a markdown string into a list of HTML elements
-using `Config.defaultOptions` and `Config.defaultElements`.
-
-```
-
-markdownView : Html msg
-markdownView =
-    div []
-        <| Markdown.toHtml "# Title with *emphasis*"
-
-```
--}
-toHtml : String -> List (Html msg)
-toHtml =
-    customHtml defaultOptions defaultElements
 
 
 
@@ -1428,31 +1342,27 @@ inlineToHtml elements inline =
         Emphasis length inlines ->
             case length of
                 1 ->
-                    elements.emphasis
-                        (inlinesToHtml elements inlines)
+                    em [] (inlinesToHtml elements inlines)
 
 
                 2 ->
-                    elements.strongEmphasis
-                        (inlinesToHtml elements inlines)
+                    strong [] (inlinesToHtml elements inlines)
                     
 
                 _ ->
                     if length - 2 > 0 then
-                        elements.strongEmphasis
+                        strong []
                             <| flip (::) []
                             <| inlineToHtml elements
                             <| Emphasis (length - 2) inlines
 
 
                     else
-                        elements.emphasis
-                            (inlinesToHtml elements inlines)
+                        em [] (inlinesToHtml elements inlines)
 
         CustomInline _ ->
             text ""
 
-          
 
 attributesToHtmlAttributes : List Inline.Attribute -> List (Html.Attribute msg)
 attributesToHtmlAttributes =
@@ -1462,3 +1372,78 @@ attributesToHtmlAttributes =
 attributeToAttribute : Inline.Attribute -> Html.Attribute msg
 attributeToAttribute ( name, maybeValue ) =
     attribute name (Maybe.withDefault name maybeValue)
+
+
+
+----------------------------------------------------------------------
+------------------------------- Helpers ------------------------------
+----------------------------------------------------------------------
+
+
+toRawLines : String -> List String
+toRawLines =
+    String.lines
+
+
+indentLength : String -> Int
+indentLength =
+    Regex.replace Regex.All (Regex.regex "\\t") (\_ -> "    ")
+        >> Regex.find (Regex.AtMost 1) initSpacesRegex
+        >> List.head
+        >> Maybe.map (.match >> String.length)
+        >> Maybe.withDefault 0
+
+
+initSpacesRegex : Regex
+initSpacesRegex =
+    Regex.regex "^ +"
+
+
+indentLine : Int -> String -> String
+indentLine indentLength =
+    Regex.replace Regex.All (Regex.regex "\\t") (\_ -> "    ")
+        >> Regex.replace
+            (Regex.AtMost 1)
+            (Regex.regex ("^ {0," ++ toString indentLength ++ "}" ))
+            (\_ -> "")
+
+
+extractText : List (Inline i) -> String
+extractText inlines =
+    List.foldl extractTextHelp "" inlines
+
+
+extractTextHelp : Inline i -> String -> String
+extractTextHelp inline text =
+    case inline of
+        Text str ->
+            text ++ str
+
+
+        HardLineBreak ->
+            text ++ " "
+
+
+        CodeInline str ->
+            text ++ str
+
+
+        Link _ _ inlines ->
+            text ++ extractText inlines
+
+
+        Image _ _ inlines ->
+            text ++ extractText inlines
+
+
+        HtmlInline _ _ inlines ->
+            text ++ extractText inlines
+
+
+        Emphasis _ inlines ->
+            text ++ extractText inlines
+
+
+        CustomInline _ ->
+            text
+

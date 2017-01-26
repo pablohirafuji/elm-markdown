@@ -10,7 +10,7 @@ import Test.Helpers exposing (..)
 -- Based on http://spec.commonmark.org/0.27/#list-items
 
 
-run : List (Output)
+run : List (Output msg)
 run =
     [ testEq 214
         [ p [] [ text "A list marker is a bullet list marker or an ordered list marker." ]

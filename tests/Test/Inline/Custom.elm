@@ -7,7 +7,7 @@ import Test.Helpers exposing (..)
 
 
 
-run : List (Output)
+run : List (Output msg)
 run =
     [ testEq 1000
         []
@@ -28,6 +28,15 @@ run =
                 , text " precedence"
                 ]
             ]
+        ]
+
+    , testEq 1002
+        []
+        " -   \n  foo"
+        [ ul []
+            [ li [] []
+            ]
+        , p [] [ text "foo" ]
         ]
 
     ]

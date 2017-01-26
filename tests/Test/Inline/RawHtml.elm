@@ -10,7 +10,7 @@ import Test.Helpers exposing (..)
 -- Based on http://spec.commonmark.org/0.27/#raw-html
 
 
-run : List (Output)
+run : List (Output msg)
 run =
     [ testEq 581
         []

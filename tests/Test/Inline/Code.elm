@@ -10,7 +10,7 @@ import Test.Helpers exposing (..)
 -- Based on http://spec.commonmark.org/0.27/#code-spans
 
 
-run : List (Output)
+run : List (Output msg)
 run =
     [ testEq 312
         []

@@ -21,18 +21,20 @@ main =
 
 type alias Model =
     { textarea : String
+    , testModel : Test.View.Model
     }
 
 
 init : Model
 init =
     { textarea = ""
+    , testModel = Test.View.initModel
     }
 
 
 type Msg
     = TextAreaInput String
-    | Markdown
+    | TestMsg Test.View.Msg
 
 
 
@@ -42,22 +44,25 @@ update msg model =
         TextAreaInput str ->
             { model | textarea = str } ! []
 
-        Markdown ->
-            model ! []
+
+        TestMsg testMsg ->
+            { model | testModel =
+                Test.View.update testMsg model.testModel
+            } ! []
 
 
 view : Model -> Html Msg
 view model =
     div []
-        [ h1 [] [ text "Pure Elm Markdown" ]
+        [ h1 [] [ text "Pure Elm Markdown Tests" ]
         , textarea
             [ onInput TextAreaInput
             , defaultValue model.textarea ] []
         , br [] []
-        , Html.map (always Markdown)
-            <| div []
+        , div []
             <| Markdown.withOptions customOptions model.textarea
-        , Html.map (always Markdown) Test.View.view
+        , Html.map TestMsg
+            <| Test.View.view model.testModel
         ]
 
 

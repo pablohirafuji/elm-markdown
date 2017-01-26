@@ -10,7 +10,7 @@ import Test.Helpers exposing (..)
 -- Based on http://spec.commonmark.org/0.27/#fenced-code-blocks
 
 
-run : List (Output)
+run : List (Output msg)
 run =
     [ testEq 88
         [ p [] [ text "A code fence is a sequence of at least three consecutive backtick characters (`) or tildes (~). (Tildes and backticks cannot be mixed.) A fenced code block begins with a code fence, indented no more than three spaces." ]
