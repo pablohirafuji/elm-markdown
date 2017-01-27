@@ -2,16 +2,18 @@ module Markdown exposing
     ( toHtml
     , toAST
     , withOptions
+    , AST, Block(..), Inline(..)
+    , CodeBlock(..), ListBlock, Fence, ListType(..)
     )
 
 
 {-| A pure Elm package for markdown parsing and rendering.
 
 # Parsing Markdown
-@docs toHtml, toAST
+@docs toHtml, withOptions, toAST
 
-# Parsing with Custom Options
-@docs withOptions
+# Abstract Syntax Tree
+@docs AST, Block, Inline, CodeBlock, ListBlock, Fence, ListType
 
 -}
 
@@ -30,9 +32,28 @@ import Markdown.Config exposing (Elements, defaultElements, Options, defaultOpti
 ----------------------------------------------------------------------
 
 
+
+{-| The abstract syntax tree. Custom blocks and inlines
+are supported.
+-}
+
 type alias AST b i =
     List (Block b i)
 
+
+
+{-| The block type.
+
+- **BlankLine** | *Text*
+- **ThematicBreak**
+- **Heading** | *Raw text* | *Level* | *Inlines*
+- **CodeBlock** | *CodeBlock* | *Code*
+- **Paragraph** | *Raw text* | *Inlines*
+- **BlockQuote** | *AST*
+- **List** | *ListBlock* | *Items*
+- **HtmlBlock** | *Inlines*
+- **CustomBlock** | *Custom type*
+-}
 
 type Block b i
     = BlankLine String
@@ -43,7 +64,21 @@ type Block b i
     | BlockQuote (AST b i)
     | List ListBlock (List (AST b i))
     | HtmlBlock (List (Inline i))
-    | CustomBlock b (List (Inline i))
+    | CustomBlock b
+
+
+
+{-| The inline type.
+
+- **Text** | *Text*
+- **HardLineBreak**
+- **CodeInline** | *Code*
+- **Link** | *Url* | *Maybe Title* | *Inlines*
+- **Image** | *Source* | *Maybe Title* | *Inlines*
+- **HtmlInline** | *Tag* | *List ( Attribute, Maybe Value )* | *Inlines*
+- **Emphasis** | *Delimiter Length* | *Inlines*
+- **CustomInline** | *Custom type*
+-}
 
 
 type Inline i
@@ -57,10 +92,21 @@ type Inline i
     | CustomInline i
 
 
+
+{-| CodeBlock type.
+
+- **Indented**
+- **Fenced** | *Is fence open?* | *Fence*
+-}
+
 type CodeBlock
     = Indented
     | Fenced Bool Fence -- isOpen Fence
 
+
+
+{-| Fence model.
+-}
 
 type alias Fence =
     { indentLength : Int
@@ -70,6 +116,10 @@ type alias Fence =
     }
 
 
+
+{-| List model.
+-}
+
 type alias ListBlock =
     { type_ : ListType
     , indentLength : Int
@@ -78,6 +128,13 @@ type alias ListBlock =
     }
 
 
+
+{-| Types of list.
+
+- **Unordered**
+- **Ordered** | *Start*
+-}
+
 type ListType
     = Unordered
     | Ordered Int
@@ -85,17 +142,17 @@ type ListType
 
 
 {-| Turn a markdown string into a list of HTML elements
-using `Config.defaultOptions` and `Config.defaultElements`.
+using `Config.defaultOptions`.
 
 ```
-
-markdownView : Html msg
-markdownView =
+view : Html msg
+view =
     div []
-        <| Markdown.toHtml "# Title with *emphasis*"
+        <| toHtml "# Title with *emphasis*"
 
 ```
 -}
+
 toHtml : String -> List (Html msg)
 toHtml =
     withOptions defaultOptions
@@ -116,10 +173,10 @@ customOptions =
 view : Html msg
 view =
     div []
-        <| Markdown.withOptions customOptions myString
+        <| withOptions customOptions myString
 ```
 
-The [demo](https://pablohirafuji.github.io/elm-markdown/examples/Demo.html)
+This [demo](https://pablohirafuji.github.io/elm-markdown/examples/Demo.html)
 demonstrate how each option affects the output.
 -}
 
@@ -127,30 +184,30 @@ demonstrate how each option affects the output.
 withOptions : Options -> String -> List (Html msg)
 withOptions options =
     toAST options
-        >> blocksToHtml options defaultElements True
+        >> astToHtml options defaultElements True
 
 
-{-| Customize how soft line breaks (`\n`) are rendered and raw html
-tags are parsed.
+
+{-| Turn a markdown string into an abstract syntax tree.
 
 ```
-customOptions : Options
-customOptions =
-    { softAsHardLineBreak = True
-    , rawHtml = DontParse
-    }
-
-
-view : Html msg
-view =
-    div []
-        <| Markdown.withOptions customOptions myString
+ast : AST b i
+ast =
+    toAST defaultOptions "# Heading with *emphasis*"
+```
+will output:
+```
+ast : AST b i
+ast =
+    [ Heading "Heading with *emphasis*" 1
+        [ Text "Heading with "
+        , Emphasis 1
+            [ Text "emphasis" ]
+        ]
+    ]
 ```
 
-The [demo](https://pablohirafuji.github.io/elm-markdown/examples/Demo.html)
-demonstrate how each option affects the output.
 -}
-
 
 toAST : Options -> String -> AST b i
 toAST options rawText =
@@ -1209,8 +1266,8 @@ inlineMatchToInline (Inline.Match match) =
 ----------------------------------------------------------------------
 
 
-blocksToHtml : Options -> Elements msg -> Bool -> AST b i -> List (Html msg)
-blocksToHtml options elements textAsParagraph =
+astToHtml : Options -> Elements msg -> Bool -> AST b i -> List (Html msg)
+astToHtml options elements textAsParagraph =
     List.map (blockToHtml options elements textAsParagraph)
         >> List.concat
 
@@ -1247,15 +1304,15 @@ blockToHtml options elements textAsParagraph block =
             [ elements.code Nothing codeStr ]
 
 
-        BlockQuote blocks ->
-            blocksToHtml options elements True blocks
+        BlockQuote ast ->
+            astToHtml options elements True ast
                 |> elements.blockQuote
                 |> flip (::) []
 
 
         List model items ->
             List.map
-                (blocksToHtml options elements model.isLoose
+                (astToHtml options elements model.isLoose
                     >> li []) items
                 |> (case model.type_ of
                         Ordered startInt ->
@@ -1274,8 +1331,8 @@ blockToHtml options elements textAsParagraph block =
             inlinesToHtml elements inlines
 
 
-        CustomBlock name inlines ->
-            [ Html.div [ class (toString name) ] [] ]
+        CustomBlock _ ->
+            []
 
 
 

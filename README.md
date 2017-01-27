@@ -5,15 +5,21 @@ Pure Elm markdown parsing and rendering.
 Based on the latest [CommonMark Spec](http://spec.commonmark.org/0.27/), with [some differences](#differences-from-commonmark).
 [Demo](https://pablohirafuji.github.io/elm-markdown/examples/Demo.html).
 
+    elm package install pablohirafuji/elm-markdown
 
 
 ## Basic Usage
 
 
-    markdownView : Html msg
-    markdownView =
-        div []
-            <| Markdown.toHtml "# Heading with *emphasis*"
+```elm
+import Markdown
+
+
+view : Html msg
+view =
+    div []
+        <| Markdown.toHtml "# Heading with *emphasis*"
+```
 
 
 
@@ -180,24 +186,46 @@ For more information about supported syntax and parsing rules, see [CommonMark S
 - No processing instruction tag support (`<? ?>`);
 - No declaration tag support (`<! >`);
 - No [malformed](http://spec.commonmark.org/0.27/#example-122) html tag support (e.g.: `<div class`);
+- No balanced parenthesis in inline link's url support (e.g.: `[link](url() "title")`, use `[link](<url()> "title")` instead);
 - To create a HTML block, wich is not surrounded by paragraph tag (`<p>`), start and finish a paragraph with the html tag you want the HTML block to be, with no blankline between the start and end tag. E.g.:
 
-      First paragraph.
+        First paragraph.
 
-      <table>
-          <tr>
-              <td>
-                  Table element
-              </td>
-          </tr>
-      </table>
+        <table>
+            <tr>
+                <td>
+                    Table element
+                </td>
+            </tr>
+        </table>
 
-      Next paragraph.
+        Next paragraph.
 
 
 
 
 ## Options
+
+Use `Markdown.withOptions` to specify parsing options:
+
+```elm
+import Markdown
+import Markdown.Config exposing (Options, defaultOptions)
+
+
+customOptions : Options
+customOptions =
+    { defaultOptions
+        | softAsHardLineBreak = True
+    }
+
+
+view : Html msg
+view =
+    div []
+        <| Markdown.withOptions customOptions
+        <| "# Heading with *emphasis*"
+```
 
 The following options are available:
 
@@ -245,8 +273,8 @@ defaultSanitizeOptions =
     }
 ```
 
-**Note:** Only basic sanitization is provided.
-If you are receiving user submitted content, you should use a specific library to sanitize the user input.
+> **Note:** Only basic sanitization is provided.
+If you are receiving user submitted content, you should use a specific library to sanitize user input.
 
 
 
@@ -258,4 +286,5 @@ The following examples demonstrate how to do it.
 - Example of rendering all links with `target="_blank"` if does not start with a specific string. [Demo](https://pablohirafuji.github.io/elm-markdown/examples/CustomLinkTag.html) / [Code](https://github.com/pablohirafuji/elm-markdown/blob/master/examples/CustomLinkTag.elm)
 - Example of rendering all images using `figure` and `figcaption`.
 [Demo](https://pablohirafuji.github.io/elm-markdown/examples/CustomImageTag.html) / [Code](https://github.com/pablohirafuji/elm-markdown/blob/master/examples/CustomImageTag.elm)
+
 
