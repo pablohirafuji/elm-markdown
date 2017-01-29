@@ -54,13 +54,13 @@ update msg model =
 view : Model -> Html Msg
 view model =
     div []
-        [ h1 [] [ text "Pure Elm Markdown Tests" ]
+        [ h1 [] [ text "Pure Elm markdown tests" ]
         , textarea
             [ onInput TextAreaInput
             , defaultValue model.textarea ] []
         , br [] []
         , div []
-            <| Markdown.withOptions customOptions model.textarea
+            <| Markdown.toHtml (Just customOptions) model.textarea
         , Html.map TestMsg
             <| Test.View.view model.testModel
         ]

@@ -8,6 +8,8 @@
     ],
     "exposed-modules": [
         "Markdown",
+        "Markdown.Block",
+        "Markdown.Inline",
         "Markdown.Config"
     ],
     "dependencies": {

@@ -14,7 +14,7 @@ testEq number description input expectedResult =
     let
         result : List (Html msg)
         result =
-            Markdown.withOptions customOptions input
+            Markdown.toHtml (Just customOptions) input
 
         isValid =
             toString result == toString expectedResult

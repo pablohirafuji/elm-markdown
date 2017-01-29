@@ -2,7 +2,7 @@ module Test.View exposing (..)
 
 
 import Html exposing (..)
-import Html.Attributes exposing (style, type_, checked)
+import Html.Attributes exposing (style, type_, checked, href)
 import Html.Events exposing (onCheck)
 import Test.Helpers exposing (Output)
 import Test.Initial
@@ -107,6 +107,12 @@ view model =
                     ++ "/"
                     ++ toString (totalTestCount tests)
                     ++ ")"
+            ]
+        , p []
+            [ text "Based on "
+            , a [ href "http://spec.commonmark.org/0.27/" ]
+                [ text "CommonMark Spec" ]
+            , text "."
             ]
         , label []
             [ input

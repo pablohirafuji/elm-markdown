@@ -18,7 +18,7 @@ import Markdown
 view : Html msg
 view =
     div []
-        <| Markdown.toHtml "# Heading with *emphasis*"
+        <| Markdown.toHtml Nothing "# Heading with *emphasis*"
 ```
 
 
@@ -206,7 +206,7 @@ For more information about supported syntax and parsing rules, see [CommonMark S
 
 ## Options
 
-Use `Markdown.withOptions` to specify parsing options:
+Use `Markdown.toHtml` to specify parsing options:
 
 ```elm
 import Markdown
@@ -223,7 +223,7 @@ customOptions =
 view : Html msg
 view =
     div []
-        <| Markdown.withOptions customOptions
+        <| Markdown.toHtml (Just customOptions)
         <| "# Heading with *emphasis*"
 ```
 
@@ -280,11 +280,92 @@ If you are receiving user submitted content, you should use a specific library t
 
 ## Customization
 
-You can customize how each markdown element is rendered.
-The following examples demonstrate how to do it.
+You can customize how each markdown element is rendered by
+first parsing the markdown string into blocks, then mapping the resulting blocks through a custom renderer, created with the help of `Blocks.defaultHtml` and/or `Inline.defaultHtml`, then concatenate the resulting list.
 
-- Example of rendering all links with `target="_blank"` if does not start with a specific string. [Demo](https://pablohirafuji.github.io/elm-markdown/examples/CustomLinkTag.html) / [Code](https://github.com/pablohirafuji/elm-markdown/blob/master/examples/CustomLinkTag.elm)
-- Example of rendering all images using `figure` and `figcaption`.
-[Demo](https://pablohirafuji.github.io/elm-markdown/examples/CustomImageTag.html) / [Code](https://github.com/pablohirafuji/elm-markdown/blob/master/examples/CustomImageTag.elm)
+Example of rendering:
+- All blockquotes as a detail element;
+- Images using figure and figcaption;
+- Links not starting with `http://elm-lang.org` with a `target="_blank"` attribute.
+
+```
+import Html exposing (..)
+import Html.Attributes exposing (..)
+import Markdown.Block as Block exposing (Block(..))
+import Markdown.Inline as Inline exposing (Inline(..))
 
 
+view : Html msg
+view =
+    myMarkdownString
+        |> Block.parse Nothing -- using Config.defaultOptions
+        |> List.map (customHtmlBlock)
+        |> List.concat
+        |> article []
+
+
+customHtmlBlock : Block b i -> List (Html msg)
+customHtmlBlock block =
+    case block of
+        BlockQuote blocks ->
+            List.map customHtmlBlock blocks
+                |> List.concat
+                |> details []
+                |> flip (::) []
+
+
+        _ ->
+            Block.defaultHtml
+                (Just customHtmlBlock)
+                (Just customHtmlInline)
+                block
+
+
+customHtmlInline : Inline i -> Html msg
+customHtmlInline inline =
+    case inline of
+        Image url maybeTitle inlines ->
+            figure []
+                [ img
+                    [ alt (Inline.extractText inlines)
+                    , src url
+                    , title (Maybe.withDefault "" maybeTitle)
+                    ] []
+                , figcaption []
+                    [ text (Inline.extractText inlines) ]
+                ]
+
+
+        Link url maybeTitle inlines ->
+            if String.startsWith "http://elm-lang.org" url then
+                a [ href url
+                  , title (Maybe.withDefault "" maybeTitle)
+                  ] (List.map customHtmlInline inlines)
+
+            else
+                a [ href url
+                  , title (Maybe.withDefault "" maybeTitle)
+                  , target "_blank"
+                  , rel "noopener noreferrer"
+                  ] (List.map customHtmlInline inlines)
+
+
+        _ ->
+            Inline.defaultHtml (Just customHtmlInline) inline
+```
+
+
+## Advanced Usage
+
+Todo:
+- Custom Blocks
+- Custom Inlines
+
+
+## Thanks
+
+Thank you John MacFarlane, for creating [CommonMark](http://commonmark.org/) specification and tests.
+
+Thank you everyone who gave feedback. Special thanks to Jan Tojnar, for discussing about the API.
+
+Thank you Evan for bringing joy to the frontend.
