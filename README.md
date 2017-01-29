@@ -288,7 +288,7 @@ Example of rendering:
 - Images using figure and figcaption;
 - Links not starting with `http://elm-lang.org` with a `target="_blank"` attribute.
 
-```
+```elm
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Markdown.Block as Block exposing (Block(..))
