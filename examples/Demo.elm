@@ -107,8 +107,8 @@ view model =
                 ]
             , Html.map (always Markdown)
                 <| div [ width50Style ]
-                <| Markdown.withOptions
-                    model.options
+                <| Markdown.toHtml
+                    (Just model.options)
                     model.textarea
             ]
         ]
@@ -177,26 +177,31 @@ readmeMD : String
 readmeMD = """
 # Elm Markdown
 
-Pure Elm markdown parsing and rendering. [Demo](https://pablohirafuji.github.io/elm-markdown/examples/Demo.html).
+Pure Elm markdown parsing and rendering.
+
+Based on the latest [CommonMark Spec](http://spec.commonmark.org/0.27/), with [some differences](#differences-from-commonmark).
+[Demo](https://pablohirafuji.github.io/elm-markdown/examples/Demo.html).
+
+    elm package install pablohirafuji/elm-markdown
+
 
 ## Basic Usage
 
 
-    type Msg
-        = MsgOfmyApp1
-        | MsgOfmyApp2
-        | MsgOfmyApp3
-        | Markdown
+```elm
+import Markdown
 
 
-    markdownView : Html Msg
-    markdownView =
-        Html.map (always Markdown)
-            <| section []
-            <| Markdown.toHtml "# Heading with *emphasis*"
+view : Html msg
+view =
+    div []
+        <| Markdown.toHtml Nothing "# Heading with *emphasis*"
+```
 
 
-## Supported syntax
+
+## Supported Syntax
+
 
 
 ### Heading
@@ -216,6 +221,7 @@ You can also use `=` or `-` after a paragraph for level 1 or 2 heading.
 
     Heading 2
     ----------
+
 
 
 ### Quoting
@@ -248,22 +254,23 @@ it will be added a `class="language-optionalLang"` to
 the code element.
 
 
+
 ### Link
 
 You can create an inline link by wrapping link text in
-brackets `[ ]`, and then wrapping the URL in parentheses `( )`.
+brackets `[ ]`, and then wrapping the URL in parentheses `( )`, with a optional title using single quotes, double quotes or parentheses.
 
-    Do you know the Elm [slack channel](https://elmlang.slack.com/)?
+    Do you know the Elm [slack channel](https://elmlang.slack.com/ "title")?
 
 Or create a reference link:
 
-    [slackLink]: https://elmlang.slack.com/
+    [slackLink]: https://elmlang.slack.com/ 'title'
 
     Do you know the Elm [slack channel][slackLink]?
 
 Or even:
 
-    [slack channel]: https://elmlang.slack.com/
+    [slack channel]: https://elmlang.slack.com/ (title)
 
     Do you know the Elm [slack channel]?
 
@@ -273,6 +280,7 @@ Autolinks and emails are supported with `< >`:
 
     Autolink: <http://elm-lang.org/>
     Email link: <google@google.com>
+
 
 
 ### Lists
@@ -285,6 +293,7 @@ text with `-` or `*`.
       * Nested unordered list
     5. Ordered list starting at 5
         1) Nested ordered list starting at 1
+
 
 
 ### Paragraphs and line breaks
@@ -340,12 +349,60 @@ You can insert images using the following syntax:
     ![alt text](src-url "title")
 
 
-
 For more information about supported syntax and parsing rules, see [CommonMark Spec](http://spec.commonmark.org/0.27/).
 
 
 
+## Differences from CommonMark
+
+- No entity references encoding/decoding support (e.g.: `&nbsp;`, `&amp;`, `&copy;`);
+- No decimal numeric characters decoding support (e.g.: `&#35;`, `&#1234;`,  `&#992;`);
+- No hexadecimal numeric character decoding support (e.g.: `&#X22;`, `&#XD06;`, `&#xcab;`);
+- No comment tag support (`<!-- -->`);
+- No CDATA tag support (`<![CDATA[ ]]>`);
+- No processing instruction tag support (`<? ?>`);
+- No declaration tag support (`<! >`);
+- No [malformed](http://spec.commonmark.org/0.27/#example-122) html tag support (e.g.: `<div class`);
+- No balanced parenthesis in inline link's url support (e.g.: `[link](url() "title")`, use `[link](<url()> "title")` instead);
+- To create a HTML block, wich is not surrounded by paragraph tag (`<p>`), start and finish a paragraph with the html tag you want the HTML block to be, with no blankline between the start and end tag. E.g.:
+
+        First paragraph.
+
+        <table>
+            <tr>
+                <td>
+                    Table element
+                </td>
+            </tr>
+        </table>
+
+        Next paragraph.
+
+
+
+
 ## Options
+
+Use `Markdown.toHtml` to specify parsing options:
+
+```elm
+import Markdown
+import Markdown.Config exposing (Options, defaultOptions)
+
+
+customOptions : Options
+customOptions =
+    { defaultOptions
+        | softAsHardLineBreak = True
+    }
+
+
+view : Html msg
+view =
+    div []
+        <| Markdown.toHtml (Just customOptions)
+        <| "# Heading with *emphasis*"
+```
 
 The following options are available:
 
@@ -380,38 +437,114 @@ Default allowed elements and attributes:
 defaultSanitizeOptions : SanitizeOptions
 defaultSanitizeOptions =
     { allowedHtmlElements =
-        [ "address", "article", "aside", "b", "blockquote"
-        , "body","br", "caption", "center", "cite", "code", "col"
-        , "colgroup", "dd", "details", "div", "dl", "dt", "figcaption"
-        , "figure", "footer", "h1", "h2", "h3", "h4", "h5", "h6", "hr"
-        , "i", "legend", "li", "link", "main", "menu", "menuitem"
-        , "nav", "ol", "optgroup", "option", "p", "pre", "section"
-        , "strike", "summary", "small", "table", "tbody", "td"
-        , "tfoot", "th", "thead", "title", "tr", "ul" ]
+        [ "address", "article", "aside", "b", "blockquote", "br"
+        , "caption", "center", "cite", "code", "col", "colgroup"
+        , "dd", "details", "div", "dl", "dt", "figcaption", "figure"
+        , "footer", "h1", "h2", "h3", "h4", "h5", "h6", "hr", "i"
+        , "legend", "li", "menu", "menuitem", "nav", "ol", "optgroup"
+        , "option", "p", "pre", "section", "strike", "summary"
+        , "small", "table", "tbody", "td", "tfoot", "th", "thead"
+        , "tr", "ul" ]
     , allowedHtmlAttributes =
         [ "name", "class" ]
     }
 ```
 
-Please note that is provided basic sanitization.
-If you are receiving user submitted content, you should use a specific library to sanitize the user input.
+> **Note:** Only basic sanitization is provided.
+If you are receiving user submitted content, you should use a specific library to sanitize user input.
+
 
 
 ## Customization
 
-You can customize how each markdown element is rendered.
-The following examples demonstrate how to do it.
+You can customize how each markdown element is rendered by
+first parsing the markdown string into blocks, then mapping the resulting blocks through a custom renderer, created with the help of `Blocks.defaultHtml` and/or `Inline.defaultHtml`, then concatenate the resulting list.
 
-- Example of rendering all links with `target="_blank"` if does not start with a specific string. [Demo](https://pablohirafuji.github.io/elm-markdown/examples/CustomLinkTag.html) / [Code](https://github.com/pablohirafuji/elm-markdown/blob/master/examples/CustomLinkTag.elm)
-- Example of rendering all images using `figure` and `figcaption`.
-[Demo](https://pablohirafuji.github.io/elm-markdown/examples/CustomImageTag.html) / [Code](https://github.com/pablohirafuji/elm-markdown/blob/master/examples/CustomImageTag.elm)
+Example of rendering:
+- All blockquotes as a detail element;
+- Images using figure and figcaption;
+- Links not starting with `http://elm-lang.org` with a `target="_blank"` attribute.
+
+```elm
+import Html exposing (..)
+import Html.Attributes exposing (..)
+import Markdown.Block as Block exposing (Block(..))
+import Markdown.Inline as Inline exposing (Inline(..))
 
 
-## TODO
+view : Html msg
+view =
+    myMarkdownString
+        |> Block.parse Nothing -- using Config.defaultOptions
+        |> List.map (customHtmlBlock)
+        |> List.concat
+        |> article []
 
-- Improve docs;
-- Improve tab parser;
-- Get feedback if encoded characters replacement is needed;
-- Get feedback about missing wanted features;
-- Get feedback about the API;
+
+customHtmlBlock : Block b i -> List (Html msg)
+customHtmlBlock block =
+    case block of
+        BlockQuote blocks ->
+            List.map customHtmlBlock blocks
+                |> List.concat
+                |> details []
+                |> flip (::) []
+
+
+        _ ->
+            Block.defaultHtml
+                (Just customHtmlBlock)
+                (Just customHtmlInline)
+                block
+
+
+customHtmlInline : Inline i -> Html msg
+customHtmlInline inline =
+    case inline of
+        Image url maybeTitle inlines ->
+            figure []
+                [ img
+                    [ alt (Inline.extractText inlines)
+                    , src url
+                    , title (Maybe.withDefault "" maybeTitle)
+                    ] []
+                , figcaption []
+                    [ text (Inline.extractText inlines) ]
+                ]
+
+
+        Link url maybeTitle inlines ->
+            if String.startsWith "http://elm-lang.org" url then
+                a [ href url
+                  , title (Maybe.withDefault "" maybeTitle)
+                  ] (List.map customHtmlInline inlines)
+
+            else
+                a [ href url
+                  , title (Maybe.withDefault "" maybeTitle)
+                  , target "_blank"
+                  , rel "noopener noreferrer"
+                  ] (List.map customHtmlInline inlines)
+
+
+        _ ->
+            Inline.defaultHtml (Just customHtmlInline) inline
+```
+
+
+## Advanced Usage
+
+Todo:
+- Custom Blocks
+- Custom Inlines
+
+
+## Thanks
+
+Thank you John MacFarlane, for creating [CommonMark](http://commonmark.org/) specification and tests.
+
+Thank you everyone who gave feedback. Special thanks to Jan Tojnar, for discussing about the API.
+
+Thank you Evan for bringing joy to the frontend.
+
 """
