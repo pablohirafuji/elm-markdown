@@ -2,6 +2,8 @@
 
 Pure Elm markdown parsing and rendering.
 
+**Warning:** This package is not ready yet! It's about 50x slower than the [default one](http://package.elm-lang.org/packages/evancz/elm-markdown/latest) and the API can change dramatically. Use only if speed is not crucial, you need the AST and want to stay in cozy Elm land. [Feedbacks](https://github.com/pablohirafuji/elm-markdown/issues) are welcome.
+
 Based on the latest [CommonMark Spec](http://spec.commonmark.org/0.27/), with [some differences](#differences-from-commonmark).
 [Demo](https://pablohirafuji.github.io/elm-markdown/examples/Demo.html).
 
