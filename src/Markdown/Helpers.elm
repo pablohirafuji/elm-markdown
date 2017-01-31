@@ -88,15 +88,6 @@ returnFirstJust maybes =
         List.foldl process Nothing maybes
 
 
-ifNothing : Maybe a -> Maybe a -> Maybe a
-ifNothing maybe maybe_ =
-    if maybe_ == Nothing then
-        maybe
-
-    else
-        maybe_
-
-
 whiteSpaceChars : String
 whiteSpaceChars =
     " \\t\\f\\v\\r\\n"
@@ -108,4 +99,14 @@ cleanWhitespaces =
         >> Regex.replace Regex.All
             (Regex.regex ("[" ++ whiteSpaceChars ++ "]+"))
             (\_ -> " ")
+
+
+ifError : ( x -> Result x a) -> Result x a -> Result x a
+ifError function result =
+    case result of
+        Result.Ok _ ->
+            result
+
+        Result.Err err ->
+            function err
 

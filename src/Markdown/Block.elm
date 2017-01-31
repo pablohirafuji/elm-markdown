@@ -144,25 +144,25 @@ blocks =
 parse : Maybe Options -> String -> List (Block b i)
 parse maybeOptions =
     String.lines
-        >> flip linesToBlocks []
+        >> flip incorporateLines []
         >> parseReferences Dict.empty
         >> parseInlines maybeOptions True
 
 
-linesToBlocks : List String -> List (Block b i) -> List (Block b i)
-linesToBlocks rawLines ast =
+incorporateLines : List String -> List (Block b i) -> List (Block b i)
+incorporateLines rawLines ast =
     case rawLines of
         [] ->
             ast
 
 
         rawLine :: rawLinesTail ->
-            lineToBlock rawLine ast
-                |> linesToBlocks rawLinesTail
+            incorporateLine rawLine ast
+                |> incorporateLines rawLinesTail
 
 
-lineToBlock : String -> List (Block b i) -> List (Block b i)
-lineToBlock rawLine ast =
+incorporateLine : String -> List (Block b i) -> List (Block b i)
+incorporateLine rawLine ast =
     case ast of
         -- No need to typify the line if Fenced Code
         -- is open, just check for closing fence.
@@ -182,15 +182,15 @@ lineToBlock rawLine ast =
                 -- When both a thematic break and a list item are
                 -- possible interpretations of a line, the
                 -- thematic break takes precedence.
-                checkThematicBreakLine rawLine ast
-                    |> ifNothing (checkListLine rawLine ast)
-                    |> ifNothing (checkBlankLine rawLine ast)
-                    |> ifNothing (checkIndentedCode rawLine ast)
-                    |> ifNothing (checkOpenCodeFenceLine rawLine ast)
-                    |> ifNothing (checkSetextHeadingLine rawLine ast)
-                    |> ifNothing (checkATXHeadingLine rawLine ast)
-                    |> ifNothing (checkBlockQuote rawLine ast)
-                    |> Maybe.withDefault (parseTextLine rawLine ast)
+                checkThematicBreakLine ( rawLine, ast )
+                    |> ifError checkListLine
+                    |> ifError checkBlankLine
+                    |> ifError checkIndentedCode
+                    |> ifError checkOpenCodeFenceLine
+                    |> ifError checkSetextHeadingLine
+                    |> ifError checkATXHeadingLine
+                    |> ifError checkBlockQuote
+                    |> Result.withDefault (parseTextLine rawLine ast)
 
 
         _ ->
@@ -200,15 +200,15 @@ lineToBlock rawLine ast =
 -- Default parsing precedence
 parseRawLine : String -> List (Block b i) -> List (Block b i)
 parseRawLine rawLine ast =
-    checkBlankLine rawLine ast
-        |> ifNothing (checkIndentedCode rawLine ast)
-        |> ifNothing (checkOpenCodeFenceLine rawLine ast)
-        |> ifNothing (checkSetextHeadingLine rawLine ast)
-        |> ifNothing (checkATXHeadingLine rawLine ast)
-        |> ifNothing (checkBlockQuote rawLine ast)
-        |> ifNothing (checkThematicBreakLine rawLine ast)
-        |> ifNothing (checkListLine rawLine ast)
-        |> Maybe.withDefault (parseTextLine rawLine ast)
+    checkBlankLine ( rawLine, ast )
+        |> ifError checkIndentedCode
+        |> ifError checkOpenCodeFenceLine
+        |> ifError checkSetextHeadingLine
+        |> ifError checkATXHeadingLine
+        |> ifError checkBlockQuote
+        |> ifError checkThematicBreakLine
+        |> ifError checkListLine
+        |> Result.withDefault (parseTextLine rawLine ast)
 
 
 
@@ -217,11 +217,12 @@ parseRawLine rawLine ast =
 ----------------------------------------------------------------------
 
 
-checkBlankLine : String -> List (Block b i) -> Maybe (List (Block b i))
-checkBlankLine rawLine ast =
+checkBlankLine : ( String, List (Block b i) ) -> Result ( String, List (Block b i) ) (List (Block b i))
+checkBlankLine ( rawLine, ast ) =
     Regex.find (Regex.AtMost 1) blankLineRegex rawLine
         |> List.head
         |> Maybe.map (parseBlankLine ast)
+        |> Result.fromMaybe ( rawLine, ast )
 
 
 blankLineRegex : Regex
@@ -265,12 +266,13 @@ addBlankLineToListBlock match asts =
 ----------------------------------------------------------------------
 
 
-checkATXHeadingLine : String -> List (Block b i) -> Maybe (List (Block b i))
-checkATXHeadingLine rawLine ast =
+checkATXHeadingLine : ( String, List (Block b i) ) -> Result ( String, List (Block b i) ) (List (Block b i))
+checkATXHeadingLine ( rawLine, ast ) =
     Regex.find (Regex.AtMost 1) atxHeadingLineRegex rawLine
         |> List.head
         |> Maybe.andThen extractATXHeadingRM
         |> Maybe.map (flip (::) ast)
+        |> Result.fromMaybe ( rawLine, ast )
 
 
 atxHeadingLineRegex : Regex
@@ -298,12 +300,13 @@ extractATXHeadingRM match =
 ----------------------------------------------------------------------
 
 
-checkSetextHeadingLine : String -> List (Block b i) -> Maybe (List (Block b i))
-checkSetextHeadingLine rawLine ast =
+checkSetextHeadingLine : ( String, List (Block b i) ) -> Result ( String, List (Block b i) ) (List (Block b i))
+checkSetextHeadingLine ( rawLine, ast ) =
     Regex.find (Regex.AtMost 1) setextHeadingLineRegex rawLine
         |> List.head
         |> Maybe.andThen extractSetextHeadingRM
         |> Maybe.andThen (parseSetextHeadingLine rawLine ast)
+        |> Result.fromMaybe ( rawLine, ast )
 
 
 setextHeadingLineRegex : Regex
@@ -345,11 +348,12 @@ parseSetextHeadingLine rawLine ast ( lvl, delimiter ) =
 ----------------------------------------------------------------------
 
 
-checkThematicBreakLine : String -> List (Block b i) -> Maybe (List (Block b i))
-checkThematicBreakLine rawLine ast =
+checkThematicBreakLine : ( String, List (Block b i) ) -> Result ( String, List (Block b i) ) (List (Block b i))
+checkThematicBreakLine ( rawLine, ast ) =
     Regex.find (Regex.AtMost 1) thematicBreakLineRegex rawLine
         |> List.head
         |> Maybe.map (\_ -> ThematicBreak :: ast)
+        |> Result.fromMaybe ( rawLine, ast )
 
 
 thematicBreakLineRegex : Regex
@@ -366,14 +370,15 @@ thematicBreakLineRegex =
 ----------------------------------------------------------------------
 
 
-checkBlockQuote : String -> List (Block b i) -> Maybe (List (Block b i))
-checkBlockQuote rawLine ast =
+checkBlockQuote : ( String, List (Block b i) ) -> Result ( String, List (Block b i) ) (List (Block b i))
+checkBlockQuote ( rawLine, ast ) =
     Regex.find (Regex.AtMost 1) blockQuoteLineRegex rawLine
         |> List.head
         |> Maybe.map (.submatches >> List.head)
         |> Maybe.withDefault Nothing
         |> Maybe.withDefault Nothing
         |> Maybe.map (parseBlockQuoteLine ast)
+        |> Result.fromMaybe ( rawLine, ast )
 
 
 blockQuoteLineRegex : Regex
@@ -385,13 +390,13 @@ parseBlockQuoteLine : List (Block b i) -> String -> List (Block b i)
 parseBlockQuoteLine ast rawLine =
     case ast of
         BlockQuote bqAST :: astTail ->
-            lineToBlock rawLine bqAST
+            incorporateLine rawLine bqAST
                 |> BlockQuote
                 |> flip (::) astTail
 
 
         _ ->
-            lineToBlock rawLine []
+            incorporateLine rawLine []
                 |> BlockQuote
                 |> flip (::) ast
 
@@ -402,14 +407,15 @@ parseBlockQuoteLine ast rawLine =
 ----------------------------------------------------------------------
 
 
-checkIndentedCode : String -> List (Block b i) -> Maybe (List (Block b i))
-checkIndentedCode rawLine ast =
+checkIndentedCode : ( String, List (Block b i) ) -> Result ( String, List (Block b i) ) (List (Block b i))
+checkIndentedCode ( rawLine, ast ) =
     Regex.find (Regex.AtMost 1) indentedCodeLineRegex rawLine
         |> List.head
         |> Maybe.map (.submatches >> List.head)
         |> Maybe.withDefault Nothing
         |> Maybe.withDefault Nothing
         |> Maybe.map (parseIndentedCodeLine ast)
+        |> Result.fromMaybe ( rawLine, ast )
 
 
 indentedCodeLineRegex : Regex
@@ -485,13 +491,14 @@ resumeIndentedCodeBlock codeLine ( remainBlocks, blankLines ) =
 ----------------------------------------------------------------------
 
 
-checkOpenCodeFenceLine : String -> List (Block b i) -> Maybe (List (Block b i))
-checkOpenCodeFenceLine rawLine ast =
+checkOpenCodeFenceLine : ( String, List (Block b i) ) -> Result ( String, List (Block b i) ) (List (Block b i))
+checkOpenCodeFenceLine ( rawLine, ast ) =
     Regex.find (Regex.AtMost 1) openCodeFenceLineRegex rawLine
         |> List.head
         |> Maybe.andThen extractOpenCodeFenceRM
         |> Maybe.map (\f -> CodeBlock f "")
         |> Maybe.map (flip (::) ast)
+        |> Result.fromMaybe ( rawLine, ast )
 
 
 openCodeFenceLineRegex : Regex
@@ -568,7 +575,7 @@ parseIndentedListLine rawLine model items ast astTail =
     case items of
         [] ->
             indentLine model.indentLength rawLine
-                |> flip lineToBlock []
+                |> flip incorporateLine []
                 |> flip (::) []
                 |> List model
                 |> flip (::) astTail
@@ -583,7 +590,7 @@ parseIndentedListLine rawLine model items ast astTail =
 
                 updateList : ListBlock -> List (Block b i)
                 updateList model_ =
-                    lineToBlock indentedRawLine item
+                    incorporateLine indentedRawLine item
                         |> flip (::) itemsTail
                         |> List model_
                         |> flip (::) astTail
@@ -628,20 +635,22 @@ parseIndentedListLine rawLine model items ast astTail =
 
 
 
-checkListLine : String -> List (Block b i) -> Maybe (List (Block b i))
-checkListLine rawLine ast =
+checkListLine : ( String, List (Block b i) ) -> Result ( String, List (Block b i) ) (List (Block b i))
+checkListLine ( rawLine, ast ) =
     checkOrderedListLine rawLine
-        |> ifNothing (checkUnorderedListLine rawLine)
-        |> Maybe.map calcListIndentLength
-        |> Maybe.map (parseListLine rawLine ast)
+        |> ifError checkUnorderedListLine
+        |> Result.map calcListIndentLength
+        |> Result.map (parseListLine rawLine ast)
+        |> Result.mapError (flip (,) ast)
 
 
 -- Ordered list
-checkOrderedListLine : String -> Maybe ( ListBlock, String, String )
+checkOrderedListLine : String -> Result String ( ListBlock, String, String )
 checkOrderedListLine rawLine =
     Regex.find (Regex.AtMost 1) orderedListLineRegex rawLine
         |> List.head
         |> Maybe.andThen extractOrderedListRM
+        |> Result.fromMaybe rawLine
 
 
 orderedListLineRegex : Regex
@@ -676,11 +685,12 @@ extractOrderedListRM match =
 
 
 -- Unordered list
-checkUnorderedListLine : String -> Maybe ( ListBlock, String, String )
+checkUnorderedListLine : String -> Result String ( ListBlock, String, String )
 checkUnorderedListLine rawLine =
     Regex.find (Regex.AtMost 1) unorderedListLineRegex rawLine
         |> List.head
         |> Maybe.andThen extractUnorderedListRM
+        |> Result.fromMaybe rawLine
 
 
 unorderedListLineRegex : Regex
@@ -753,7 +763,7 @@ parseListLine rawLine ast ( listBlock, listRawLine ) =
     let
         parsedRawLine : List (Block b i)
         parsedRawLine =
-            lineToBlock listRawLine []
+            incorporateLine listRawLine []
 
 
         newList : List (Block b i)

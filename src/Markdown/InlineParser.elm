@@ -615,6 +615,7 @@ applyTTM finderFunction model =
     finderFunction ( model.tokens, { model | tokens = [] } )
 
 
+
 ----------------------------------------------------------------------
 ------- CodeType spans, HTML tags, and autolinks Tokens To Matches -------
 ----------------------------------------------------------------------
@@ -717,30 +718,25 @@ codeToMatch closeToken model ( openToken, _, remainTokens ) =
 
 angleBracketsToMatch : Token -> Bool -> Parser -> ( Token, List Token, List Token ) -> Maybe Parser
 angleBracketsToMatch closeToken isEscaped model ( openToken, _, remainTokens ) =
-    let
-        tempMatch : Match
-        tempMatch =
-            tokenPairToMatch
-                model (\s -> s) CodeType
-                openToken closeToken []
+    tokenPairToMatch model (\s -> s) CodeType openToken closeToken []
+        |> autolinkToMatch
+        |> ifError emailAutolinkTypeToMatch
+        |> Result.map (\newMatch ->
+                { model
+                    | matches = newMatch :: model.matches
+                    , tokens = remainTokens
+                })
+        |> \result ->
+                case result of
+                    Result.Err tempMatch ->
+                        if not isEscaped then
+                            htmlToToken
+                                { model | tokens = remainTokens }
+                                tempMatch
+                        else Result.toMaybe result
 
-
-    in
-        autolinkToMatch tempMatch
-            |> ifNothing (emailAutolinkTypeToMatch tempMatch)
-            |> Maybe.map (\newMatch ->
-                    { model
-                        | matches = newMatch :: model.matches
-                        , tokens = remainTokens
-                    })
-            |> \maybeModel ->
-                    if not isEscaped && maybeModel == Nothing then
-                        htmlToToken
-                            { model | tokens = remainTokens }
-                            tempMatch
-
-                    else
-                        maybeModel
+                    Result.Ok _ ->
+                        Result.toMaybe result
 
 
 
@@ -749,15 +745,15 @@ angleBracketsToMatch closeToken isEscaped model ( openToken, _, remainTokens ) =
 ----------------------------------------------------------------------
 
 
-autolinkToMatch : Match -> Maybe Match
+autolinkToMatch : Match -> Result Match Match
 autolinkToMatch (Match match) =
     if Regex.contains urlRegex match.text then
         { match | type_ =
             AutolinkType ( match.text, encodeUrl match.text )
-        } |> Match |> Just
+        } |> Match |> Result.Ok
 
     else
-        Nothing
+        Result.Err (Match match)
 
 
 -- From http://spec.commonmark.org/dingus/commonmark.js
@@ -766,15 +762,15 @@ urlRegex =
     Regex.regex "^([A-Za-z][A-Za-z0-9.+\\-]{1,31}:[^<>\\x00-\\x20]*)$"
 
 
-emailAutolinkTypeToMatch : Match -> Maybe Match
+emailAutolinkTypeToMatch : Match -> Result Match Match
 emailAutolinkTypeToMatch (Match match) =
     if Regex.contains emailRegex match.text then
         { match | type_ =
             AutolinkType ( match.text, "mailto:" ++ encodeUrl match.text )
-        } |> Match |> Just
+        } |> Match |> Result.Ok
 
     else
-        Nothing
+        Result.Err (Match match)
 
 
 -- From http://spec.commonmark.org/dingus/commonmark.js
@@ -1066,12 +1062,11 @@ linkOrImageTypeToMatch closeToken tokensTail model ( openToken, innerTokens, rem
                 openToken closeToken (List.reverse innerTokens)
 
 
-        removeOpenToken : Maybe ( List Token, Parser )
+        removeOpenToken : ( List Token, Parser )
         removeOpenToken =
-            Just
-                ( tokensTail
-                , { model | tokens = innerTokens ++ remainTokens }
-                )
+            ( tokensTail
+            , { model | tokens = innerTokens ++ remainTokens }
+            )
 
 
         linkOpenTokenToInactive : Parser -> Parser
@@ -1095,25 +1090,29 @@ linkOrImageTypeToMatch closeToken tokensTail model ( openToken, innerTokens, rem
         case openToken.meaning of
             ImageOpenToken ->
                 checkForInlineLinkTypeOrImageType (args False)
-                    |> ifNothing (checkForRefLinkTypeOrImageType (args False))
-                    |> Maybe.andThen checkParsedAheadOverlapping
-                    |> Maybe.map (removeParsedAheadTokens tokensTail)
-                    |> ifNothing removeOpenToken
+                    |> ifError checkForRefLinkTypeOrImageType
+                    |> Result.mapError (\_-> ())
+                    |> Result.andThen checkParsedAheadOverlapping
+                    |> Result.map (removeParsedAheadTokens tokensTail)
+                    |> ifError (\_ -> Result.Ok removeOpenToken)
+                    |> Result.toMaybe
 
 
             -- Active opening: set all before to inactive if found
             LinkOpenToken True ->
                 checkForInlineLinkTypeOrImageType (args True)
-                    |> ifNothing (checkForRefLinkTypeOrImageType (args True))
-                    |> Maybe.andThen checkParsedAheadOverlapping
-                    |> Maybe.map linkOpenTokenToInactive
-                    |> Maybe.map (removeParsedAheadTokens tokensTail)
-                    |> ifNothing removeOpenToken
+                    |> ifError checkForRefLinkTypeOrImageType
+                    |> Result.mapError (\_-> ())
+                    |> Result.andThen checkParsedAheadOverlapping
+                    |> Result.map linkOpenTokenToInactive
+                    |> Result.map (removeParsedAheadTokens tokensTail)
+                    |> ifError (\_-> Result.Ok removeOpenToken)
+                    |> Result.toMaybe
 
 
             -- Inactive opening: just remove open and close tokens
             LinkOpenToken False ->
-                removeOpenToken
+                Just removeOpenToken
 
 
             _ ->
@@ -1121,11 +1120,11 @@ linkOrImageTypeToMatch closeToken tokensTail model ( openToken, innerTokens, rem
 
 
 -- Check if is overlapping previous parsed matches (code, html or autolink)
-checkParsedAheadOverlapping : Parser -> Maybe Parser
+checkParsedAheadOverlapping : Parser -> Result () Parser
 checkParsedAheadOverlapping parser =
     case parser.matches of
         [] ->
-            Nothing
+            Result.Err ()
 
         Match match :: remainMatches ->
             let
@@ -1141,10 +1140,10 @@ checkParsedAheadOverlapping parser =
             in
                 if List.isEmpty remainMatches
                     || List.isEmpty overlappingMatches then
-                        Just parser
+                        Result.Ok parser
 
                 else
-                    Nothing
+                    Result.Err ()
 
 
 -- Remove tokens inside the parsed ahead regex match
@@ -1168,12 +1167,13 @@ removeParsedAheadTokens tokensTail parser =
 ----------------------------------------------------------------------
 
 
-checkForInlineLinkTypeOrImageType : ( String, Match, Parser ) -> Maybe Parser
+checkForInlineLinkTypeOrImageType : ( String, Match, Parser ) -> Result ( String, Match, Parser ) Parser
 checkForInlineLinkTypeOrImageType ( remainText, Match tempMatch, model ) =
     Regex.find (Regex.AtMost 1) inlineLinkTypeOrImageTypeRegex remainText
         |> List.head
         |> Maybe.andThen (inlineLinkTypeOrImageTypeRegexToMatch tempMatch model)
         |> Maybe.map (addMatch model)
+        |> Result.fromMaybe ( remainText, Match tempMatch, model )
 
 
 inlineLinkTypeOrImageTypeRegex : Regex
@@ -1249,12 +1249,13 @@ prepareUrlAndTitle ( rawUrl, maybeTitle ) =
 ----------------------------------------------------------------------
 
 
-checkForRefLinkTypeOrImageType : ( String, Match, Parser ) -> Maybe Parser
+checkForRefLinkTypeOrImageType : ( String, Match, Parser ) -> Result ( String, Match, Parser ) Parser
 checkForRefLinkTypeOrImageType ( remainText, Match tempMatch, model ) =
     Regex.find (Regex.AtMost 1) refLabelRegex remainText
         |> List.head
         |> refRegexToMatch tempMatch model
         |> Maybe.map (addMatch model)
+        |> Result.fromMaybe ( remainText, Match tempMatch, model )
 
 
 refLabelRegex : Regex
