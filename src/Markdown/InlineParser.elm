@@ -10,6 +10,208 @@ import Markdown.Config as Config exposing (Options, HtmlOption(..))
 
 
 
+
+----------------------------------------------------------------------
+----------------------------- Code Tokens ----------------------------
+----------------------------------------------------------------------
+
+-- Code regex: (?:^|[^`])(\`+)(?![`])([\s\S]*?[^`])(\1)(?!`)
+
+findCodeTokens : String -> List Token
+findCodeTokens str =
+    Regex.find Regex.All codeTokenRegex str
+        |> List.filterMap regMatchToCodeToken
+
+
+codeTokenRegex : Regex
+codeTokenRegex =
+    Regex.regex "(\\\\*)(\\`+)"
+
+
+regMatchToCodeToken : Regex.Match -> Maybe Token
+regMatchToCodeToken regMatch =
+    case regMatch.submatches of
+        Just backslashes :: Just backtick :: _ ->
+            let backslashesLength = String.length backslashes
+            in Just
+                { index = regMatch.index + backslashesLength
+                , length = String.length backtick
+                , meaning = CodeToken (not (isEven backslashesLength))
+                }
+
+        _ ->
+            Nothing
+
+
+
+----------------------------------------------------------------------
+--------------------------- Emphasis Tokens --------------------------
+----------------------------------------------------------------------
+
+
+findEmphasisTokens : String -> List Token
+findEmphasisTokens str =
+    findAsteriskEmphasisTokens str
+        |> (++) (findUnderlineEmphasisTokens str)
+
+
+findAsteriskEmphasisTokens : String -> List Token
+findAsteriskEmphasisTokens str =
+    Regex.find Regex.All asteriskEmphasisTokenRegex str
+        |> List.filterMap (regMatchToEmphasisToken '*' str)
+
+
+asteriskEmphasisTokenRegex : Regex
+asteriskEmphasisTokenRegex =
+    Regex.regex "(\\\\*)([^*])?(\\*+)([^*])?"
+
+
+findUnderlineEmphasisTokens : String -> List Token
+findUnderlineEmphasisTokens str =
+    Regex.find Regex.All underlineEmphasisTokenRegex str
+        |> List.filterMap (regMatchToEmphasisToken '_' str)
+
+
+underlineEmphasisTokenRegex : Regex
+underlineEmphasisTokenRegex =
+    Regex.regex "(\\\\*)([^_])?(\\_+)([^_])?"
+
+
+regMatchToEmphasisToken : Char -> String -> Regex.Match -> Maybe Token
+regMatchToEmphasisToken char rawText regMatch =
+    case regMatch.submatches of
+        Just backslashes
+            :: maybeLeftFringe
+            :: Just delimiter
+            :: maybeRightFringe
+            :: _ ->
+                let
+                    backslashesLength : Int
+                    backslashesLength =
+                        String.length backslashes
+
+
+                    leftFringeLength : Int
+                    leftFringeLength =
+                        maybeLeftFringe
+                            |> Maybe.map String.length
+                            |> Maybe.withDefault 0
+
+
+                    mLeftFringe : Maybe String
+                    mLeftFringe =
+                        if regMatch.index /= 0
+                            && leftFringeLength == 0 then
+                                String.slice
+                                    (regMatch.index - 1)
+                                    regMatch.index
+                                    rawText
+                                        |> Just
+
+                        else
+                            maybeLeftFringe
+
+
+                    isEscaped : Bool
+                    isEscaped =
+                        not (isEven backslashesLength)
+                            && leftFringeLength == 0
+                            || mLeftFringe == Just "\\"
+
+
+                    fringeRank : ( Int, Int )
+                    fringeRank =
+                        ( if isEscaped then
+                            1
+                          else
+                            getFringeRank mLeftFringe
+                        , getFringeRank maybeRightFringe
+                        )
+
+
+                    index : Int
+                    index =
+                        regMatch.index
+                            + backslashesLength
+                            + leftFringeLength
+                            + (if isEscaped then 1 else 0)
+
+
+                    delimiterLength : Int
+                    delimiterLength =
+                        if isEscaped then
+                            String.length delimiter - 1
+
+                        else
+                            String.length delimiter
+
+                in
+                    if delimiterLength <= 0
+                        || (char == '_' && fringeRank == (2, 2)) then
+                            Nothing
+
+                    else
+                        Just
+                            { index = index
+                            , length = delimiterLength
+                            , meaning =
+                                EmphasisToken char fringeRank
+                            }
+
+        _ ->
+            Nothing
+
+
+
+getFringeRank : Maybe String -> Int
+getFringeRank =
+    Maybe.map 
+            (String.uncons
+                >> Maybe.map Tuple.first
+                >> maybeCharFringeRank)
+        >> Maybe.withDefault 0
+
+
+--maybeCharFringeRank : Maybe Char -> Int
+--maybeCharFringeRank maybeChar =
+--    maybeChar
+--        |> Maybe.map charFringeRank
+--        |> Maybe.withDefault 0
+
+
+--charFringeRank : Char -> Int
+--charFringeRank char =
+--    let string = String.fromChar char
+--    in
+--        if containSpace string then 0
+--        else if containPunctuation string then 1
+--        else 2
+
+
+--containSpace : String -> Bool
+--containSpace =
+--    Regex.contains (Regex.regex "\\s")
+
+
+--containPunctuation : String -> Bool
+--containPunctuation =
+--    Regex.contains (Regex.regex "[!-#%-\\*,-/:;\\?@\\[-\\]_\\{\\}]")
+
+
+
+--autolinkRegex : Regex
+--autolinkRegex =
+--    Regex.regex "<([A-Za-z][A-Za-z0-9.+\\-]{1,31}:[^<>\\x00-\\x20]*)>"
+
+
+--autoemailRegex : Regex
+--autoemailRegex =
+--    Regex.regex "<([a-zA-Z0-9.!#$%&'*+\\/=?^_`{|}~\\-]+@[a-zA-Z0-9](?:[a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?)*)>"
+
+
+
+
+
 ----------------------------------------------------------------------
 ----------------------- Parser Model & Helpers -----------------------
 ----------------------------------------------------------------------
@@ -418,11 +620,31 @@ reverseTokens model =
     }
 
 
+
+
+
+
+
+
+
 tokenize : Parser -> Parser
 tokenize model =
-    initTokenizer model.rawText
-        |> tokenizer
-        |> \tokenizer -> { model | tokens = tokenizer.tokens }
+    --initTokenizer model.rawText
+    --    |> tokenizer
+    --    |> \tokenizer -> { model | tokens = tokenizer.tokens }
+    { model | tokens =
+        findCodeTokens model.rawText
+            |> (++) (findEmphasisTokens model.rawText)
+            |> List.sortBy .index
+    }
+
+
+
+
+
+
+
+
 
 
 tokenizer : Tokenizer -> Tokenizer
@@ -585,14 +807,25 @@ charFringeRank char =
         else 2
 
 
+
+spaceRegex : Regex
+spaceRegex =
+    Regex.regex "\\s"
+
+
 containSpace : String -> Bool
 containSpace =
-    Regex.contains (Regex.regex "\\s")
+    Regex.contains spaceRegex
+
+
+punctuationRegex : Regex
+punctuationRegex =
+    Regex.regex "[!-#%-\\*,-/:;\\?@\\[-\\]_\\{\\}]"
 
 
 containPunctuation : String -> Bool
 containPunctuation =
-    Regex.contains (Regex.regex "[!-#%-\\*,-/:;\\?@\\[-\\]_\\{\\}]")
+    Regex.contains punctuationRegex
 
 
 

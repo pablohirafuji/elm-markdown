@@ -110,3 +110,7 @@ ifError function result =
         Result.Err err ->
             function err
 
+
+isEven : Int -> Bool
+isEven int =
+    int % 2 == 0
