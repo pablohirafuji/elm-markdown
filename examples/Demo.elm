@@ -180,10 +180,24 @@ readmeMD = """
 Pure Elm markdown parsing and rendering.
 
 Based on the latest [CommonMark Spec](http://spec.commonmark.org/0.27/), with [some differences](#differences-from-commonmark).
-[Demo](https://pablohirafuji.github.io/elm-markdown/examples/Demo.html).
+[Demo](https://pablohirafuji.github.io/elm-markdown/examples/Demo.html) / [Tests](https://pablohirafuji.github.io/elm-markdown/tests/).
 
-    elm package install pablohirafuji/elm-markdown
-
+- [Basic Usage](#basic-usage)
+- [Supported Syntax](#supported-syntax)
+  - [Heading](#heading)
+  - [Quoting](#quoting)
+  - [Code](#code)
+  - [Link](#link)
+  - [Lists](#lists)
+  - [Paragraphs and line breaks](#paragraphs-and-line-breaks)
+  - [Thematic Break Line](#thematic-break-line)
+  - [Emphasis](#emphasis)
+  - [Image](#image)
+- [Differences from CommonMark](#differences-from-commonmark)
+- [Options](#options)
+- [Customization](#customization)
+- [Performance](#performance)
+- [Advanced Usage](#advanced-usage)
 
 ## Basic Usage
 
@@ -532,6 +546,17 @@ customHtmlInline inline =
 ```
 
 
+## Performance
+
+Performance improvement is being made constantly. [Feedbacks](https://github.com/pablohirafuji/elm-markdown/issues) are welcome.
+
+Parsing a 1.2MB markdown text file to html in my notebook using node:
+
+- [Marked](https://github.com/chjj/marked): ~130ms
+- [CommonMark JS](https://github.com/jgm/commonmark.js): ~250ms
+- This package: ~1150ms
+
+
 ## Advanced Usage
 
 Todo:
@@ -546,5 +571,4 @@ Thank you John MacFarlane, for creating [CommonMark](http://commonmark.org/) spe
 Thank you everyone who gave feedback. Special thanks to Jan Tojnar, for discussing about the API.
 
 Thank you Evan for bringing joy to the frontend.
-
 """
