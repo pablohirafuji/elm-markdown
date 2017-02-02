@@ -10,208 +10,6 @@ import Markdown.Config as Config exposing (Options, HtmlOption(..))
 
 
 
-
-----------------------------------------------------------------------
------------------------------ Code Tokens ----------------------------
-----------------------------------------------------------------------
-
--- Code regex: (?:^|[^`])(\`+)(?![`])([\s\S]*?[^`])(\1)(?!`)
-
-findCodeTokens : String -> List Token
-findCodeTokens str =
-    Regex.find Regex.All codeTokenRegex str
-        |> List.filterMap regMatchToCodeToken
-
-
-codeTokenRegex : Regex
-codeTokenRegex =
-    Regex.regex "(\\\\*)(\\`+)"
-
-
-regMatchToCodeToken : Regex.Match -> Maybe Token
-regMatchToCodeToken regMatch =
-    case regMatch.submatches of
-        Just backslashes :: Just backtick :: _ ->
-            let backslashesLength = String.length backslashes
-            in Just
-                { index = regMatch.index + backslashesLength
-                , length = String.length backtick
-                , meaning = CodeToken (not (isEven backslashesLength))
-                }
-
-        _ ->
-            Nothing
-
-
-
-----------------------------------------------------------------------
---------------------------- Emphasis Tokens --------------------------
-----------------------------------------------------------------------
-
-
-findEmphasisTokens : String -> List Token
-findEmphasisTokens str =
-    findAsteriskEmphasisTokens str
-        |> (++) (findUnderlineEmphasisTokens str)
-
-
-findAsteriskEmphasisTokens : String -> List Token
-findAsteriskEmphasisTokens str =
-    Regex.find Regex.All asteriskEmphasisTokenRegex str
-        |> List.filterMap (regMatchToEmphasisToken '*' str)
-
-
-asteriskEmphasisTokenRegex : Regex
-asteriskEmphasisTokenRegex =
-    Regex.regex "(\\\\*)([^*])?(\\*+)([^*])?"
-
-
-findUnderlineEmphasisTokens : String -> List Token
-findUnderlineEmphasisTokens str =
-    Regex.find Regex.All underlineEmphasisTokenRegex str
-        |> List.filterMap (regMatchToEmphasisToken '_' str)
-
-
-underlineEmphasisTokenRegex : Regex
-underlineEmphasisTokenRegex =
-    Regex.regex "(\\\\*)([^_])?(\\_+)([^_])?"
-
-
-regMatchToEmphasisToken : Char -> String -> Regex.Match -> Maybe Token
-regMatchToEmphasisToken char rawText regMatch =
-    case regMatch.submatches of
-        Just backslashes
-            :: maybeLeftFringe
-            :: Just delimiter
-            :: maybeRightFringe
-            :: _ ->
-                let
-                    backslashesLength : Int
-                    backslashesLength =
-                        String.length backslashes
-
-
-                    leftFringeLength : Int
-                    leftFringeLength =
-                        maybeLeftFringe
-                            |> Maybe.map String.length
-                            |> Maybe.withDefault 0
-
-
-                    mLeftFringe : Maybe String
-                    mLeftFringe =
-                        if regMatch.index /= 0
-                            && leftFringeLength == 0 then
-                                String.slice
-                                    (regMatch.index - 1)
-                                    regMatch.index
-                                    rawText
-                                        |> Just
-
-                        else
-                            maybeLeftFringe
-
-
-                    isEscaped : Bool
-                    isEscaped =
-                        not (isEven backslashesLength)
-                            && leftFringeLength == 0
-                            || mLeftFringe == Just "\\"
-
-
-                    fringeRank : ( Int, Int )
-                    fringeRank =
-                        ( if isEscaped then
-                            1
-                          else
-                            getFringeRank mLeftFringe
-                        , getFringeRank maybeRightFringe
-                        )
-
-
-                    index : Int
-                    index =
-                        regMatch.index
-                            + backslashesLength
-                            + leftFringeLength
-                            + (if isEscaped then 1 else 0)
-
-
-                    delimiterLength : Int
-                    delimiterLength =
-                        if isEscaped then
-                            String.length delimiter - 1
-
-                        else
-                            String.length delimiter
-
-                in
-                    if delimiterLength <= 0
-                        || (char == '_' && fringeRank == (2, 2)) then
-                            Nothing
-
-                    else
-                        Just
-                            { index = index
-                            , length = delimiterLength
-                            , meaning =
-                                EmphasisToken char fringeRank
-                            }
-
-        _ ->
-            Nothing
-
-
-
-getFringeRank : Maybe String -> Int
-getFringeRank =
-    Maybe.map 
-            (String.uncons
-                >> Maybe.map Tuple.first
-                >> maybeCharFringeRank)
-        >> Maybe.withDefault 0
-
-
---maybeCharFringeRank : Maybe Char -> Int
---maybeCharFringeRank maybeChar =
---    maybeChar
---        |> Maybe.map charFringeRank
---        |> Maybe.withDefault 0
-
-
---charFringeRank : Char -> Int
---charFringeRank char =
---    let string = String.fromChar char
---    in
---        if containSpace string then 0
---        else if containPunctuation string then 1
---        else 2
-
-
---containSpace : String -> Bool
---containSpace =
---    Regex.contains (Regex.regex "\\s")
-
-
---containPunctuation : String -> Bool
---containPunctuation =
---    Regex.contains (Regex.regex "[!-#%-\\*,-/:;\\?@\\[-\\]_\\{\\}]")
-
-
-
---autolinkRegex : Regex
---autolinkRegex =
---    Regex.regex "<([A-Za-z][A-Za-z0-9.+\\-]{1,31}:[^<>\\x00-\\x20]*)>"
-
-
---autoemailRegex : Regex
---autoemailRegex =
---    Regex.regex "<([a-zA-Z0-9.!#$%&'*+\\/=?^_`{|}~\\-]+@[a-zA-Z0-9](?:[a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?)*)>"
-
-
-
-
-
 ----------------------------------------------------------------------
 ----------------------- Parser Model & Helpers -----------------------
 ----------------------------------------------------------------------
@@ -242,6 +40,26 @@ addMatch model match =
         match :: model.matches
     }
 
+
+addToken :Parser -> Token -> Parser
+addToken model token =
+    { model | tokens =
+        token :: model.tokens
+    }
+
+
+filterTokens : ( Token -> Bool ) -> Parser -> Parser
+filterTokens filter model =
+    { model | tokens =
+        List.filter filter model.tokens
+    }
+
+
+reverseTokens : Parser -> Parser
+reverseTokens model =
+    { model | tokens =
+        List.reverse model.tokens
+    }
 
 
 ----------------------------------------------------------------------
@@ -353,109 +171,11 @@ parseTextMatch rawText (Match matchModel) parsedMatches =
 
 
 ----------------------------------------------------------------------
--------------------------------- Match -------------------------------
 ----------------------------------------------------------------------
-
-
-type Match
-    = Match MatchModel
-
-
-type alias MatchModel =
-    { type_     : Type
-    , start     : Int
-    , end       : Int
-    , textStart : Int
-    , textEnd   : Int
-    , text      : String
-    , matches   : List Match
-    }
-
-
-normalMatch : String -> Match
-normalMatch text =
-    Match
-        { type_     = NormalType
-        , start     = 0
-        , end       = 0
-        , textStart = 0
-        , textEnd   = 0
-        , text      = replaceEscapable text
-        , matches   = []
-        }
-
-
-type Type
-    = NormalType
-    | HardLineBreakType
-    | CodeType
-    | AutolinkType ( String, String ) -- ( Text, Url )
-    | LinkType ( String, Maybe String ) -- ( Url, Maybe Title )
-    | ImageType ( String, Maybe String ) -- ( Src, Maybe Title )
-    | HtmlType HtmlModel
-    | EmphasisType Int -- Tag length
-
-
-organizeParserMatches : Parser -> Parser
-organizeParserMatches model =
-    { model | matches = organizeMatches model.matches }
-
-
-organizeMatches : List Match -> List Match
-organizeMatches =
-    List.sortBy (\(Match match) -> match.start)
-        >> List.foldl organizeMatch []
-        >> List.map
-            (\(Match match) -> Match
-                { match | matches =
-                    organizeMatches match.matches
-                }
-            )
-
-
-organizeMatch : Match -> List Match -> List Match
-organizeMatch (Match match) matches =
-    case matches of
-        [] ->
-            [ Match match ]
-
-        Match prevMatch :: matchesTail ->
-            -- New Match
-            if prevMatch.end <= match.start then
-                Match match :: matches
-
-            -- Inside previous Match
-            else if prevMatch.start < match.start
-                && prevMatch.end > match.end then
-                    addChild prevMatch match
-                        :: matchesTail
-
-            -- Overlaping previous Match
-            else
-                matches
-
-
-addChild : MatchModel -> MatchModel -> Match
-addChild parentMatch childMatch =
-    Match { parentMatch | matches =
-        prepareChildMatch parentMatch childMatch
-            :: parentMatch.matches
-    }
-
-
-prepareChildMatch : MatchModel -> MatchModel -> Match
-prepareChildMatch parentMatch childMatch =
-    { childMatch
-        | start     = childMatch.start - parentMatch.textStart
-        , end       = childMatch.end - parentMatch.textStart
-        , textStart = childMatch.textStart - parentMatch.textStart
-        , textEnd   = childMatch.textEnd - parentMatch.textStart
-    } |> Match
-
-
-
 ----------------------------------------------------------------------
 -------------------------------- Token -------------------------------
+----------------------------------------------------------------------
+----------------------------------------------------------------------
 ----------------------------------------------------------------------
 
 
@@ -580,215 +300,176 @@ tokenToMatch token type_ =
 ----------------------------------------------------------------------
 
 
-type alias Tokenizer =
-    { index       : Int
-    , lastChar    : Maybe Char
-    , isEscaped   : Bool
-    , remainChars : List Char
-    , tokens      : List Token
-    }
-
-
-initTokenizer : String -> Tokenizer
-initTokenizer rawText =
-    { index       = 0
-    , lastChar    = Nothing
-    , isEscaped   = False
-    , remainChars = String.toList rawText
-    , tokens      = []
-    }
-
-
-addToken : { a | tokens : List Token } -> Token -> { a | tokens : List Token }
-addToken model token =
-    { model | tokens =
-        token :: model.tokens
-    }
-
-
-filterTokens : ( Token -> Bool ) -> { a | tokens : List Token } -> { a | tokens : List Token }
-filterTokens filter model =
-    { model | tokens =
-        List.filter filter model.tokens
-    }
-
-
-reverseTokens : { a | tokens : List Token } -> { a | tokens : List Token }
-reverseTokens model =
-    { model | tokens =
-        List.reverse model.tokens
-    }
-
-
-
-
-
-
-
-
-
 tokenize : Parser -> Parser
 tokenize model =
-    --initTokenizer model.rawText
-    --    |> tokenizer
-    --    |> \tokenizer -> { model | tokens = tokenizer.tokens }
     { model | tokens =
         findCodeTokens model.rawText
-            |> (++) (findEmphasisTokens model.rawText)
+            |> (++) (findAsteriskEmphasisTokens model.rawText)
+            |> (++) (findUnderlineEmphasisTokens model.rawText)
+            |> (++) (findLinkImageOpenTokens model.rawText)
+            |> (++) (findLinkImageCloseTokens model.rawText)
+            |> (++) (findHardBreakTokens
+                        model.options.softAsHardLineBreak
+                        model.rawText)
+            |> (++) (findAngleBracketLTokens model.rawText)
+            |> (++) (findAngleBracketRTokens model.rawText)
             |> List.sortBy .index
     }
 
 
+----------------------------------------------------------------------
+----------------------------- Code Tokens ----------------------------
+----------------------------------------------------------------------
+
+
+findCodeTokens : String -> List Token
+findCodeTokens str =
+    Regex.find Regex.All codeTokenRegex str
+        |> List.filterMap regMatchToCodeToken
+
+
+-- Match regex: (?:^|[^`])(\`+)(?![`])([\s\S]*?[^`])(\1)(?!`)
+codeTokenRegex : Regex
+codeTokenRegex =
+    Regex.regex "(\\\\*)(\\`+)"
+
+
+regMatchToCodeToken : Regex.Match -> Maybe Token
+regMatchToCodeToken regMatch =
+    case regMatch.submatches of
+        Just backslashes :: Just backtick :: _ ->
+            let backslashesLength = String.length backslashes
+            in Just
+                { index = regMatch.index + backslashesLength
+                , length = String.length backtick
+                , meaning = CodeToken (not (isEven backslashesLength))
+                }
+
+        _ ->
+            Nothing
 
 
 
+----------------------------------------------------------------------
+--------------------------- Emphasis Tokens --------------------------
+----------------------------------------------------------------------
+
+
+findAsteriskEmphasisTokens : String -> List Token
+findAsteriskEmphasisTokens str =
+    Regex.find Regex.All asteriskEmphasisTokenRegex str
+        |> List.filterMap (regMatchToEmphasisToken '*' str)
+
+
+asteriskEmphasisTokenRegex : Regex
+asteriskEmphasisTokenRegex =
+    Regex.regex "(\\\\*)([^*])?(\\*+)([^*])?"
+
+
+findUnderlineEmphasisTokens : String -> List Token
+findUnderlineEmphasisTokens str =
+    Regex.find Regex.All underlineEmphasisTokenRegex str
+        |> List.filterMap (regMatchToEmphasisToken '_' str)
+
+
+underlineEmphasisTokenRegex : Regex
+underlineEmphasisTokenRegex =
+    Regex.regex "(\\\\*)([^_])?(\\_+)([^_])?"
+
+
+regMatchToEmphasisToken : Char -> String -> Regex.Match -> Maybe Token
+regMatchToEmphasisToken char rawText regMatch =
+    case regMatch.submatches of
+        Just backslashes
+            :: maybeLeftFringe
+            :: Just delimiter
+            :: maybeRightFringe
+            :: _ ->
+                let
+                    backslashesLength : Int
+                    backslashesLength =
+                        String.length backslashes
+
+
+                    leftFringeLength : Int
+                    leftFringeLength =
+                        maybeLeftFringe
+                            |> Maybe.map String.length
+                            |> Maybe.withDefault 0
+
+
+                    mLeftFringe : Maybe String
+                    mLeftFringe =
+                        if regMatch.index /= 0
+                            && leftFringeLength == 0 then
+                                String.slice
+                                    (regMatch.index - 1)
+                                    regMatch.index
+                                    rawText
+                                        |> Just
+
+                        else
+                            maybeLeftFringe
+
+
+                    isEscaped : Bool
+                    isEscaped =
+                        not (isEven backslashesLength)
+                            && leftFringeLength == 0
+                            || mLeftFringe == Just "\\"
+
+
+                    fringeRank : ( Int, Int )
+                    fringeRank =
+                        ( if isEscaped then
+                            1
+                          else
+                            getFringeRank mLeftFringe
+                        , getFringeRank maybeRightFringe
+                        )
+
+
+                    index : Int
+                    index =
+                        regMatch.index
+                            + backslashesLength
+                            + leftFringeLength
+                            + (if isEscaped then 1 else 0)
+
+
+                    delimiterLength : Int
+                    delimiterLength =
+                        if isEscaped then
+                            String.length delimiter - 1
+
+                        else
+                            String.length delimiter
+
+                in
+                    if delimiterLength <= 0
+                        || (char == '_' && fringeRank == (2, 2)) then
+                            Nothing
+
+                    else
+                        Just
+                            { index = index
+                            , length = delimiterLength
+                            , meaning =
+                                EmphasisToken char fringeRank
+                            }
+
+        _ ->
+            Nothing
 
 
 
-
-
-tokenizer : Tokenizer -> Tokenizer
-tokenizer model =
-    case model.remainChars of
-        [] ->
-            reverseTokens model
-
-
-        '\n' :: remainCharsTail ->
-            if model.isEscaped then
-                ( '\n', 2, remainCharsTail )
-                    |> consToken
-                        { model
-                            | isEscaped = False
-                            , index = model.index - 1 --Because of escaping
-                        } HardLineBreakToken
-                    |> tokenizer
-
-            else
-                ( '\n', 1, remainCharsTail )
-                    |> consToken model SoftLineBreakToken
-                    |> \model -> { model | isEscaped = False }
-                    |> tokenizer
-
-
-        '`' :: remainCharsTail ->
-            ( '`', 1, remainCharsTail )
-                |> sameCharCount
-                |> consToken model (CodeToken model.isEscaped)
-                |> \model -> { model | isEscaped = False }
-                |> tokenizer
-
-
-        '>' :: remainCharsTail ->
-            ( '>', 1, remainCharsTail )
-                |> consToken model
-                    (RightAngleBracket model.isEscaped)
-                |> \model -> { model | isEscaped = False }
-                |> tokenizer
-
-
-        char :: remainCharsTail ->
-            if model.isEscaped then
-                { model
-                    | remainChars = remainCharsTail
-                    , index = model.index + 1
-                    , isEscaped = False
-                    , lastChar = Just char
-                } |> tokenizer
-
-            else
-                unescapedTokenizer model
-
-
-unescapedTokenizer : Tokenizer -> Tokenizer
-unescapedTokenizer model =
-    case model.remainChars of
-        [] ->
-            reverseTokens model
-
-
-        ' ' :: ' ' :: '\n' :: remainCharsTail ->
-            ( '\n', 3, remainCharsTail )
-                |> consToken model HardLineBreakToken
-                |> tokenizer
-
-
-        '!' :: '[' :: remainCharsTail ->
-            ( '[', 2, remainCharsTail )
-                |> consToken model ImageOpenToken
-                |> tokenizer
-
-        '[' :: remainCharsTail ->
-            ( '[', 1, remainCharsTail )
-                |> consToken model (LinkOpenToken True)
-                |> tokenizer
-
-
-        char :: remainCharsTail ->
-            if char == '*' || char == '_' then
-                ( char, 1, remainCharsTail )
-                    |> sameCharCount
-                    |> consFringeRankedToken model (EmphasisToken char)
-                    |> tokenizer
-
-
-            else if char == '<' || char == ']' then
-                ( char, 1, remainCharsTail )
-                    |> consToken model (CharToken char)
-                    |> tokenizer
-
-
-            else
-                { model
-                    | remainChars = remainCharsTail
-                    , index = model.index + 1
-                    , isEscaped = char == '\\'
-                    , lastChar = Just char
-                } |> tokenizer
-
-
-sameCharCount : ( Char, Int, List Char ) -> ( Char, Int, List Char )
-sameCharCount ( char, count, chars ) =
-    case chars of
-        [] ->
-            ( char, count, chars )
-
-
-        char_ :: remainChars ->
-            if char_ == char then
-                sameCharCount ( char, count + 1, remainChars )
-
-
-            else
-                ( char, count, chars )
-
-
-consToken : Tokenizer -> Meaning -> ( Char, Int, List Char ) -> Tokenizer
-consToken model meaning ( char, length, remainChars ) =
-    { model
-        | remainChars = remainChars
-        , index       = model.index + length
-        , lastChar    = Just char
-        , tokens      =
-            { index   = model.index
-            , length  = length
-            , meaning = meaning
-            } :: model.tokens
-    }
-
-
-consFringeRankedToken : Tokenizer -> ( ( Int, Int ) -> Meaning ) -> ( Char, Int, List Char ) -> Tokenizer
-consFringeRankedToken model meaning charCountRemain =
-    calcFringeRank model.lastChar charCountRemain
-        |> meaning
-        |> \type_ -> consToken model type_ charCountRemain
-
-
-calcFringeRank : Maybe Char -> ( Char, Int, List Char ) -> ( Int, Int )
-calcFringeRank maybeLeft ( char, count, remainChars ) =
-    ( maybeCharFringeRank maybeLeft
-    , maybeCharFringeRank (List.head remainChars)
-    )
+getFringeRank : Maybe String -> Int
+getFringeRank =
+    Maybe.map 
+            (String.uncons
+                >> Maybe.map Tuple.first
+                >> maybeCharFringeRank)
+        >> Maybe.withDefault 0
 
 
 maybeCharFringeRank : Maybe Char -> Int
@@ -807,26 +488,362 @@ charFringeRank char =
         else 2
 
 
-
-spaceRegex : Regex
-spaceRegex =
-    Regex.regex "\\s"
-
-
 containSpace : String -> Bool
 containSpace =
-    Regex.contains spaceRegex
-
-
-punctuationRegex : Regex
-punctuationRegex =
-    Regex.regex "[!-#%-\\*,-/:;\\?@\\[-\\]_\\{\\}]"
+    Regex.contains (Regex.regex "\\s")
 
 
 containPunctuation : String -> Bool
 containPunctuation =
-    Regex.contains punctuationRegex
+    Regex.contains (Regex.regex "[!-#%-\\*,-/:;\\?@\\[-\\]_\\{\\}]")
 
+
+
+----------------------------------------------------------------------
+------------------------- Link & Image Tokens ------------------------
+----------------------------------------------------------------------
+
+
+findLinkImageOpenTokens : String -> List Token
+findLinkImageOpenTokens str =
+    Regex.find Regex.All linkImageOpenTokenRegex str
+        |> List.filterMap regMatchToLinkImageOpenToken
+
+
+linkImageOpenTokenRegex : Regex
+linkImageOpenTokenRegex =
+    Regex.regex "(\\\\*)(\\!)?(\\[)"
+
+
+regMatchToLinkImageOpenToken : Regex.Match -> Maybe Token
+regMatchToLinkImageOpenToken regMatch =
+    case regMatch.submatches of
+        Just backslashes
+            :: maybeImageOpen
+            :: Just delimiter
+            :: _ ->
+                let
+                    backslashesLength = String.length backslashes
+                    isEscaped = not (isEven backslashesLength)
+                    meaning =
+                        if isEscaped then
+                            maybeImageOpen
+                                |> Maybe.map
+                                    (\_ -> LinkOpenToken True)
+
+                        else
+                            maybeImageOpen
+                                |> Maybe.map
+                                    (\_ -> ImageOpenToken)
+                                |> Maybe.withDefault
+                                    (LinkOpenToken True)
+                                |> Just
+
+                    length =
+                        if meaning == Just ImageOpenToken
+                            then 2
+                            else 1
+
+                    index =
+                        regMatch.index
+                            + backslashesLength
+                            + if isEscaped
+                                && maybeImageOpen == Just "!"
+                                    then 1
+                                    else 0
+
+                    toModel m =
+                        { index = index
+                        , length = length
+                        , meaning = m
+                        }
+
+                in
+                    Maybe.map toModel meaning
+
+        _ ->
+            Nothing
+
+
+findLinkImageCloseTokens : String -> List Token
+findLinkImageCloseTokens str =
+    Regex.find Regex.All linkImageCloseTokenRegex str
+        |> List.filterMap regMatchToLinkImageCloseToken
+
+
+linkImageCloseTokenRegex : Regex
+linkImageCloseTokenRegex =
+    Regex.regex "(\\\\*)(\\])"
+
+
+regMatchToLinkImageCloseToken : Regex.Match -> Maybe Token
+regMatchToLinkImageCloseToken regMatch =
+    case regMatch.submatches of
+        Just backslashes :: Just delimiter :: _ ->
+            let backslashesLength = String.length backslashes
+            in if isEven backslashesLength then
+                Just
+                    { index = regMatch.index + backslashesLength
+                    , length = 1
+                    , meaning = CharToken ']'
+                    }
+
+            else
+                Nothing
+
+        _ ->
+            Nothing
+
+
+
+----------------------------------------------------------------------
+------------------------ Angle Brackets Tokens -----------------------
+----------------------------------------------------------------------
+
+
+findAngleBracketRTokens : String -> List Token
+findAngleBracketRTokens str =
+    Regex.find Regex.All angleBracketRTokenRegex str
+        |> List.filterMap regMatchToAngleBracketRToken
+
+
+angleBracketRTokenRegex : Regex
+angleBracketRTokenRegex =
+    Regex.regex "(\\\\*)(\\>)"
+
+
+regMatchToAngleBracketRToken : Regex.Match -> Maybe Token
+regMatchToAngleBracketRToken regMatch =
+    case regMatch.submatches of
+        Just backslashes :: Just _ :: _ ->
+            let backslashesLength = String.length backslashes
+            in Just
+                { index = regMatch.index + backslashesLength
+                , length = 1
+                , meaning =
+                    RightAngleBracket
+                        (not (isEven backslashesLength))
+                }
+
+        _ ->
+            Nothing
+
+
+findAngleBracketLTokens : String -> List Token
+findAngleBracketLTokens str =
+    Regex.find Regex.All angleBracketLTokenRegex str
+        |> List.filterMap regMatchToAngleBracketLToken
+
+
+angleBracketLTokenRegex : Regex
+angleBracketLTokenRegex =
+    Regex.regex "(\\\\*)(\\<)"
+
+
+regMatchToAngleBracketLToken : Regex.Match -> Maybe Token
+regMatchToAngleBracketLToken regMatch =
+    case regMatch.submatches of
+        Just backslashes :: Just delimiter :: _ ->
+            let backslashesLength = String.length backslashes
+            in if isEven backslashesLength then
+                Just
+                    { index = regMatch.index + backslashesLength
+                    , length = 1
+                    , meaning = CharToken '<'
+                    }
+
+            else
+                Nothing
+
+        _ ->
+            Nothing
+
+
+
+----------------------------------------------------------------------
+-------------------------- Hard Break Tokens -------------------------
+----------------------------------------------------------------------
+
+
+findHardBreakTokens : Bool -> String -> List Token
+findHardBreakTokens softAsHardLineBreak str =
+    if softAsHardLineBreak then
+        Regex.find Regex.All softAsHardLineBreakTokenRegex str
+            |> List.filterMap regMatchToSoftHardBreakToken
+
+    else
+        Regex.find Regex.All hardBreakTokenRegex str
+            |> List.filterMap regMatchToHardBreakToken
+
+
+hardBreakTokenRegex : Regex
+hardBreakTokenRegex =
+    Regex.regex "(?:(\\\\+)|( {2,}))\\n"
+
+
+regMatchToHardBreakToken : Regex.Match -> Maybe Token
+regMatchToHardBreakToken regMatch =
+    case regMatch.submatches of
+        Just backslashes :: _ ->
+            let backslashesLength = String.length backslashes
+            in if not (isEven backslashesLength) then
+                { index = regMatch.index
+                    + backslashesLength - 1
+                , length = 2
+                , meaning = HardLineBreakToken
+                } |> Just
+
+            else
+                Nothing
+
+        _ :: Just _ :: _ ->
+            { index = regMatch.index
+            , length = String.length regMatch.match
+            , meaning = HardLineBreakToken
+            } |> Just
+
+        _ ->
+            Nothing
+
+
+softAsHardLineBreakTokenRegex : Regex
+softAsHardLineBreakTokenRegex =
+    Regex.regex "(?:(\\\\+)|( *))\\n"
+
+
+regMatchToSoftHardBreakToken : Regex.Match -> Maybe Token
+regMatchToSoftHardBreakToken regMatch =
+    case regMatch.submatches of
+        Just backslashes :: _ ->
+            let backslashesLength = String.length backslashes
+            in if isEven backslashesLength then
+                { index = regMatch.index
+                    + backslashesLength
+                , length = 1
+                , meaning = HardLineBreakToken
+                } |> Just
+
+            else
+                { index = regMatch.index
+                    + backslashesLength - 1
+                , length = 2
+                , meaning = HardLineBreakToken
+                } |> Just
+
+        _ :: Just _ :: _ ->
+            { index = regMatch.index
+            , length = String.length regMatch.match
+            , meaning = HardLineBreakToken
+            } |> Just
+
+        _ ->
+            Nothing
+
+
+
+----------------------------------------------------------------------
+----------------------------------------------------------------------
+----------------------------------------------------------------------
+-------------------------------- Match -------------------------------
+----------------------------------------------------------------------
+----------------------------------------------------------------------
+----------------------------------------------------------------------
+
+
+type Match
+    = Match MatchModel
+
+
+type alias MatchModel =
+    { type_     : Type
+    , start     : Int
+    , end       : Int
+    , textStart : Int
+    , textEnd   : Int
+    , text      : String
+    , matches   : List Match
+    }
+
+
+normalMatch : String -> Match
+normalMatch text =
+    Match
+        { type_     = NormalType
+        , start     = 0
+        , end       = 0
+        , textStart = 0
+        , textEnd   = 0
+        , text      = replaceEscapable text
+        , matches   = []
+        }
+
+
+type Type
+    = NormalType
+    | HardLineBreakType
+    | CodeType
+    | AutolinkType ( String, String ) -- ( Text, Url )
+    | LinkType ( String, Maybe String ) -- ( Url, Maybe Title )
+    | ImageType ( String, Maybe String ) -- ( Src, Maybe Title )
+    | HtmlType HtmlModel
+    | EmphasisType Int -- Tag length
+
+
+organizeParserMatches : Parser -> Parser
+organizeParserMatches model =
+    { model | matches = organizeMatches model.matches }
+
+
+organizeMatches : List Match -> List Match
+organizeMatches =
+    List.sortBy (\(Match match) -> match.start)
+        >> List.foldl organizeMatch []
+        >> List.map
+            (\(Match match) -> Match
+                { match | matches =
+                    organizeMatches match.matches
+                }
+            )
+
+
+organizeMatch : Match -> List Match -> List Match
+organizeMatch (Match match) matches =
+    case matches of
+        [] ->
+            [ Match match ]
+
+        Match prevMatch :: matchesTail ->
+            -- New Match
+            if prevMatch.end <= match.start then
+                Match match :: matches
+
+            -- Inside previous Match
+            else if prevMatch.start < match.start
+                && prevMatch.end > match.end then
+                    addChild prevMatch match
+                        :: matchesTail
+
+            -- Overlaping previous Match
+            else
+                matches
+
+
+addChild : MatchModel -> MatchModel -> Match
+addChild parentMatch childMatch =
+    Match { parentMatch | matches =
+        prepareChildMatch parentMatch childMatch
+            :: parentMatch.matches
+    }
+
+
+prepareChildMatch : MatchModel -> MatchModel -> Match
+prepareChildMatch parentMatch childMatch =
+    { childMatch
+        | start     = childMatch.start - parentMatch.textStart
+        , end       = childMatch.end - parentMatch.textStart
+        , textStart = childMatch.textStart - parentMatch.textStart
+        , textEnd   = childMatch.textEnd - parentMatch.textStart
+    } |> Match
 
 
 ----------------------------------------------------------------------

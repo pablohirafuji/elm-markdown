@@ -31,12 +31,46 @@ run =
         ]
 
     , testEq 1002
-        []
+        [ p [] [ text "List indentation test" ] ]
         " -   \n  foo"
         [ ul []
             [ li [] []
             ]
         , p [] [ text "foo" ]
+        ]
+
+    , testEq 1003
+        [ p [] [ text "Hard break escaping line test" ] ]
+        "bar \\\\\nfoo"
+        [ p [] [ text "bar \\\nfoo" ]
+        ]
+
+    , testEqSoftAsHard 1004
+        [ p [] [ text "softAsHardLineBreak = True" ] ]
+        "foo\\\nbar\nbaz  \nbazinga"
+        [ p []
+            [ text "foo"
+            , br [] []
+            , text "bar"
+            , br [] []
+            , text "baz"
+            , br [] []
+            , text "bazinga"
+            ]
+        ]
+
+    , testEqDefaultOptions 1005
+        [ p [] [ text "defaultOptions test" ] ]
+        "foo\\\nbar\nbaz  \nbazinga\n\n<section class=\"className\" onerror=\"javascript();\"><script>alert('XSS Alert!');</script></section>"
+        [ p []
+            [ text "foo"
+            , br [] []
+            , text "bar\nbaz"
+            , br [] []
+            , text "bazinga"
+            ]
+        , section [ attribute "class" "className" ]
+            [ text "<script>alert('XSS Alert!');</script>" ]
         ]
 
     ]

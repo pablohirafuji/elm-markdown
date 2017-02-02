@@ -2,13 +2,25 @@
 
 Pure Elm markdown parsing and rendering.
 
-**Warning:** This package is not ready yet! It's about 50x slower than the [default one](http://package.elm-lang.org/packages/evancz/elm-markdown/latest) and the API can change dramatically. Use only if speed is not crucial, you need the AST and want to stay in cozy Elm land. [Feedbacks](https://github.com/pablohirafuji/elm-markdown/issues) are welcome.
-
 Based on the latest [CommonMark Spec](http://spec.commonmark.org/0.27/), with [some differences](#differences-from-commonmark).
 [Demo](https://pablohirafuji.github.io/elm-markdown/examples/Demo.html).
 
-    elm package install pablohirafuji/elm-markdown
-
+- [Basic Usage](#basic-usage)
+- [Supported Syntax](#supported-syntax)
+  - [Heading](#heading)
+  - [Quoting](#quoting)
+  - [Code](#code)
+  - [Link](#link)
+  - [Lists](#lists)
+  - [Paragraphs and line breaks](#paragraphs-and-line-breaks)
+  - [Thematic Break Line](#thematic-break-line)
+  - [Emphasis](#emphasis)
+  - [Image](#image)
+- [Differences from CommonMark](#differences-from-commonmark)
+- [Options](#options)
+- [Customization](#customization)
+- [Performance](#performance)
+- [Advanced Usage](#advanced-usage)
 
 ## Basic Usage
 
@@ -355,6 +367,17 @@ customHtmlInline inline =
         _ ->
             Inline.defaultHtml (Just customHtmlInline) inline
 ```
+
+
+## Performance
+
+Performance improvement is being made constantly. [Feedbacks](https://github.com/pablohirafuji/elm-markdown/issues) are welcome.
+
+Parsing a 1.2MB markdown text file to html in my notebook using node:
+
+- [Marked](https://github.com/chjj/marked): ~130ms
+- [CommonMark JS](https://github.com/jgm/commonmark.js): ~250ms
+- This package: ~1150ms
 
 
 ## Advanced Usage
