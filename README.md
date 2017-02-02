@@ -3,7 +3,7 @@
 Pure Elm markdown parsing and rendering.
 
 Based on the latest [CommonMark Spec](http://spec.commonmark.org/0.27/), with [some differences](#differences-from-commonmark).
-[Demo](https://pablohirafuji.github.io/elm-markdown/examples/Demo.html) / [Tests](https://pablohirafuji.github.io/elm-markdown/tests/).
+[Demo](https://pablohirafuji.github.io/elm-markdown/examples/Demo.html).
 
 - [Basic Usage](#basic-usage)
 - [Supported Syntax](#supported-syntax)
