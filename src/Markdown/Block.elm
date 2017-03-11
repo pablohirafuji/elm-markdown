@@ -27,7 +27,7 @@ import Dict
 import Html exposing (..)
 import Html.Attributes exposing (start, class)
 import Regex exposing (Regex)
-import Markdown.Helpers exposing (..)
+import Markdown.Helpers exposing (References, prepareRefLabel, titleRegex, insideSquareBracketRegex, returnFirstJust, ifError, indentLength, indentLine, formatStr)
 import Markdown.Config exposing (Options, defaultOptions)
 import Markdown.Inline as Inline exposing (Inline(..))
 import Markdown.InlineParser as Inline
@@ -522,7 +522,7 @@ extractOpenCodeFenceRM match =
                                     if lang == "" then Nothing
                                     else Just lang
                                 )
-                            |> Maybe.map replaceEscapable
+                            |> Maybe.map formatStr
                     } |> Just
 
 

@@ -21,6 +21,7 @@ Based on the latest [CommonMark Spec](http://spec.commonmark.org/0.27/), with [s
 - [Customization](#customization)
 - [Performance](#performance)
 - [Advanced Usage](#advanced-usage)
+- [Changelog](#changelog)
 
 ## Basic Usage
 
@@ -192,9 +193,8 @@ For more information about supported syntax and parsing rules, see [CommonMark S
 
 ## Differences from CommonMark
 
-- No entity references encoding/decoding support (e.g.: `&nbsp;`, `&amp;`, `&copy;`);
-- No decimal numeric characters decoding support (e.g.: `&#35;`, `&#1234;`,  `&#992;`);
-- No hexadecimal numeric character decoding support (e.g.: `&#X22;`, `&#XD06;`, `&#xcab;`);
+- No html entity encoding support, as Elm does not need it (e.g.: `<` to `&lt;`, `>` to `&gt;`);
+- Limited html entity decoding support, due to compiler issues with large Dicts;
 - No comment tag support (`<!-- -->`);
 - No CDATA tag support (`<![CDATA[ ]]>`);
 - No processing instruction tag support (`<? ?>`);
@@ -385,6 +385,11 @@ Parsing a 1.2MB markdown text file to html in my notebook using node:
 Todo:
 - Custom Blocks
 - Custom Inlines
+
+
+## Changelog
+
+- v2.0.3: Added limited entity and numeric character references support.
 
 
 ## Thanks

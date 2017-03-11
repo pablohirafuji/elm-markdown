@@ -3,6 +3,7 @@ module Markdown.Helpers exposing (..)
 
 import Dict exposing (Dict)
 import Regex exposing (Regex)
+import Markdown.Entity as Entity
 
 
 type alias References =
@@ -58,6 +59,14 @@ indentLine indentLength =
 escapableRegex : Regex
 escapableRegex =
     Regex.regex "(\\\\+)([!\"#$%&\\'()*+,./:;<=>?@[\\\\\\]^_`{|}~-])"
+
+
+formatStr : String -> String
+formatStr str =
+    replaceEscapable str
+        |> Entity.replaceEntities
+        |> Entity.replaceDecimals
+        |> Entity.replaceHexadecimals
 
 
 replaceEscapable : String -> String

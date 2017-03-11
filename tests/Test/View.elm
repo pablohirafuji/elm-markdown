@@ -19,6 +19,7 @@ import Test.BlockQuote
 import Test.ListItem
 import Test.List
 import Test.Inline.Escape
+import Test.Inline.Entity
 import Test.Inline.Code
 import Test.Inline.EmphasisStrong
 import Test.Inline.Link
@@ -85,7 +86,7 @@ tests =
     , ( "5.2 List Items", Test.ListItem.run )
     , ( "5.3 Lists", Test.List.run )
     , ( "6.1 Backslash escapes", Test.Inline.Escape.run )
-    --, ( "6.2 Entity and numeric character references", Test.Inline.Code.run )
+    , ( "6.2 Entity and numeric character references", Test.Inline.Entity.run )
     , ( "6.3 Code spans", Test.Inline.Code.run )
     , ( "6.4 Emphasis and strong emphasis", Test.Inline.EmphasisStrong.run )
     , ( "6.5 Links", Test.Inline.Link.run )

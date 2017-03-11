@@ -5,7 +5,7 @@ import Dict exposing (Dict)
 import Http exposing (encodeUri)
 import Regex exposing (Regex)
 import Markdown.Inline exposing (..)
-import Markdown.Helpers exposing (..)
+import Markdown.Helpers exposing (References, Attribute, prepareRefLabel, insideSquareBracketRegex, returnFirstJust, whiteSpaceChars, titleRegex, ifError, isEven, cleanWhitespaces, formatStr)
 import Markdown.Config as Config exposing (Options, HtmlOption(..))
 
 
@@ -773,7 +773,7 @@ normalMatch text =
         , end       = 0
         , textStart = 0
         , textEnd   = 0
-        , text      = replaceEscapable text
+        , text      = formatStr text
         , matches   = []
         }
 
@@ -1489,8 +1489,8 @@ inlineLinkTypeOrImageTypeRegexToMatch matchModel model regexMatch =
 
 prepareUrlAndTitle : ( String, Maybe String ) -> ( String, Maybe String )
 prepareUrlAndTitle ( rawUrl, maybeTitle ) =
-    ( encodeUrl (replaceEscapable rawUrl)
-    , Maybe.map replaceEscapable maybeTitle )
+    ( encodeUrl (formatStr rawUrl)
+    , Maybe.map formatStr maybeTitle )
 
 
 
@@ -1542,7 +1542,7 @@ refRegexToMatch matchModel model maybeRegexMatch =
                     prepareUrlAndTitle urlTitle
                         |> case matchModel.type_ of
                             ImageType _ -> ImageType
-                            _       -> LinkType
+                            _           -> LinkType
                 , end = matchModel.end + regexMatchLength
             } |> Match
 
@@ -1925,3 +1925,4 @@ query function inline =
 
         _ ->
             function inline
+
