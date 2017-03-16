@@ -1,5 +1,5 @@
 {
-    "version": "2.0.3",
+    "version": "2.0.4",
     "summary": "Pure Elm markdown parsing and rendering.",
     "repository": "https://github.com/pablohirafuji/elm-markdown.git",
     "license": "BSD3",
