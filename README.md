@@ -21,6 +21,7 @@ Based on the latest [CommonMark Spec](http://spec.commonmark.org/0.27/), with [s
 - [Customization](#customization)
 - [Performance](#performance)
 - [Advanced Usage](#advanced-usage)
+  - [Implementing GFM Task List](#implementing-gfm-task-list)
 - [Changelog](#changelog)
 
 ## Basic Usage
@@ -373,7 +374,7 @@ customHtmlInline inline =
 
 Performance improvement is being made constantly. [Feedbacks](https://github.com/pablohirafuji/elm-markdown/issues) are welcome.
 
-Parsing a 1.2MB markdown text file to html in my notebook using node:
+Parsing a 1.2MB (~30k lines) markdown text file to html in my notebook using node:
 
 - [Marked](https://github.com/chjj/marked): ~130ms
 - [CommonMark JS](https://github.com/jgm/commonmark.js): ~250ms
@@ -382,14 +383,149 @@ Parsing a 1.2MB markdown text file to html in my notebook using node:
 
 ## Advanced Usage
 
-Todo:
-- Custom Blocks
-- Custom Inlines
+Guides to help advanced usage.
+
+### Implementing GFM Task List
+
+Let's implement a [Task List](https://github.github.com/gfm/#task-list-items-extension-), like the GitHub Flavored Markdown
+has.
+
+First, let's create a type for our task:
+
+```elm
+type GFMInline
+    = Task Bool
+```
+
+Where `Bool` is where we will store the information about the
+`Task` state, i.e. if is checked or not.
+
+According to the [GFM Spec](https://github.github.com/gfm/#task-list-items-extension-)
+a task list item occurs only in lists and is the first thing in the
+list item.
+
+The `Block.walk` function seens a perfect match for our use case!
+It will walk the given block and apply a function to every inner
+`Block`, if is a container block, and the `Block` itself.
+
+
+The `Block.walk` function has this signature:
+`(Block b i -> Block b i) -> Block b i -> Block b i`. The first argument is a function that receives and return a `Block`. So let's
+create that function:
+
+```elm
+parseTaskList : Block b GFMInline -> Block b GFMInline
+parseTaskList block =
+    case block of
+        Block.List listBlock items ->
+            List.map parseTaskListItem items
+                |> Block.List listBlock
+
+        _ ->
+            block
+```
+
+Note the function signature: we replaced the `i` in
+`Block b i` for `GFMInline`, the type we created ealier.
+
+The function will match any `List` block type and map over
+it's items, witch type is `List (List (Block b i))`, applying
+the `parseTaskListItem` function to each item.
+
+Now let's create the `parseTaskListItem` function:
+
+```elm
+parseTaskListItem : List (Block b GFMInline) -> List (Block b GFMInline)
+parseTaskListItem item =
+    case item of
+        Block.Paragraph rawText (Inline.Text text :: inlinesTail)
+            :: tail ->
+                parseTaskListText text ++ inlinesTail
+                    |> Block.Paragraph rawText
+                    |> flip (::) tail
+
+        Block.PlainInlines (Inline.Text text :: inlinesTail)
+            :: tail ->
+                parseTaskListText text ++ inlinesTail
+                    |> Block.PlainInlines
+                    |> flip (::) tail
+
+        _ ->
+            item
+
+
+parseTaskListText : String -> List (Inline GFMInline)
+parseTaskListText text =
+    if String.startsWith "[x]" text then
+        [ Inline.Custom (Task True) []
+        , String.dropLeft 3 text
+            |> String.trimLeft
+            |> Inline.Text
+        ]
+
+    else if String.startsWith "[ ]" text then
+        [ Inline.Custom (Task False) []
+        , String.dropLeft 3 text
+            |> String.trimLeft
+            |> Inline.Text
+        ]
+
+    else
+        [ Inline.Text text ]
+```
+
+Our `parseTaskListItem` function will match any `Paragraph` or
+`PlainInlines` type (a list can be loose or tight), extracting
+the interesting parts (thanks to pattern matching!) that we use
+in the `parseTaskListText` function. Then we check the text for
+valid Task List and return the appropriate result.
+
+
+Now it's view time! Let's create our `Task`'s view:
+
+```elm
+gfmInlineView : Inline GFMInline -> Html msg
+gfmInlineView inline =
+    case inline of
+        Inline.Custom (Task isChecked) _ ->
+            Html.input
+                [ Html.Attributes.disabled True
+                , Html.Attributes.checked isChecked
+                , Html.Attributes.type_ "checkbox"
+                ] []
+
+        _ ->
+            Inline.defaultHtml (Just gfmInlineView) inline
+```
+
+And we finish glueing everything together:
+
+```elm
+gfmToHtml : String -> Html msg
+gfmToHtml str =
+    str
+        |> Block.parse Nothing -- using Config.defaultOptions
+        |> List.map (Block.walk parseTaskList)
+        |> List.concatMap gfmBlockView
+        |> Html.div []
+
+
+gfmBlockView : Block b GFMInline -> List (Html msg)
+gfmBlockView block =
+    Block.defaultHtml
+        Nothing -- using Block.defaultHtml to render the inner blocks
+        (Just gfmInlineView)
+        block
+```
+
+That's it! We implemented a fully functional GFM Task List!
+
 
 
 ## Changelog
 
-- v2.0.3: Added limited entity and numeric character references support.
+- v2.0.4: Added "Implementing GFM Task List guide" to README.
+- v2.0.3: Added most common html entities and numeric character references support.
 
 
 ## Thanks
