@@ -1,31 +1,34 @@
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput, onCheck, onClick)
-import Markdown
 import Markdown.Config exposing (defaultOptions, defaultSanitizeOptions, HtmlOption(..))
+import Markdown.Block as Block exposing (Block)
+import Markdown.Inline as Inline
 
 
 
 main : Program Never Model Msg
 main =
     Html.program
-        { init = init ! []
-        , view = view
-        , update = update
+        { init          = init ! []
+        , view          = view
+        , update        = update
         , subscriptions = \_ -> Sub.none
         }
 
 
 type alias Model =
     { textarea : String
-    , options : Markdown.Config.Options
+    , options  : Markdown.Config.Options
+    , showToC  : Bool
     }
 
 
 init : Model
 init =
     { textarea = readmeMD
-    , options = defaultOptions
+    , options  = defaultOptions
+    , showToC  = False
     }
 
 
@@ -33,7 +36,7 @@ type Msg
     = TextAreaInput String
     | SoftAsHardLineBreak Bool
     | HtmlOption HtmlOption
-    | Markdown
+    | ShowToC Bool
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -66,82 +69,165 @@ update msg model =
             in
                 { model | options = updtOptions } ! []
 
-
-        Markdown ->
-            model ! []
+        ShowToC bool ->
+            { model | showToC = bool } ! []
 
 
 view : Model -> Html Msg
 view model =
-    div [ containerStyle ]
-        [ h1 []
-            [ a [ href "http://package.elm-lang.org/packages/pablohirafuji/elm-markdown/latest" ]
-                [ text "Elm Markdown" ]
-            , text " / "
-            , a [ href "https://github.com/pablohirafuji/elm-markdown/blob/master/examples/Demo.elm"]
-                [ text "Code" ]
-            ]
-        , div [ displayFlex ]
-            [ div [ width50Style ]
-                [ textarea
-                    [ onInput TextAreaInput
-                    , defaultValue model.textarea
-                    , textareaStyle
+    [ div [ displayFlex ]
+        [ div [ width50Style ]
+            [ textarea
+                [ onInput TextAreaInput
+                , defaultValue model.textarea
+                , textareaStyle
+                ] []
+            , h2 [] [ text "Options" ]
+            , optionsView model
+            , h2 [] [ text "Custom" ]
+            , label []
+                [ input
+                    [ type_ "checkbox"
+                    , onCheck ShowToC
+                    , checked model.showToC
                     ] []
-                , h2 [] [ text "Options" ]
-                , label []
-                    [ input
-                        [ type_ "checkbox"
-                        , onCheck SoftAsHardLineBreak
-                        , checked (model.options.softAsHardLineBreak)
-                        ] []
-                    , text " softAsHardLineBreak"
-                    ]
-                , h3 [] [ text "Html" ]
-                , ul [ listStyle ]
-                    [ radioItem model "ParseUnsafe" (ParseUnsafe)
-                    , radioItem model "Sanitize defaultAllowed"
-                        (Sanitize defaultSanitizeOptions)
-                    , radioItem model "DontParse" (DontParse)
-                    ]
+                , text " Show dynamic Table of Content"
                 ]
-            , Html.map (always Markdown)
-                <| div [ width50Style ]
-                <| Markdown.toHtml
-                    (Just model.options)
-                    model.textarea
             ]
+        , markdownView model
         ]
+    ] |> div []
 
 
-radioItem : Model -> String -> HtmlOption -> Html Msg
-radioItem model value msg =
-    li []
+optionsView : Model -> Html Msg
+optionsView { options } =
+    [ li []
         [ label []
             [ input
-                [ type_ "radio"
-                , name "htmlOption"
-                , onClick (HtmlOption msg)
-                , checked (model.options.rawHtml == msg)
+                [ type_ "checkbox"
+                , onCheck SoftAsHardLineBreak
+                , checked options.softAsHardLineBreak
                 ] []
-            , text value
+            , text " softAsHardLineBreak"
             ]
         ]
+    , li []
+        [ b [] [ text "rawHtml:" ]
+        , ul [ listStyle ]
+            [ rawHtmlItem options "ParseUnsafe" ParseUnsafe
+            , rawHtmlItem options "Sanitize defaultAllowed"
+                <| Sanitize defaultSanitizeOptions
+            , rawHtmlItem options "DontParse" DontParse
+            ]
+        ]
+    ] |> ul [ listStyle ]
 
+
+rawHtmlItem : Markdown.Config.Options -> String -> HtmlOption -> Html Msg
+rawHtmlItem { rawHtml } value msg =
+    [ label []
+        [ input
+            [ type_ "radio"
+            , name "htmlOption"
+            , onClick (HtmlOption msg)
+            , checked (rawHtml == msg)
+            ] []
+        , text value
+        ]
+    ] |> li []
+
+
+markdownView : Model -> Html Msg
+markdownView { options, textarea, showToC } =
+    let
+        blocks = Block.parse (Just options) textarea
+
+        blocksView =
+            Block.defaultHtml Nothing Nothing
+                |> flip List.concatMap blocks
+
+    in
+        if showToC then
+            blocksView
+                |> (::) (tocView blocks)
+                |> div [ width50Style ]
+
+        else
+            blocksView
+                |> div [ width50Style ]
+
+
+-- Table of Content
+
+
+tocView : List (Block b i) -> Html Msg
+tocView  =
+    List.concatMap (Block.query getHeading)
+        >> List.foldl organizeHeadings []
+        >> List.reverse
+        >> List.map reverseToCItem
+        >> tocViewHelp
+        >> flip (::) []
+        >> (::) (h1 [] [ text "Table of Content" ])
+        >> div []
+
+
+getHeading : Block b i -> List ( Int, String )
+getHeading block =
+    case block of
+        Block.Heading _ lvl inlines ->
+            [ ( lvl, Inline.extractText inlines ) ]
+
+        _ ->
+            []
+
+
+type ToCItem
+    = Item Int String (List ToCItem)
+
+
+organizeHeadings : ( Int, String ) -> List ToCItem -> List ToCItem
+organizeHeadings ( lvl, str ) items =
+    case items of
+        [] ->
+            [ Item lvl str [] ]
+
+        Item lvl_ str_ items_ :: tail ->
+            if lvl <= lvl_ then
+                Item lvl str [] :: items
+
+            else
+                organizeHeadings ( lvl, str ) items_ 
+                    |> Item lvl_ str_
+                    |> flip (::) tail
+
+
+reverseToCItem : ToCItem -> ToCItem
+reverseToCItem (Item lvl heading subHeadings) =
+    List.reverse subHeadings
+        |> List.map reverseToCItem
+        |> Item lvl heading
+
+
+tocViewHelp : List ToCItem -> Html Msg
+tocViewHelp =
+    List.map tocItemView
+        >> ul []
+
+
+tocItemView : ToCItem -> Html Msg
+tocItemView (Item lvl heading subHeadings) =
+    if List.isEmpty subHeadings then
+        li [] [ text heading ]
+
+    else
+        li []
+            [ text heading
+            , tocViewHelp subHeadings
+            ]
 
 
 -- Styles
-
-
-containerStyle : Attribute msg
-containerStyle =
-    style
-        [ ("font-family", "sans-serif")
-        , ("color", "rgba(0,0,0,0.8)")
-        , ("margin", "0 auto")
-        , ("padding", "20px")
-        , ("max-width", "1080px")
-        ]
 
 
 displayFlex : Attribute msg
@@ -166,7 +252,6 @@ listStyle : Attribute msg
 listStyle =
     style
         [ ("list-style", "none")
-        , ("padding-left", "0")
         ]
 
 
@@ -180,7 +265,7 @@ readmeMD = """
 Pure Elm markdown parsing and rendering.
 
 Based on the latest [CommonMark Spec](http://spec.commonmark.org/0.27/), with [some differences](#differences-from-commonmark).
-[Demo](https://pablohirafuji.github.io/elm-markdown/examples/Demo.html).
+[Demo](https://pablohirafuji.github.io/elm-markdown/).
 
 - [Basic Usage](#basic-usage)
 - [Supported Syntax](#supported-syntax)
@@ -198,6 +283,8 @@ Based on the latest [CommonMark Spec](http://spec.commonmark.org/0.27/), with [s
 - [Customization](#customization)
 - [Performance](#performance)
 - [Advanced Usage](#advanced-usage)
+  - [Implementing GFM Task List](#implementing-gfm-task-list)
+- [Changelog](#changelog)
 
 ## Basic Usage
 
@@ -369,9 +456,8 @@ For more information about supported syntax and parsing rules, see [CommonMark S
 
 ## Differences from CommonMark
 
-- No entity references encoding/decoding support (e.g.: `&nbsp;`, `&amp;`, `&copy;`);
-- No decimal numeric characters decoding support (e.g.: `&#35;`, `&#1234;`,  `&#992;`);
-- No hexadecimal numeric character decoding support (e.g.: `&#X22;`, `&#XD06;`, `&#xcab;`);
+- No html entity encoding support, as Elm does not need it (e.g.: `<` to `&lt;`, `>` to `&gt;`);
+- Limited html entity decoding support, due to compiler issues with large Dicts;
 - No comment tag support (`<!-- -->`);
 - No CDATA tag support (`<![CDATA[ ]]>`);
 - No processing instruction tag support (`<? ?>`);
@@ -550,7 +636,7 @@ customHtmlInline inline =
 
 Performance improvement is being made constantly. [Feedbacks](https://github.com/pablohirafuji/elm-markdown/issues) are welcome.
 
-Parsing a 1.2MB markdown text file to html in my notebook using node:
+Parsing a 1.2MB (~30k lines) markdown text file to html in my notebook using node:
 
 - [Marked](https://github.com/chjj/marked): ~130ms
 - [CommonMark JS](https://github.com/jgm/commonmark.js): ~250ms
@@ -559,9 +645,150 @@ Parsing a 1.2MB markdown text file to html in my notebook using node:
 
 ## Advanced Usage
 
-Todo:
-- Custom Blocks
-- Custom Inlines
+Guides to help advanced usage.
+
+### Implementing GFM Task List
+
+Let's implement a [Task List](https://github.github.com/gfm/#task-list-items-extension-), like the GitHub Flavored Markdown
+has.
+
+First, let's create a type for our task:
+
+```elm
+type GFMInline
+    = Task Bool
+```
+
+Where `Bool` is where we will store the information about the
+`Task` state, i.e. if is checked or not.
+
+According to the [GFM Spec](https://github.github.com/gfm/#task-list-items-extension-)
+a task list item occurs only in lists and is the first thing in the
+list item.
+
+The `Block.walk` function seens a perfect match for our use case!
+It will walk the given block and apply a function to every inner
+`Block`, if is a container block, and the `Block` itself.
+
+
+The `Block.walk` function has this signature:
+`(Block b i -> Block b i) -> Block b i -> Block b i`. The first argument is a function that receives and return a `Block`. So let's
+create that function:
+
+```elm
+parseTaskList : Block b GFMInline -> Block b GFMInline
+parseTaskList block =
+    case block of
+        Block.List listBlock items ->
+            List.map parseTaskListItem items
+                |> Block.List listBlock
+
+        _ ->
+            block
+```
+
+Note the function signature: we replaced the `i` in
+`Block b i` for `GFMInline`, the type we created ealier.
+
+The function will match any `List` block type and map over
+it's items, witch type is `List (List (Block b i))`, applying
+the `parseTaskListItem` function to each item.
+
+Now let's create the `parseTaskListItem` function:
+
+```elm
+parseTaskListItem : List (Block b GFMInline) -> List (Block b GFMInline)
+parseTaskListItem item =
+    case item of
+        Block.Paragraph rawText (Inline.Text text :: inlinesTail)
+            :: tail ->
+                parseTaskListText text ++ inlinesTail
+                    |> Block.Paragraph rawText
+                    |> flip (::) tail
+
+        Block.PlainInlines (Inline.Text text :: inlinesTail)
+            :: tail ->
+                parseTaskListText text ++ inlinesTail
+                    |> Block.PlainInlines
+                    |> flip (::) tail
+
+        _ ->
+            item
+
+
+parseTaskListText : String -> List (Inline GFMInline)
+parseTaskListText text =
+    if String.startsWith "[x]" text then
+        [ Inline.Custom (Task True) []
+        , String.dropLeft 3 text
+            |> String.trimLeft
+            |> Inline.Text
+        ]
+
+    else if String.startsWith "[ ]" text then
+        [ Inline.Custom (Task False) []
+        , String.dropLeft 3 text
+            |> String.trimLeft
+            |> Inline.Text
+        ]
+
+    else
+        [ Inline.Text text ]
+```
+
+Our `parseTaskListItem` function will match any `Paragraph` or
+`PlainInlines` type (a list can be loose or tight), extracting
+the interesting parts (thanks to pattern matching!) that we use
+in the `parseTaskListText` function. Then we check the text for
+valid Task List and return the appropriate result.
+
+
+Now it's view time! Let's create our `Task`'s view:
+
+```elm
+gfmInlineView : Inline GFMInline -> Html msg
+gfmInlineView inline =
+    case inline of
+        Inline.Custom (Task isChecked) _ ->
+            Html.input
+                [ Html.Attributes.disabled True
+                , Html.Attributes.checked isChecked
+                , Html.Attributes.type_ "checkbox"
+                ] []
+
+        _ ->
+            Inline.defaultHtml (Just gfmInlineView) inline
+```
+
+And we finish gluing everything together:
+
+```elm
+gfmToHtml : String -> Html msg
+gfmToHtml str =
+    str
+        |> Block.parse Nothing -- using Config.defaultOptions
+        |> List.map (Block.walk parseTaskList)
+        |> List.concatMap gfmBlockView
+        |> Html.div []
+
+
+gfmBlockView : Block b GFMInline -> List (Html msg)
+gfmBlockView block =
+    Block.defaultHtml
+        Nothing -- using Block.defaultHtml to render the inner blocks
+        (Just gfmInlineView)
+        block
+```
+
+That's it! We implemented a fully functional GFM Task List!
+
+
+## Changelog
+
+- v2.0.4:
+  - Added "Implementing GFM Task List guide" to README.
+  - Added Table of Content to the [demo](https://pablohirafuji.github.io/elm-markdown/) and updated link.
+- v2.0.3: Added most common html entities and numeric character references support.
 
 
 ## Thanks

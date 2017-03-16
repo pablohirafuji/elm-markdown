@@ -3,7 +3,7 @@
 Pure Elm markdown parsing and rendering.
 
 Based on the latest [CommonMark Spec](http://spec.commonmark.org/0.27/), with [some differences](#differences-from-commonmark).
-[Demo](https://pablohirafuji.github.io/elm-markdown/examples/Demo.html).
+[Demo](https://pablohirafuji.github.io/elm-markdown/).
 
 - [Basic Usage](#basic-usage)
 - [Supported Syntax](#supported-syntax)
@@ -498,7 +498,7 @@ gfmInlineView inline =
             Inline.defaultHtml (Just gfmInlineView) inline
 ```
 
-And we finish glueing everything together:
+And we finish gluing everything together:
 
 ```elm
 gfmToHtml : String -> Html msg
@@ -521,10 +521,11 @@ gfmBlockView block =
 That's it! We implemented a fully functional GFM Task List!
 
 
-
 ## Changelog
 
-- v2.0.4: Added "Implementing GFM Task List guide" to README.
+- v2.0.4:
+  - Added "Implementing GFM Task List guide" to README.
+  - Added Table of Content to the [demo](https://pablohirafuji.github.io/elm-markdown/) and updated link.
 - v2.0.3: Added most common html entities and numeric character references support.
 
 
