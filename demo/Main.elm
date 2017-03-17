@@ -1,3 +1,4 @@
+import Regex
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput, onCheck, onClick)
@@ -143,8 +144,7 @@ markdownView { options, textarea, showToC } =
         blocks = Block.parse (Just options) textarea
 
         blocksView =
-            Block.defaultHtml Nothing Nothing
-                |> flip List.concatMap blocks
+            List.concatMap customHtmlBlock blocks
 
     in
         if showToC then
@@ -155,6 +155,37 @@ markdownView { options, textarea, showToC } =
         else
             blocksView
                 |> div [ width50Style ]
+
+
+-- Heading Link
+
+customHtmlBlock : Block b i -> List (Html msg)
+customHtmlBlock block =
+    case block of
+        Block.Heading _ level inlines ->
+            let
+                hElement =
+                    case level of
+                        1 -> h1
+                        2 -> h2
+                        3 -> h3
+                        4 -> h4
+                        5 -> h5
+                        _ -> h6
+
+            in
+                [ hElement
+                    [ Html.Attributes.id (formatToCLink
+                        (Inline.extractText inlines))
+                    ]
+                    (List.map Inline.toHtml inlines)
+                ]
+
+        _ ->
+            Block.defaultHtml
+                (Just customHtmlBlock)
+                Nothing
+                block
 
 
 -- Table of Content
@@ -218,13 +249,29 @@ tocViewHelp =
 tocItemView : ToCItem -> Html Msg
 tocItemView (Item lvl heading subHeadings) =
     if List.isEmpty subHeadings then
-        li [] [ text heading ]
+        li [] [ tocLinkView heading ]
 
     else
         li []
-            [ text heading
+            [ tocLinkView heading
             , tocViewHelp subHeadings
             ]
+
+
+tocLinkView : String -> Html Msg
+tocLinkView str =
+    a
+        [ formatToCLink str
+            |> (++) "#"
+            |> Html.Attributes.href
+        ]
+        [ text str ]
+
+
+formatToCLink : String -> String
+formatToCLink =
+    String.toLower
+        >> Regex.replace Regex.All (Regex.regex "\\s+") (always "-")
 
 
 -- Styles
