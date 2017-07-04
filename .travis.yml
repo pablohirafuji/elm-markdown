@@ -1,0 +1,40 @@
+sudo: false
+
+language: node_js
+node_js: node
+
+cache:
+  directories:
+    - elm-stuff/packages
+    - tests/elm-stuff/packages
+    - demo/elm-stuff/packages
+    - sysconfcpus
+
+os:
+  - linux
+
+env:
+  global:
+    - ELM_VERSION="0.18.0"
+    - ELM_TEST_VERSION="0.18.7"
+
+before_install:
+  - echo -e "Host github.com\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
+
+install:
+  - npm install -g elm@$ELM_VERSION elm-test@$ELM_TEST_VERSION
+  # Faster compile on Travis.
+  - |
+    if [ ! -d sysconfcpus/bin ];
+    then
+      git clone https://github.com/obmarg/libsysconfcpus.git;
+      cd libsysconfcpus;
+      ./configure --prefix=$TRAVIS_BUILD_DIR/sysconfcpus;
+      make && make install;
+      cd ..;
+    fi
+
+script:
+  - $TRAVIS_BUILD_DIR/sysconfcpus/bin/sysconfcpus -n 2 elm-test tests/CLI.elm
+  - bash ./demo/deploy.sh
+

@@ -1,12 +1,11 @@
 module Main exposing (..)
 
-
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
 import Markdown
 import Markdown.Config as Config exposing (defaultOptions)
-import Test.View
+import View
 
 
 main : Program Never Model Msg
@@ -21,21 +20,20 @@ main =
 
 type alias Model =
     { textarea : String
-    , testModel : Test.View.Model
+    , testModel : View.Model
     }
 
 
 init : Model
 init =
     { textarea = ""
-    , testModel = Test.View.initModel
+    , testModel = View.initModel
     }
 
 
 type Msg
     = TextAreaInput String
-    | TestMsg Test.View.Msg
-
+    | TestMsg View.Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -44,11 +42,12 @@ update msg model =
         TextAreaInput str ->
             { model | textarea = str } ! []
 
-
         TestMsg testMsg ->
-            { model | testModel =
-                Test.View.update testMsg model.testModel
-            } ! []
+            { model
+                | testModel =
+                    View.update testMsg model.testModel
+            }
+                ! []
 
 
 view : Model -> Html Msg
@@ -57,12 +56,14 @@ view model =
         [ h1 [] [ text "Pure Elm markdown tests" ]
         , textarea
             [ onInput TextAreaInput
-            , defaultValue model.textarea ] []
+            , defaultValue model.textarea
+            ]
+            []
         , br [] []
-        , div []
-            <| Markdown.toHtml (Just customOptions) model.textarea
-        , Html.map TestMsg
-            <| Test.View.view model.testModel
+        , div [] <|
+            Markdown.toHtml (Just customOptions) model.textarea
+        , Html.map TestMsg <|
+            View.view model.testModel
         ]
 
 
