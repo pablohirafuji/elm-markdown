@@ -9,13 +9,6 @@ TARGET_BRANCH="gh-pages"
 TEMP_FOLDER="temp"
 ENCRYPTION_LABEL="2e639d5f7f73"
 
-# Only deploy on new tags
-if [ "$TRAVIS_TAG" = "" ]; then
-   echo "Not a tag, not deploying"
-   exit 0
-else
-   echo "==> Building and deploying tag $TRAVIS_TAG <=="
-fi
 
 # Save some useful information
 REPO=`git config remote.origin.url`
@@ -67,11 +60,11 @@ ENCRYPTED_KEY_VAR="encrypted_${ENCRYPTION_LABEL}_key"
 ENCRYPTED_IV_VAR="encrypted_${ENCRYPTION_LABEL}_iv"
 ENCRYPTED_KEY=${!ENCRYPTED_KEY_VAR}
 ENCRYPTED_IV=${!ENCRYPTED_IV_VAR}
-openssl aes-256-cbc -K $ENCRYPTED_KEY -iv $ENCRYPTED_IV -in ../demo/deploy_key.enc -out deploy_key -d
+openssl aes-256-cbc -K $ENCRYPTED_KEY -iv $ENCRYPTED_IV -in ../demo/deploy-key.enc -out deploy-key -d
 
-chmod 600 deploy_key
+chmod 600 deploy-key
 eval `ssh-agent -s`
-ssh-add deploy_key
+ssh-add deploy-key
 
 # Now that we're all set up, we can push.
 git push $SSH_REPO $TARGET_BRANCH
