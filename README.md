@@ -536,3 +536,5 @@ Thank you John MacFarlane, for creating [CommonMark](http://commonmark.org/) spe
 Thank you everyone who gave feedback. Special thanks to Jan Tojnar, for discussing about the API.
 
 Thank you Evan for bringing joy to the frontend.
+
+Donation: BTC [1HAyTwtxMEkJaHdUYMXVvoXp2PHgwFx2M9](https://pablohirafuji.github.io/elm-qrcode/#bitcoin:1HAyTwtxMEkJaHdUYMXVvoXp2PHgwFx2M9)
