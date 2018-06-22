@@ -27,18 +27,8 @@
 		}
 	</style>
 </head>
+<script src="elm.js"></script>
 <body>
-	<h1 class="heading">Elm Markdown</h1>
-	<p class="subheading"><a href="http://package.elm-lang.org/packages/pablohirafuji/elm-markdown/latest">Package</a> / <a href="https://github.com/pablohirafuji/elm-markdown/">GitHub</a> / <a href="https://github.com/pablohirafuji/elm-markdown/blob/master/demo/Main.elm">Source</a></p>
-	<div id="main"><h2 class="loading">Loading...</h2></div>
-	<script src="/_compile/Main.elm"></script>
-	<script>
-    	var node = document.getElementById('main');
-    	while (node.firstChild) {
-  			node.removeChild(node.firstChild);
-		}
-    	var app = Elm.Main.embed(node);
-	</script>
-
+	<script>Elm.Main.fullscreen()</script>
 </body>
 </html>

@@ -1,6 +1,5 @@
 module Test.Initial exposing (run)
 
-
 import Html exposing (..)
 import Test.Helpers exposing (..)
 
@@ -19,7 +18,6 @@ run =
                 [ text "foo\tbaz\t\tbim\n" ]
             ]
         ]
-
     , testEq 2
         []
         "  \tfoo\tbaz\t\tbim\n"
@@ -28,7 +26,6 @@ run =
                 [ text "foo\tbaz\t\tbim\n" ]
             ]
         ]
-
     , testEq 3
         []
         "    a\ta\n    ὐ\ta\n"
@@ -37,7 +34,6 @@ run =
                 [ text "a\ta\nὐ\ta\n" ]
             ]
         ]
-
     , testEq 4
         []
         "  - foo\n\n\tbar\n"
@@ -50,7 +46,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 5
         []
         "- foo\n\n\t\tbar\n"
@@ -65,7 +60,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 6
         []
         ">\t\tfoo\n"
@@ -76,7 +70,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 7
         []
         "-\t\tfoo\n"
@@ -89,7 +82,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 8
         []
         "    foo\n\tbar\n"
@@ -98,7 +90,6 @@ run =
                 [ text "foo\nbar\n" ]
             ]
         ]
-
     , testEq 9
         []
         " - foo\n   - bar\n\t - baz\n"
@@ -117,21 +108,18 @@ run =
                 ]
             ]
         ]
-
     , testEq 10
         []
         "#\tFoo\n"
         [ h1 []
             [ text "Foo" ]
         ]
-
     , testEq 11
         []
         "*\t*\t*\t\n"
         [ hr []
             []
         ]
-
     , testEq 12
         []
         "- `one\n- two`\n"

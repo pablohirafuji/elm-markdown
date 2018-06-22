@@ -1,10 +1,10 @@
 module Test.Helpers exposing (..)
 
-import Test exposing (Test)
 import Expect exposing (Expectation)
 import Html exposing (..)
 import Markdown
 import Markdown.Config as Config exposing (defaultOptions)
+import Test exposing (Test)
 
 
 type alias Output msg =
@@ -65,4 +65,4 @@ toExpect { expectedResult, result } =
 toTest : Output msg -> Test
 toTest output =
     (\() -> toExpect output)
-        |> Test.test (toString output.number)
+        |> Test.test (String.fromInt output.number)

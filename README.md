@@ -372,8 +372,6 @@ customHtmlInline inline =
 
 ## Performance
 
-Performance improvement is being made constantly. [Feedbacks](https://github.com/pablohirafuji/elm-markdown/issues) are welcome.
-
 Parsing a 1.2MB (~30k lines) markdown text file to html in my notebook using node:
 
 - [Marked](https://github.com/chjj/marked): ~130ms
@@ -521,14 +519,6 @@ gfmBlockView block =
 That's it! We implemented a fully functional GFM Task List!
 
 
-## Changelog
-
-- v2.0.4:
-  - Added "Implementing GFM Task List guide" to README.
-  - Added Table of Content to the [demo](https://pablohirafuji.github.io/elm-markdown/) and updated link.
-- v2.0.3: Added most common html entities and numeric character references support.
-
-
 ## Thanks
 
 Thank you John MacFarlane, for creating [CommonMark](http://commonmark.org/) specification and tests.
@@ -536,5 +526,3 @@ Thank you John MacFarlane, for creating [CommonMark](http://commonmark.org/) spe
 Thank you everyone who gave feedback. Special thanks to Jan Tojnar, for discussing about the API.
 
 Thank you Evan for bringing joy to the frontend.
-
-Donation: BTC [1HAyTwtxMEkJaHdUYMXVvoXp2PHgwFx2M9](https://pablohirafuji.github.io/elm-qrcode/#bitcoin:1HAyTwtxMEkJaHdUYMXVvoXp2PHgwFx2M9)

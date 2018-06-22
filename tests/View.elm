@@ -1,11 +1,12 @@
 module View exposing (..)
 
 import Html exposing (..)
-import Html.Attributes exposing (style, type_, checked, href)
+import Html.Attributes exposing (checked, href, style, type_)
 import Html.Events exposing (onCheck)
-import Test.Runner exposing (getFailure)
 import Test.Helpers exposing (Output, toExpect)
+import Test.Runner exposing (getFailureReason)
 import Tests
+
 
 
 -- Model
@@ -53,12 +54,12 @@ resultOut =
         eval : Output msg -> ( Bool, Output msg )
         eval output =
             toExpect output
-                |> getFailure
+                |> getFailureReason
                 |> Maybe.map (always False)
                 |> Maybe.withDefault True
-                |> flip (,) output
+                |> (\a -> ( a, output ))
     in
-        List.map evalList Tests.all
+    List.map evalList Tests.all
 
 
 totalTestCount : Int
@@ -69,7 +70,7 @@ totalTestCount =
             List.length outputs
                 |> (+) count
     in
-        List.foldl sumTests 0 Tests.all
+    List.foldl sumTests 0 Tests.all
 
 
 successTestCount : Int
@@ -81,7 +82,7 @@ successTestCount =
                 |> List.length
                 |> (+) count
     in
-        List.foldl sumSuccessTests 0 resultOut
+    List.foldl sumSuccessTests 0 resultOut
 
 
 view : Model -> Html Msg
@@ -90,9 +91,9 @@ view model =
         [ h2 []
             [ text <|
                 "Tests ("
-                    ++ toString successTestCount
+                    ++ String.fromInt successTestCount
                     ++ "/"
-                    ++ toString totalTestCount
+                    ++ String.fromInt totalTestCount
                     ++ ")"
             ]
         , p []
@@ -120,7 +121,7 @@ view model =
             , text "Show Succeed"
             ]
         ]
-            ++ (List.map (showTest model) resultOut)
+            ++ List.map (showTest model) resultOut
 
 
 showTest : Model -> ( String, List ( Bool, Output msg ) ) -> Html msg
@@ -133,26 +134,26 @@ showTest model ( testTitle, outputs ) =
 
         bgStyle : List (Html.Attribute msg)
         bgStyle =
-            [ style [ ( "background-color", bgColor ) ] ]
+            [ style "background-color" bgColor ]
 
         bgColor : String
         bgColor =
             testColor (List.length outputs == passed)
     in
-        details [] <|
-            [ summary [] <|
-                [ text (testTitle ++ " ")
-                , span bgStyle
-                    [ text <|
-                        "("
-                            ++ toString passed
-                            ++ "/"
-                            ++ toString (List.length outputs)
-                            ++ ")"
-                    ]
+    details [] <|
+        [ summary [] <|
+            [ text (testTitle ++ " ")
+            , span bgStyle
+                [ text <|
+                    "("
+                        ++ String.fromInt passed
+                        ++ "/"
+                        ++ String.fromInt (List.length outputs)
+                        ++ ")"
                 ]
-            , ul [] (List.map (testView model) outputs)
             ]
+        , ul [] (List.map (testView model) outputs)
+        ]
 
 
 testView : Model -> ( Bool, Output msg ) -> Html msg
@@ -160,10 +161,13 @@ testView model ( isSuccess, output ) =
     if isSuccess then
         if model.showSucceed then
             li [] [ testViewHelp ( isSuccess, output ) ]
+
         else
             text ""
+
     else if model.showFailed then
         li [] [ testViewHelp ( isSuccess, output ) ]
+
     else
         text ""
 
@@ -171,22 +175,21 @@ testView model ( isSuccess, output ) =
 testViewHelp : ( Bool, Output msg ) -> Html msg
 testViewHelp ( isSuccess, { number, description, input, expectedResult, result } ) =
     div [] <|
-        [ h3 [] [ text ("Example " ++ toString number) ] ]
+        [ h3 [] [ text ("Example " ++ String.fromInt number) ] ]
             ++ description
             ++ [ pre []
                     [ code
-                        [ style
-                            [ ( "background-color", testColor isSuccess ) ]
+                        [ style "background-color" (testColor isSuccess)
                         ]
                         [ text input ]
                     ]
                , details []
                     [ h4 [] [ text "Expected" ]
                     , pre [] [ code [] expectedResult ]
-                    , p [] [ text (toString expectedResult) ]
+                    , p [] [ text (Debug.toString expectedResult) ]
                     , h4 [] [ text "Result" ]
                     , pre [] [ code [] result ]
-                    , p [] [ text (toString result) ]
+                    , p [] [ text (Debug.toString result) ]
                     ]
                ]
 
@@ -195,5 +198,6 @@ testColor : Bool -> String
 testColor isSuccess =
     if isSuccess then
         "#90EE90"
+
     else
         "#EEB4B4"

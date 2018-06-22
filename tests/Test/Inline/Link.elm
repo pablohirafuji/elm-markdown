@@ -1,8 +1,9 @@
 module Test.Inline.Link exposing (run)
 
 import Html exposing (..)
-import Html.Attributes exposing (href, title, src, alt, attribute)
+import Html.Attributes exposing (alt, attribute, href, src, title)
 import Test.Helpers exposing (..)
+
 
 
 -- Based on http://spec.commonmark.org/0.27/#links

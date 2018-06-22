@@ -1,32 +1,31 @@
 module Tests exposing (..)
 
-import Test.Helpers exposing (Output)
-import Test.Initial
-import Test.ThematicBreak
-import Test.ATXHeading
-import Test.SetextHeading
-import Test.IndentedCode
-import Test.FencedCode
-
-
 --import Test.HTMLBlocks
 
-import Test.LinkReferenceDefinition
-import Test.Paragraph
+import Test.ATXHeading
 import Test.BlankLine
 import Test.BlockQuote
-import Test.ListItem
-import Test.List
-import Test.Inline.Escape
-import Test.Inline.Entity
-import Test.Inline.Code
-import Test.Inline.EmphasisStrong
-import Test.Inline.Link
-import Test.Inline.Images
+import Test.FencedCode
+import Test.Helpers exposing (Output)
+import Test.IndentedCode
+import Test.Initial
 import Test.Inline.Autolinks
-import Test.Inline.RawHtml
-import Test.Inline.LineBreak
+import Test.Inline.Code
 import Test.Inline.Custom
+import Test.Inline.EmphasisStrong
+import Test.Inline.Entity
+import Test.Inline.Escape
+import Test.Inline.Images
+import Test.Inline.LineBreak
+import Test.Inline.Link
+import Test.Inline.RawHtml
+import Test.LinkReferenceDefinition
+import Test.List
+import Test.ListItem
+import Test.Paragraph
+import Test.SetextHeading
+import Test.ThematicBreak
+
 
 
 -- Based on http://spec.commonmark.org/0.27/

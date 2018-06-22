@@ -1,35 +1,39 @@
-import Regex
+module Main exposing (..)
+
+import Browser exposing (Page)
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Html.Events exposing (onInput, onCheck, onClick)
-import Markdown.Config exposing (defaultOptions, defaultSanitizeOptions, HtmlOption(..))
+import Html.Events exposing (onCheck, onClick, onInput)
+import Json.Encode as JE
 import Markdown.Block as Block exposing (Block)
+import Markdown.Config exposing (HtmlOption(..), defaultOptions, defaultSanitizeOptions)
 import Markdown.Inline as Inline
+import Regex exposing (Regex)
 
 
-
-main : Program Never Model Msg
+main : Program JE.Value Model Msg
 main =
-    Html.program
-        { init          = init ! []
-        , view          = view
-        , update        = update
+    Browser.fullscreen
+        { init = \_ -> ( init, Cmd.none )
+        , view = page
+        , update = update
         , subscriptions = \_ -> Sub.none
+        , onNavigation = Nothing
         }
 
 
 type alias Model =
     { textarea : String
-    , options  : Markdown.Config.Options
-    , showToC  : Bool
+    , options : Markdown.Config.Options
+    , showToC : Bool
     }
 
 
 init : Model
 init =
     { textarea = readmeMD
-    , options  = defaultOptions
-    , showToC  = False
+    , options = defaultOptions
+    , showToC = False
     }
 
 
@@ -44,60 +48,96 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         TextAreaInput str ->
-            { model | textarea = str } ! []
-
+            ( { model | textarea = str }
+            , Cmd.none
+            )
 
         SoftAsHardLineBreak bool ->
             let
-                options = model.options
+                options =
+                    model.options
+
                 updtOptions =
                     { options
                         | softAsHardLineBreak = bool
                     }
-            
             in
-                { model | options = updtOptions } ! []
-
+            ( { model | options = updtOptions }
+            , Cmd.none
+            )
 
         HtmlOption htmlConfig ->
             let
-                options = model.options
+                options =
+                    model.options
+
                 updtOptions =
                     { options
                         | rawHtml = htmlConfig
                     }
-            
             in
-                { model | options = updtOptions } ! []
+            ( { model | options = updtOptions }
+            , Cmd.none
+            )
 
         ShowToC bool ->
-            { model | showToC = bool } ! []
+            ( { model | showToC = bool }
+            , Cmd.none
+            )
 
 
-view : Model -> Html Msg
+page : Model -> Page Msg
+page model =
+    Page "Elm Markdown" (view model)
+
+
+view : Model -> List (Html Msg)
 view model =
-    [ div [ displayFlex ]
-        [ div [ width50Style ]
+    [ topStyles
+    , h1 [ class "heading" ] [ text "Elm Markdown" ]
+    , p [ class "subheading" ]
+        [ a [ href "http://package.elm-lang.org/packages/pablohirafuji/elm-markdown/latest" ]
+            [ text "Package" ]
+        , text " / "
+        , a [ href "https://github.com/pablohirafuji/elm-markdown" ]
+            [ text "GitHub" ]
+        , text " / "
+        , a [ href "https://github.com/pablohirafuji/elm-markdown/blob/master/demo/Main.elm" ]
+            [ text "Source" ]
+        ]
+    , div [ style "display" "flex" ]
+        [ div [ style "width" "50%" ]
             [ textarea
                 [ onInput TextAreaInput
-                , defaultValue model.textarea
-                , textareaStyle
-                ] []
-            , h2 [] [ text "Options" ]
-            , optionsView model
-            , h2 [] [ text "Custom" ]
-            , label []
-                [ input
-                    [ type_ "checkbox"
-                    , onCheck ShowToC
-                    , checked model.showToC
-                    ] []
-                , text " Show dynamic Table of Content"
+                , property "defaultValue" (JE.string model.textarea)
+                , style "width" "90%"
+                , style "height" "400px"
+                ]
+                []
+            , details []
+                [ summary [] [ text "Options" ]
+                , optionsView model
+                , h2 [] [ text "Custom" ]
+                , label []
+                    [ input
+                        [ type_ "checkbox"
+                        , onCheck ShowToC
+                        , checked model.showToC
+                        ]
+                        []
+                    , text " Show dynamic Table of Content"
+                    ]
                 ]
             ]
-        , markdownView model
+        , div
+            [ style "width" "50%"
+            , style "height" "400px"
+            , style "overflow-y" "auto"
+            , style "overflow-x" "hidden"
+            ]
+            (markdownView model)
         ]
-    ] |> div []
+    ]
 
 
 optionsView : Model -> Html Msg
@@ -108,20 +148,22 @@ optionsView { options } =
                 [ type_ "checkbox"
                 , onCheck SoftAsHardLineBreak
                 , checked options.softAsHardLineBreak
-                ] []
+                ]
+                []
             , text " softAsHardLineBreak"
             ]
         ]
     , li []
         [ b [] [ text "rawHtml:" ]
-        , ul [ listStyle ]
+        , ul [ style "list-style" "none" ]
             [ rawHtmlItem options "ParseUnsafe" ParseUnsafe
-            , rawHtmlItem options "Sanitize defaultAllowed"
-                <| Sanitize defaultSanitizeOptions
+            , rawHtmlItem options "Sanitize defaultAllowed" <|
+                Sanitize defaultSanitizeOptions
             , rawHtmlItem options "DontParse" DontParse
             ]
         ]
-    ] |> ul [ listStyle ]
+    ]
+        |> ul [ style "list-style" "none" ]
 
 
 rawHtmlItem : Markdown.Config.Options -> String -> HtmlOption -> Html Msg
@@ -132,32 +174,34 @@ rawHtmlItem { rawHtml } value msg =
             , name "htmlOption"
             , onClick (HtmlOption msg)
             , checked (rawHtml == msg)
-            ] []
+            ]
+            []
         , text value
         ]
-    ] |> li []
+    ]
+        |> li []
 
 
-markdownView : Model -> Html Msg
+markdownView : Model -> List (Html Msg)
 markdownView { options, textarea, showToC } =
     let
-        blocks = Block.parse (Just options) textarea
+        blocks =
+            Block.parse (Just options) textarea
 
         blocksView =
             List.concatMap customHtmlBlock blocks
-
     in
-        if showToC then
-            blocksView
-                |> (::) (tocView blocks)
-                |> div [ width50Style ]
+    if showToC then
+        blocksView
+            |> (::) (tocView blocks)
 
-        else
-            blocksView
-                |> div [ width50Style ]
+    else
+        blocksView
+
 
 
 -- Heading Link
+
 
 customHtmlBlock : Block b i -> List (Html msg)
 customHtmlBlock block =
@@ -166,20 +210,32 @@ customHtmlBlock block =
             let
                 hElement =
                     case level of
-                        1 -> h1
-                        2 -> h2
-                        3 -> h3
-                        4 -> h4
-                        5 -> h5
-                        _ -> h6
+                        1 ->
+                            h1
 
+                        2 ->
+                            h2
+
+                        3 ->
+                            h3
+
+                        4 ->
+                            h4
+
+                        5 ->
+                            h5
+
+                        _ ->
+                            h6
             in
-                [ hElement
-                    [ Html.Attributes.id (formatToCLink
-                        (Inline.extractText inlines))
-                    ]
-                    (List.map Inline.toHtml inlines)
+            [ hElement
+                [ Html.Attributes.id
+                    (formatToCLink
+                        (Inline.extractText inlines)
+                    )
                 ]
+                (List.map Inline.toHtml inlines)
+            ]
 
         _ ->
             Block.defaultHtml
@@ -188,17 +244,18 @@ customHtmlBlock block =
                 block
 
 
+
 -- Table of Content
 
 
 tocView : List (Block b i) -> Html Msg
-tocView  =
+tocView =
     List.concatMap (Block.query getHeading)
         >> List.foldl organizeHeadings []
         >> List.reverse
         >> List.map reverseToCItem
         >> tocViewHelp
-        >> flip (::) []
+        >> (\a -> (::) a [])
         >> (::) (h1 [] [ text "Table of Content" ])
         >> div []
 
@@ -223,14 +280,14 @@ organizeHeadings ( lvl, str ) items =
         [] ->
             [ Item lvl str [] ]
 
-        Item lvl_ str_ items_ :: tail ->
+        (Item lvl_ str_ items_) :: tail ->
             if lvl <= lvl_ then
                 Item lvl str [] :: items
 
             else
-                organizeHeadings ( lvl, str ) items_ 
+                organizeHeadings ( lvl, str ) items_
                     |> Item lvl_ str_
-                    |> flip (::) tail
+                    |> (\a -> (::) a tail)
 
 
 reverseToCItem : ToCItem -> ToCItem
@@ -271,42 +328,54 @@ tocLinkView str =
 formatToCLink : String -> String
 formatToCLink =
     String.toLower
-        >> Regex.replace Regex.All (Regex.regex "\\s+") (always "-")
+        >> Regex.replace oneOrMoreSpaces (always "-")
+
+
+oneOrMoreSpaces : Regex
+oneOrMoreSpaces =
+    Regex.fromString "\\s+"
+        |> Maybe.withDefault Regex.never
+
 
 
 -- Styles
 
 
-displayFlex : Attribute msg
-displayFlex =
-    style [ ("display", "flex") ]
-
-
-width50Style : Attribute msg
-width50Style =
-    style [ ("width", "50%") ]
-
-
-textareaStyle : Attribute msg
-textareaStyle =
-    style
-        [ ("width", "90%")
-        , ("height", "400px")
+topStyles : Html Msg
+topStyles =
+    Html.node "style"
+        []
+        [ text """
+body {
+    margin:0 auto;max-width:1080px;
+    line-height:1.6;
+    font-size:18px;
+    color:#444;
+    padding:0 10px;
+}
+h1 {
+    padding-bottom: 0;
+    margin-bottom: 0;
+}
+h1, h2,h3 {
+    line-height:1.2;
+}
+.heading, .subheading, .loading  {
+    text-align: center;
+}
+.subheading {
+    margin-top: 0;
+}"""
         ]
 
-
-listStyle : Attribute msg
-listStyle =
-    style
-        [ ("list-style", "none")
-        ]
 
 
 -- Readme
 
 
 readmeMD : String
-readmeMD = """
+readmeMD =
+    """
 # Elm Markdown
 
 Pure Elm markdown parsing and rendering.
@@ -390,7 +459,7 @@ at least three backticks or four spaces or tab.
 
 
     Example of `inline code`
-    
+
         Example of block code
 
     ```optionalLang
@@ -453,11 +522,11 @@ between lines of text.
     Here's a paragraph with soft break line
     at the end.
 
-    Here's a paragraph with hard break line\
-    at the end.
+    Here's a paragraph with hard break line\\n    at the end.
 
 
-By default, soft line break (`\n`) will be rendered as it is,
+By default, soft line break (`
+`) will be rendered as it is,
 unless it's preceded by two spaces or `\\`, which will output
 hard break line (`<br>`).
 
@@ -573,7 +642,8 @@ type alias SanitizeOptions =
     }
 ```
 
-- `softAsHardLineBreak`: Default `False`. If set to `True`, will render `\n` as `<br>`.
+- `softAsHardLineBreak`: Default `False`. If set to `True`, will render `
+` as `<br>`.
 - `rawHtml`: Default `Sanitize defaultSanitizeOptions`.
 You can choose to not parse any html tags (`DontParse`), parse any html tag without any sanitization (`ParseUnsafe`) or parse only specific html elements and attributes (`Sanitize SanitizeOptions`).
 

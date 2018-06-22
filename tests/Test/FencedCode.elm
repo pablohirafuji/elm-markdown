@@ -1,6 +1,5 @@
 module Test.FencedCode exposing (..)
 
-
 import Html exposing (..)
 import Html.Attributes exposing (class)
 import Test.Helpers exposing (..)
@@ -23,177 +22,124 @@ run =
         ]
         "```\n<\n >\n```"
         [ pre [] [ code [] [ text "<\n >\n" ] ] ]
-
-
     , testEq 89
         [ p [] [ text "With tildes:" ]
         ]
         "~~~\n<\n >\n~~~"
         [ pre [] [ code [] [ text "<\n >\n" ] ] ]
-
-
     , testEq 90
         [ p [] [ text "The closing code fence must use the same character as the opening fence:" ]
         ]
         "```\naaa\n~~~\n```"
         [ pre [] [ code [] [ text "aaa\n~~~\n" ] ] ]
-
-
     , testEq 91
         []
         "~~~\naaa\n```\n~~~"
         [ pre [] [ code [] [ text "aaa\n```\n" ] ] ]
-
-
     , testEq 92
         [ p [] [ text "The closing code fence must be at least as long as the opening fence:" ]
         ]
         "````\naaa\n```\n``````"
         [ pre [] [ code [] [ text "aaa\n```\n" ] ] ]
-
-
     , testEq 93
         []
         "~~~~\naaa\n~~~\n~~~~"
         [ pre [] [ code [] [ text "aaa\n~~~\n" ] ] ]
-
-
     , testEq 94
         [ p [] [ text "Unclosed code blocks are closed by the end of the document (or the enclosing block quote or list item):" ]
         ]
         "```"
         [ pre [] [ code [] [ text "" ] ] ]
-
-
     , testEq 95
         []
         "`````\n\n```\naaa"
         [ pre [] [ code [] [ text "\n```\naaa\n" ] ] ]
-
-
     , testEq 96
         []
         "> ```\n> aaa\n\nbbb"
-        [ blockquote [] [ pre [] [ code [] [ text "aaa\n" ] ] ], p [] [ text "bbb"] ]
-
-
+        [ blockquote [] [ pre [] [ code [] [ text "aaa\n" ] ] ], p [] [ text "bbb" ] ]
     , testEq 97
         [ p [] [ text "A code block can have all empty lines as its content:" ]
         ]
         "```\n\n  \n```"
         [ pre [] [ code [] [ text "\n  \n" ] ] ]
-
-
     , testEq 98
         [ p [] [ text "A code block can be empty:" ]
         ]
         "```\n```"
         [ pre [] [ code [] [ text "" ] ] ]
-
-
     , testEq 99
         [ p [] [ text "Fences can be indented. If the opening fence is indented, content lines will have equivalent opening indentation removed, if present:" ]
         ]
         " ```\n aaa\naaa\n```"
         [ pre [] [ code [] [ text "aaa\naaa\n" ] ] ]
-
-
     , testEq 100
         []
         "  ```\naaa\n  aaa\naaa\n  ```"
         [ pre [] [ code [] [ text "aaa\naaa\naaa\n" ] ] ]
-
-
     , testEq 101
         []
         "   ```\n   aaa\n    aaa\n  aaa\n   ```"
         [ pre [] [ code [] [ text "aaa\n aaa\naaa\n" ] ] ]
-
-
     , testEq 102
         [ p [] [ text "Four spaces indentation produces an indented code block:" ]
         ]
         "    ```\n    aaa\n    ```"
         [ pre [] [ code [] [ text "```\naaa\n```\n" ] ] ]
-
-
     , testEq 103
         [ p [] [ text "Closing fences may be indented by 0-3 spaces, and their indentation need not match that of the opening fence:" ]
         ]
         "```\naaa\n  ```"
         [ pre [] [ code [] [ text "aaa\n" ] ] ]
-
-
     , testEq 104
         []
         "   ```\naaa\n  ```"
         [ pre [] [ code [] [ text "aaa\n" ] ] ]
-
-
     , testEq 105
         [ p [] [ text "This is not a closing fence, because it is indented 4 spaces:" ]
         ]
         "```\naaa\n    ```"
         [ pre [] [ code [] [ text "aaa\n    ```\n" ] ] ]
-
-
     , testEq 106
         [ p [] [ text "Code fences (opening and closing) cannot contain internal spaces:" ]
         ]
         "``` ```\naaa"
         [ p [] [ code [] [ text "" ], text "\naaa" ] ]
-
-
     , testEq 107
         []
         "~~~~~~\naaa\n~~~ ~~"
         [ pre [] [ code [] [ text "aaa\n~~~ ~~\n" ] ] ]
-
-
     , testEq 108
         [ p [] [ text "Fenced code blocks can interrupt paragraphs, and can be followed directly by paragraphs, without a blank line between:" ]
         ]
         "foo\n```\nbar\n```\nbaz"
-        [ p [] [ text "foo"], pre [] [ code [] [ text "bar\n" ] ], p [] [ text "baz"] ]
-
-
+        [ p [] [ text "foo" ], pre [] [ code [] [ text "bar\n" ] ], p [] [ text "baz" ] ]
     , testEq 109
         [ p [] [ text "Other blocks can also occur before and after fenced code blocks without an intervening blank line:" ]
         ]
         "foo\n---\n~~~\nbar\n~~~\n# baz"
         [ h2 [] [ text "foo" ], pre [] [ code [] [ text "bar\n" ] ], h1 [] [ text "baz" ] ]
-
-
     , testEq 110
         [ p [] [ text "An info string can be provided after the opening code fence. Opening and closing spaces will be stripped, and the first word, prefixed with language-, is used as the value for the class attribute of the code element within the enclosing pre element." ]
         ]
         "```ruby\ndef foo(x)\n  return 3\nend\n```"
         [ pre [] [ code [ class "language-ruby" ] [ text "def foo(x)\n  return 3\nend\n" ] ] ]
-
-
     , testEq 111
         []
         "~~~~    ruby startline=3 $%@#$\ndef foo(x)\n  return 3\nend\n~~~~~~~"
         [ pre [] [ code [ class "language-ruby" ] [ text "def foo(x)\n  return 3\nend\n" ] ] ]
-
-
     , testEq 112
         []
         "````;\n````"
         [ pre [] [ code [ class "language-;" ] [ text "" ] ] ]
-
-
     , testEq 113
         [ p [] [ text "Info strings for backtick code blocks cannot contain backticks" ]
         ]
         "``` aa ```\nfoo"
         [ p [] [ code [] [ text "aa" ], text "\nfoo" ] ]
-
-
     , testEq 114
         [ p [] [ text "Closing code fences cannot have info strings:" ]
         ]
         "```\n``` aaa\n```"
         [ pre [] [ code [] [ text "``` aaa\n" ] ] ]
-
     ]

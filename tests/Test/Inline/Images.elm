@@ -1,8 +1,7 @@
 module Test.Inline.Images exposing (run)
 
-
 import Html exposing (..)
-import Html.Attributes exposing (alt, src, title, href)
+import Html.Attributes exposing (alt, href, src, title)
 import Test.Helpers exposing (..)
 
 
@@ -20,7 +19,6 @@ run =
                 []
             ]
         ]
-
     , testEq 541
         []
         "![foo *bar*]\n\n[foo *bar*]: train.jpg \"train & tracks\"\n"
@@ -29,7 +27,6 @@ run =
                 []
             ]
         ]
-
     , testEq 542
         []
         "![foo ![bar](/url)](/url2)\n"
@@ -38,7 +35,6 @@ run =
                 []
             ]
         ]
-
     , testEq 543
         []
         "![foo [bar](/url)](/url2)\n"
@@ -47,7 +43,6 @@ run =
                 []
             ]
         ]
-
     , testEq 544
         []
         "![foo *bar*][]\n\n[foo *bar*]: train.jpg \"train & tracks\"\n"
@@ -56,7 +51,6 @@ run =
                 []
             ]
         ]
-
     , testEq 545
         []
         "![foo *bar*][foobar]\n\n[FOOBAR]: train.jpg \"train & tracks\"\n"
@@ -65,7 +59,6 @@ run =
                 []
             ]
         ]
-
     , testEq 546
         []
         "![foo](train.jpg)\n"
@@ -74,7 +67,6 @@ run =
                 []
             ]
         ]
-
     , testEq 547
         []
         "My ![foo bar](/path/to/train.jpg  \"title\"   )\n"
@@ -84,7 +76,6 @@ run =
                 []
             ]
         ]
-
     , testEq 548
         []
         "![foo](<url>)\n"
@@ -93,7 +84,6 @@ run =
                 []
             ]
         ]
-
     , testEq 549
         []
         "![](/url)\n"
@@ -102,7 +92,6 @@ run =
                 []
             ]
         ]
-
     , testEq 550
         []
         "![foo][bar]\n\n[bar]: /url\n"
@@ -111,7 +100,6 @@ run =
                 []
             ]
         ]
-
     , testEq 551
         []
         "![foo][bar]\n\n[BAR]: /url\n"
@@ -120,7 +108,6 @@ run =
                 []
             ]
         ]
-
     , testEq 552
         []
         "![foo][]\n\n[foo]: /url \"title\"\n"
@@ -129,7 +116,6 @@ run =
                 []
             ]
         ]
-
     , testEq 553
         []
         "![*foo* bar][]\n\n[*foo* bar]: /url \"title\"\n"
@@ -138,7 +124,6 @@ run =
                 []
             ]
         ]
-
     , testEq 554
         []
         "![Foo][]\n\n[foo]: /url \"title\"\n"
@@ -147,7 +132,6 @@ run =
                 []
             ]
         ]
-
     , testEq 555
         []
         "![foo] \n[]\n\n[foo]: /url \"title\"\n"
@@ -157,7 +141,6 @@ run =
             , text "\n[]"
             ]
         ]
-
     , testEq 556
         []
         "![foo]\n\n[foo]: /url \"title\"\n"
@@ -166,7 +149,6 @@ run =
                 []
             ]
         ]
-
     , testEq 557
         []
         "![*foo* bar]\n\n[*foo* bar]: /url \"title\"\n"
@@ -175,7 +157,6 @@ run =
                 []
             ]
         ]
-
     , testEq 558
         []
         "![[foo]]\n\n[[foo]]: /url \"title\"\n"
@@ -184,7 +165,6 @@ run =
         , p []
             [ text "[[foo]]: /url \"title\"" ]
         ]
-
     , testEq 559
         []
         "![Foo]\n\n[foo]: /url \"title\"\n"
@@ -193,14 +173,12 @@ run =
                 []
             ]
         ]
-
     , testEq 560
         []
         "\\!\\[foo]\n\n[foo]: /url \"title\"\n"
         [ p []
             [ text "![foo]" ]
         ]
-
     , testEq 561
         []
         "\\![foo]\n\n[foo]: /url \"title\"\n"

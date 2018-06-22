@@ -1,6 +1,5 @@
 module Test.BlankLine exposing (..)
 
-
 import Html exposing (..)
 import Test.Helpers exposing (..)
 
@@ -18,4 +17,3 @@ run =
         "  \n\naaa\n  \n\n# aaa\n\n  "
         [ p [] [ text "aaa" ], h1 [] [ text "aaa" ] ]
     ]
-    

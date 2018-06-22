@@ -5,7 +5,7 @@ import Html.Attributes exposing (..)
 import Test.Helpers exposing (..)
 
 
-run : List ((Output msg) msg)
+run : List (Output msg)
 run =
     [ testEq 1
         []
@@ -15,7 +15,6 @@ run =
                 [ text "foo→baz→→bim" ]
             ]
         ]
-
     , testEq 2
         []
         "  →foo→baz→→bim\n"
@@ -24,7 +23,6 @@ run =
                 [ text "foo→baz→→bim" ]
             ]
         ]
-
     , testEq 3
         []
         "    a→a\n    ὐ→a\n"
@@ -33,7 +31,6 @@ run =
                 [ text "a→aὐ→a" ]
             ]
         ]
-
     , testEq 4
         []
         "  - foo\n\n→bar\n"
@@ -46,7 +43,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 5
         []
         "- foo\n\n→→bar\n"
@@ -61,7 +57,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 6
         []
         ">→→foo\n"
@@ -72,7 +67,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 7
         []
         "-→→foo\n"
@@ -85,7 +79,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 8
         []
         "    foo\n→bar\n"
@@ -94,7 +87,6 @@ run =
                 [ text "foobar" ]
             ]
         ]
-
     , testEq 9
         []
         " - foo\n   - bar\n→ - baz\n"
@@ -113,21 +105,18 @@ run =
                 ]
             ]
         ]
-
     , testEq 10
         []
         "#→Foo\n"
         [ h1 []
             [ text "Foo" ]
         ]
-
     , testEq 11
         []
         "*→*→*→\n"
         [ hr []
             []
         ]
-
     , testEq 12
         []
         "- `one\n- two`\n"
@@ -138,7 +127,6 @@ run =
                 [ text "two`" ]
             ]
         ]
-
     , testEq 13
         []
         "***\n---\n___\n"
@@ -152,28 +140,24 @@ run =
             []
         , text ""
         ]
-
     , testEq 14
         []
         "+++\n"
         [ p []
             [ text "+++" ]
         ]
-
     , testEq 15
         []
         "===\n"
         [ p []
             [ text "===" ]
         ]
-
     , testEq 16
         []
         "--\n**\n__\n"
         [ p []
             [ text "--**__" ]
         ]
-
     , testEq 17
         []
         " ***\n  ***\n   ***\n"
@@ -187,7 +171,6 @@ run =
             []
         , text ""
         ]
-
     , testEq 18
         []
         "    ***\n"
@@ -196,14 +179,12 @@ run =
                 [ text "***" ]
             ]
         ]
-
     , testEq 19
         []
         "Foo\n    ***\n"
         [ p []
             [ text "Foo***" ]
         ]
-
     , testEq 20
         []
         "_____________________________________\n"
@@ -211,7 +192,6 @@ run =
             []
         , text ""
         ]
-
     , testEq 21
         []
         " - - -\n"
@@ -219,7 +199,6 @@ run =
             []
         , text ""
         ]
-
     , testEq 22
         []
         " **  * ** * ** * **\n"
@@ -227,7 +206,6 @@ run =
             []
         , text ""
         ]
-
     , testEq 23
         []
         "-     -      -      -\n"
@@ -235,7 +213,6 @@ run =
             []
         , text ""
         ]
-
     , testEq 24
         []
         "- - - -    \n"
@@ -243,7 +220,6 @@ run =
             []
         , text ""
         ]
-
     , testEq 25
         []
         "_ _ _ _ a\n\na------\n\n---a---\n"
@@ -254,7 +230,6 @@ run =
         , p []
             [ text "---a---" ]
         ]
-
     , testEq 26
         []
         " *-*\n"
@@ -263,7 +238,6 @@ run =
                 [ text "-" ]
             ]
         ]
-
     , testEq 27
         []
         "- foo\n***\n- bar\n"
@@ -278,7 +252,6 @@ run =
                 [ text "bar" ]
             ]
         ]
-
     , testEq 28
         []
         "Foo\n***\nbar\n"
@@ -289,7 +262,6 @@ run =
         , p []
             [ text "bar" ]
         ]
-
     , testEq 29
         []
         "Foo\n---\nbar\n"
@@ -298,7 +270,6 @@ run =
         , p []
             [ text "bar" ]
         ]
-
     , testEq 30
         []
         "* Foo\n* * *\n* Bar\n"
@@ -313,7 +284,6 @@ run =
                 [ text "Bar" ]
             ]
         ]
-
     , testEq 31
         []
         "- Foo\n- * * *\n"
@@ -327,7 +297,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 32
         []
         "# foo\n## foo\n### foo\n#### foo\n##### foo\n###### foo\n"
@@ -344,14 +313,12 @@ run =
         , h6 []
             [ text "foo" ]
         ]
-
     , testEq 33
         []
         "####### foo\n"
         [ p []
             [ text "####### foo" ]
         ]
-
     , testEq 34
         []
         "#5 bolt\n\n#hashtag\n"
@@ -360,14 +327,12 @@ run =
         , p []
             [ text "#hashtag" ]
         ]
-
     , testEq 35
         []
         "\\## foo\n"
         [ p []
             [ text "## foo" ]
         ]
-
     , testEq 36
         []
         "# foo *bar* \\*baz\\*\n"
@@ -378,14 +343,12 @@ run =
             , text "*baz*"
             ]
         ]
-
     , testEq 37
         []
         "#                  foo                     \n"
         [ h1 []
             [ text "foo" ]
         ]
-
     , testEq 38
         []
         " ### foo\n  ## foo\n   # foo\n"
@@ -396,7 +359,6 @@ run =
         , h1 []
             [ text "foo" ]
         ]
-
     , testEq 39
         []
         "    # foo\n"
@@ -405,14 +367,12 @@ run =
                 [ text "# foo" ]
             ]
         ]
-
     , testEq 40
         []
         "foo\n    # bar\n"
         [ p []
             [ text "foo# bar" ]
         ]
-
     , testEq 41
         []
         "## foo ##\n  ###   bar    ###\n"
@@ -421,7 +381,6 @@ run =
         , h3 []
             [ text "bar" ]
         ]
-
     , testEq 42
         []
         "# foo ##################################\n##### foo ##\n"
@@ -430,28 +389,24 @@ run =
         , h5 []
             [ text "foo" ]
         ]
-
     , testEq 43
         []
         "### foo ###     \n"
         [ h3 []
             [ text "foo" ]
         ]
-
     , testEq 44
         []
         "### foo ### b\n"
         [ h3 []
             [ text "foo ### b" ]
         ]
-
     , testEq 45
         []
         "# foo#\n"
         [ h1 []
             [ text "foo#" ]
         ]
-
     , testEq 46
         []
         "### foo \\###\n## foo #\\##\n# foo \\#\n"
@@ -462,7 +417,6 @@ run =
         , h1 []
             [ text "foo #" ]
         ]
-
     , testEq 47
         []
         "****\n## foo\n****\n"
@@ -474,7 +428,6 @@ run =
             []
         , text ""
         ]
-
     , testEq 48
         []
         "Foo bar\n# baz\nBar foo\n"
@@ -485,7 +438,6 @@ run =
         , p []
             [ text "Bar foo" ]
         ]
-
     , testEq 49
         []
         "## \n#\n### ###\n"
@@ -496,7 +448,6 @@ run =
         , h3 []
             []
         ]
-
     , testEq 50
         []
         "Foo *bar*\n=========\n\nFoo *bar*\n---------\n"
@@ -511,7 +462,6 @@ run =
                 [ text "bar" ]
             ]
         ]
-
     , testEq 51
         []
         "Foo *bar\nbaz*\n====\n"
@@ -521,7 +471,6 @@ run =
                 [ text "barbaz" ]
             ]
         ]
-
     , testEq 52
         []
         "Foo\n-------------------------\n\nFoo\n=\n"
@@ -530,7 +479,6 @@ run =
         , h1 []
             [ text "Foo" ]
         ]
-
     , testEq 53
         []
         "   Foo\n---\n\n  Foo\n-----\n\n  Foo\n  ===\n"
@@ -541,7 +489,6 @@ run =
         , h1 []
             [ text "Foo" ]
         ]
-
     , testEq 54
         []
         "    Foo\n    ---\n\n    Foo\n---\n"
@@ -553,21 +500,18 @@ run =
             []
         , text ""
         ]
-
     , testEq 55
         []
         "Foo\n   ----      \n"
         [ h2 []
             [ text "Foo" ]
         ]
-
     , testEq 56
         []
         "Foo\n    ---\n"
         [ p []
             [ text "Foo---" ]
         ]
-
     , testEq 57
         []
         "Foo\n= =\n\nFoo\n--- -\n"
@@ -579,21 +523,18 @@ run =
             []
         , text ""
         ]
-
     , testEq 58
         []
         "Foo  \n-----\n"
         [ h2 []
             [ text "Foo" ]
         ]
-
     , testEq 59
         []
         "Foo\\\n----\n"
         [ h2 []
             [ text "Foo\\" ]
         ]
-
     , testEq 60
         []
         "`Foo\n----\n`\n\n<a title=\"a lot\n---\nof dashes\"/>\n"
@@ -606,7 +547,6 @@ run =
         , p []
             [ text "of dashes\"/>" ]
         ]
-
     , testEq 61
         []
         "> Foo\n---\n"
@@ -618,7 +558,6 @@ run =
             []
         , text ""
         ]
-
     , testEq 62
         []
         "> foo\nbar\n===\n"
@@ -627,7 +566,6 @@ run =
                 [ text "foobar===" ]
             ]
         ]
-
     , testEq 63
         []
         "- Foo\n---\n"
@@ -639,14 +577,12 @@ run =
             []
         , text ""
         ]
-
     , testEq 64
         []
         "Foo\nBar\n---\n"
         [ h2 []
             [ text "FooBar" ]
         ]
-
     , testEq 65
         []
         "---\nFoo\n---\nBar\n---\nBaz\n"
@@ -659,14 +595,12 @@ run =
         , p []
             [ text "Baz" ]
         ]
-
     , testEq 66
         []
         "\n====\n"
         [ p []
             [ text "====" ]
         ]
-
     , testEq 67
         []
         "---\n---\n"
@@ -677,7 +611,6 @@ run =
             []
         , text ""
         ]
-
     , testEq 68
         []
         "- foo\n-----\n"
@@ -689,7 +622,6 @@ run =
             []
         , text ""
         ]
-
     , testEq 69
         []
         "    foo\n---\n"
@@ -701,7 +633,6 @@ run =
             []
         , text ""
         ]
-
     , testEq 70
         []
         "> foo\n-----\n"
@@ -713,14 +644,12 @@ run =
             []
         , text ""
         ]
-
     , testEq 71
         []
         "\\> foo\n------\n"
         [ h2 []
             [ text "> foo" ]
         ]
-
     , testEq 72
         []
         "Foo\n\nbar\n---\nbaz\n"
@@ -731,7 +660,6 @@ run =
         , p []
             [ text "baz" ]
         ]
-
     , testEq 73
         []
         "Foo\nbar\n\n---\n\nbaz\n"
@@ -742,7 +670,6 @@ run =
         , p []
             [ text "baz" ]
         ]
-
     , testEq 74
         []
         "Foo\nbar\n* * *\nbaz\n"
@@ -753,14 +680,12 @@ run =
         , p []
             [ text "baz" ]
         ]
-
     , testEq 75
         []
         "Foo\nbar\n\\---\nbaz\n"
         [ p []
             [ text "Foobar---baz" ]
         ]
-
     , testEq 76
         []
         "    a simple\n      indented code block\n"
@@ -769,7 +694,6 @@ run =
                 [ text "a simple  indented code block" ]
             ]
         ]
-
     , testEq 77
         []
         "  - foo\n\n    bar\n"
@@ -782,7 +706,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 78
         []
         "1.  foo\n\n    - bar\n"
@@ -797,7 +720,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 79
         []
         "    <a/>\n    *hi*\n\n    - one\n"
@@ -806,7 +728,6 @@ run =
                 [ text "<a/>*hi*- one" ]
             ]
         ]
-
     , testEq 80
         []
         "    chunk1\n\n    chunk2\n  \n \n \n    chunk3\n"
@@ -815,7 +736,6 @@ run =
                 [ text "chunk1chunk2chunk3" ]
             ]
         ]
-
     , testEq 81
         []
         "    chunk1\n      \n      chunk2\n"
@@ -824,14 +744,12 @@ run =
                 [ text "chunk1    chunk2" ]
             ]
         ]
-
     , testEq 82
         []
         "Foo\n    bar\n\n"
         [ p []
             [ text "Foobar" ]
         ]
-
     , testEq 83
         []
         "    foo\nbar\n"
@@ -842,7 +760,6 @@ run =
         , p []
             [ text "bar" ]
         ]
-
     , testEq 84
         []
         "# Heading\n    foo\nHeading\n------\n    foo\n----\n"
@@ -862,7 +779,6 @@ run =
             []
         , text ""
         ]
-
     , testEq 85
         []
         "        foo\n    bar\n"
@@ -871,7 +787,6 @@ run =
                 [ text "foobar" ]
             ]
         ]
-
     , testEq 86
         []
         "\n    \n    foo\n    \n\n"
@@ -880,7 +795,6 @@ run =
                 [ text "foo" ]
             ]
         ]
-
     , testEq 87
         []
         "    foo  \n"
@@ -889,7 +803,6 @@ run =
                 [ text "foo  " ]
             ]
         ]
-
     , testEq 88
         []
         "```\n<\n >\n```\n"
@@ -898,7 +811,6 @@ run =
                 [ text "< >" ]
             ]
         ]
-
     , testEq 89
         []
         "~~~\n<\n >\n~~~\n"
@@ -907,7 +819,6 @@ run =
                 [ text "< >" ]
             ]
         ]
-
     , testEq 90
         []
         "```\naaa\n~~~\n```\n"
@@ -916,7 +827,6 @@ run =
                 [ text "aaa~~~" ]
             ]
         ]
-
     , testEq 91
         []
         "~~~\naaa\n```\n~~~\n"
@@ -925,7 +835,6 @@ run =
                 [ text "aaa```" ]
             ]
         ]
-
     , testEq 92
         []
         "````\naaa\n```\n``````\n"
@@ -934,7 +843,6 @@ run =
                 [ text "aaa```" ]
             ]
         ]
-
     , testEq 93
         []
         "~~~~\naaa\n~~~\n~~~~\n"
@@ -943,7 +851,6 @@ run =
                 [ text "aaa~~~" ]
             ]
         ]
-
     , testEq 94
         []
         "```\n"
@@ -952,7 +859,6 @@ run =
                 []
             ]
         ]
-
     , testEq 95
         []
         "`````\n\n```\naaa\n"
@@ -961,7 +867,6 @@ run =
                 [ text "```aaa" ]
             ]
         ]
-
     , testEq 96
         []
         "> ```\n> aaa\n\nbbb\n"
@@ -974,7 +879,6 @@ run =
         , p []
             [ text "bbb" ]
         ]
-
     , testEq 97
         []
         "```\n\n  \n```\n"
@@ -983,7 +887,6 @@ run =
                 []
             ]
         ]
-
     , testEq 98
         []
         "```\n```\n"
@@ -992,7 +895,6 @@ run =
                 []
             ]
         ]
-
     , testEq 99
         []
         " ```\n aaa\naaa\n```\n"
@@ -1001,7 +903,6 @@ run =
                 [ text "aaaaaa" ]
             ]
         ]
-
     , testEq 100
         []
         "  ```\naaa\n  aaa\naaa\n  ```\n"
@@ -1010,7 +911,6 @@ run =
                 [ text "aaaaaaaaa" ]
             ]
         ]
-
     , testEq 101
         []
         "   ```\n   aaa\n    aaa\n  aaa\n   ```\n"
@@ -1019,7 +919,6 @@ run =
                 [ text "aaa aaaaaa" ]
             ]
         ]
-
     , testEq 102
         []
         "    ```\n    aaa\n    ```\n"
@@ -1028,7 +927,6 @@ run =
                 [ text "```aaa```" ]
             ]
         ]
-
     , testEq 103
         []
         "```\naaa\n  ```\n"
@@ -1037,7 +935,6 @@ run =
                 [ text "aaa" ]
             ]
         ]
-
     , testEq 104
         []
         "   ```\naaa\n  ```\n"
@@ -1046,7 +943,6 @@ run =
                 [ text "aaa" ]
             ]
         ]
-
     , testEq 105
         []
         "```\naaa\n    ```\n"
@@ -1055,7 +951,6 @@ run =
                 [ text "aaa    ```" ]
             ]
         ]
-
     , testEq 106
         []
         "``` ```\naaa\n"
@@ -1065,7 +960,6 @@ run =
             , text "aaa"
             ]
         ]
-
     , testEq 107
         []
         "~~~~~~\naaa\n~~~ ~~\n"
@@ -1074,7 +968,6 @@ run =
                 [ text "aaa~~~ ~~" ]
             ]
         ]
-
     , testEq 108
         []
         "foo\n```\nbar\n```\nbaz\n"
@@ -1087,7 +980,6 @@ run =
         , p []
             [ text "baz" ]
         ]
-
     , testEq 109
         []
         "foo\n---\n~~~\nbar\n~~~\n# baz\n"
@@ -1100,7 +992,6 @@ run =
         , h1 []
             [ text "baz" ]
         ]
-
     , testEq 110
         []
         "```ruby\ndef foo(x)\n  return 3\nend\n```\n"
@@ -1109,7 +1000,6 @@ run =
                 [ text "def foo(x)  return 3end" ]
             ]
         ]
-
     , testEq 111
         []
         "~~~~    ruby startline=3 $%@#$\ndef foo(x)\n  return 3\nend\n~~~~~~~\n"
@@ -1118,7 +1008,6 @@ run =
                 [ text "def foo(x)  return 3end" ]
             ]
         ]
-
     , testEq 112
         []
         "````;\n````\n"
@@ -1127,7 +1016,6 @@ run =
                 []
             ]
         ]
-
     , testEq 113
         []
         "``` aa ```\nfoo\n"
@@ -1137,7 +1025,6 @@ run =
             , text "foo"
             ]
         ]
-
     , testEq 114
         []
         "```\n``` aaa\n```\n"
@@ -1146,217 +1033,174 @@ run =
                 [ text "``` aaa" ]
             ]
         ]
-
     , testEq 115
         []
         "<table>\n  <tr>\n    <td>\n           hi\n    </td>\n  </tr>\n</table>\n\nokay.\n"
         []
-
     , testEq 116
         []
         " <div>\n  *hello*\n         <foo><a>\n"
         []
-
     , testEq 117
         []
         "</div>\n*foo*\n"
         []
-
     , testEq 118
         []
         "<DIV CLASS=\"foo\">\n\n*Markdown*\n\n</DIV>\n"
         []
-
     , testEq 119
         []
         "<div id=\"foo\"\n  class=\"bar\">\n</div>\n"
         []
-
     , testEq 120
         []
         "<div id=\"foo\" class=\"bar\n  baz\">\n</div>\n"
         []
-
     , testEq 121
         []
         "<div>\n*foo*\n\n*bar*\n"
         []
-
     , testEq 122
         []
         "<div id=\"foo\"\n*hi*\n"
         []
-
     , testEq 123
         []
         "<div class\nfoo\n"
         []
-
     , testEq 124
         []
         "<div *???-&&&-<---\n*foo*\n"
         []
-
     , testEq 125
         []
         "<div><a href=\"bar\">*foo*</a></div>\n"
         []
-
     , testEq 126
         []
         "<table><tr><td>\nfoo\n</td></tr></table>\n"
         []
-
     , testEq 127
         []
         "<div></div>\n``` c\nint x = 33;\n```\n"
         []
-
     , testEq 128
         []
         "<a href=\"foo\">\n*bar*\n</a>\n"
         []
-
     , testEq 129
         []
         "<Warning>\n*bar*\n</Warning>\n"
         []
-
     , testEq 130
         []
         "<i class=\"foo\">\n*bar*\n</i>\n"
         []
-
     , testEq 131
         []
         "</ins>\n*bar*\n"
         []
-
     , testEq 132
         []
         "<del>\n*foo*\n</del>\n"
         []
-
     , testEq 133
         []
         "<del>\n\n*foo*\n\n</del>\n"
         []
-
     , testEq 134
         []
         "<del>*foo*</del>\n"
         []
-
     , testEq 135
         []
         "<pre language=\"haskell\"><code>\nimport Text.HTML.TagSoup\n\nmain :: IO ()\nmain = print $ parseTags tags\n</code></pre>\nokay\n"
         []
-
     , testEq 136
         []
         "<script type=\"text/javascript\">\n// JavaScript example\n\ndocument.getElementById(\"demo\").innerHTML = \"Hello JavaScript!\";\n</script>\nokay\n"
         []
-
     , testEq 137
         []
         "<style\n  type=\"text/css\">\nh1 {color:red;}\n\np {color:blue;}\n</style>\nokay\n"
         []
-
     , testEq 138
         []
         "<style\n  type=\"text/css\">\n\nfoo\n"
         []
-
     , testEq 139
         []
         "> <div>\n> foo\n\nbar\n"
         []
-
     , testEq 140
         []
         "- <div>\n- foo\n"
         []
-
     , testEq 141
         []
         "<style>p{color:red;}</style>\n*foo*\n"
         []
-
     , testEq 142
         []
         "<!-- foo -->*bar*\n*baz*\n"
         []
-
     , testEq 143
         []
         "<script>\nfoo\n</script>1. *bar*\n"
         []
-
     , testEq 144
         []
         "<!-- Foo\n\nbar\n   baz -->\nokay\n"
         []
-
     , testEq 145
         []
         "<?php\n\n  echo '>';\n\n?>\nokay\n"
         []
-
     , testEq 146
         []
         "<!DOCTYPE html>\n"
         []
-
     , testEq 147
         []
         "<![CDATA[\nfunction matchwo(a,b)\n{\n  if (a < b && a < 0) then {\n    return 1;\n\n  } else {\n\n    return 0;\n  }\n}\n]]>\nokay\n"
         []
-
     , testEq 148
         []
         "  <!-- foo -->\n\n    <!-- foo -->\n"
         []
-
     , testEq 149
         []
         "  <div>\n\n    <div>\n"
         []
-
     , testEq 150
         []
         "Foo\n<div>\nbar\n</div>\n"
         []
-
     , testEq 151
         []
         "<div>\nbar\n</div>\n*foo*\n"
         []
-
     , testEq 152
         []
         "Foo\n<a href=\"bar\">\nbaz\n"
         []
-
     , testEq 153
         []
         "<div>\n\n*Emphasized* text.\n\n</div>\n"
         []
-
     , testEq 154
         []
         "<div>\n*Emphasized* text.\n</div>\n"
         []
-
     , testEq 155
         []
         "<table>\n\n<tr>\n\n<td>\nHi\n</td>\n\n</tr>\n\n</table>\n"
         []
-
     , testEq 156
         []
         "<table>\n\n  <tr>\n\n    <td>\n      Hi\n    </td>\n\n  </tr>\n\n</table>\n"
         []
-
     , testEq 157
         []
         "[foo]: /url \"title\"\n\n[foo]\n"
@@ -1365,7 +1209,6 @@ run =
                 [ text "foo" ]
             ]
         ]
-
     , testEq 158
         []
         "   [foo]: \n      /url  \n           'the title'  \n\n[foo]\n"
@@ -1374,7 +1217,6 @@ run =
                 [ text "foo" ]
             ]
         ]
-
     , testEq 159
         []
         "[Foo*bar\\]]:my_(url) 'title (with parens)'\n\n[Foo*bar\\]]\n"
@@ -1383,7 +1225,6 @@ run =
                 [ text "Foo*bar]" ]
             ]
         ]
-
     , testEq 160
         []
         "[Foo bar]:\n<my%20url>\n'title'\n\n[Foo bar]\n"
@@ -1392,7 +1233,6 @@ run =
                 [ text "Foo bar" ]
             ]
         ]
-
     , testEq 161
         []
         "[foo]: /url '\ntitle\nline1\nline2\n'\n\n[foo]\n"
@@ -1401,7 +1241,6 @@ run =
                 [ text "foo" ]
             ]
         ]
-
     , testEq 162
         []
         "[foo]: /url 'title\n\nwith blank line'\n\n[foo]\n"
@@ -1412,7 +1251,6 @@ run =
         , p []
             [ text "[foo]" ]
         ]
-
     , testEq 163
         []
         "[foo]:\n/url\n\n[foo]\n"
@@ -1421,7 +1259,6 @@ run =
                 [ text "foo" ]
             ]
         ]
-
     , testEq 164
         []
         "[foo]:\n\n[foo]\n"
@@ -1430,7 +1267,6 @@ run =
         , p []
             [ text "[foo]" ]
         ]
-
     , testEq 165
         []
         "[foo]: /url\\bar\\*baz \"foo\\\"bar\\baz\"\n\n[foo]\n"
@@ -1439,7 +1275,6 @@ run =
                 [ text "foo" ]
             ]
         ]
-
     , testEq 166
         []
         "[foo]\n\n[foo]: url\n"
@@ -1448,7 +1283,6 @@ run =
                 [ text "foo" ]
             ]
         ]
-
     , testEq 167
         []
         "[foo]\n\n[foo]: first\n[foo]: second\n"
@@ -1457,7 +1291,6 @@ run =
                 [ text "foo" ]
             ]
         ]
-
     , testEq 168
         []
         "[FOO]: /url\n\n[Foo]\n"
@@ -1466,7 +1299,6 @@ run =
                 [ text "Foo" ]
             ]
         ]
-
     , testEq 169
         []
         "[ΑΓΩ]: /φου\n\n[αγω]\n"
@@ -1475,33 +1307,28 @@ run =
                 [ text "αγω" ]
             ]
         ]
-
     , testEq 170
         []
         "[foo]: /url\n"
         []
-
     , testEq 171
         []
         "[\nfoo\n]: /url\nbar\n"
         [ p []
             [ text "bar" ]
         ]
-
     , testEq 172
         []
         "[foo]: /url \"title\" ok\n"
         [ p []
             [ text "[foo]: /url \"title\" ok" ]
         ]
-
     , testEq 173
         []
         "[foo]: /url\n\"title\" ok\n"
         [ p []
             [ text "\"title\" ok" ]
         ]
-
     , testEq 174
         []
         "    [foo]: /url \"title\"\n\n[foo]\n"
@@ -1512,7 +1339,6 @@ run =
         , p []
             [ text "[foo]" ]
         ]
-
     , testEq 175
         []
         "```\n[foo]: /url\n```\n\n[foo]\n"
@@ -1523,7 +1349,6 @@ run =
         , p []
             [ text "[foo]" ]
         ]
-
     , testEq 176
         []
         "Foo\n[bar]: /baz\n\n[bar]\n"
@@ -1532,7 +1357,6 @@ run =
         , p []
             [ text "[bar]" ]
         ]
-
     , testEq 177
         []
         "# [Foo]\n[foo]: /url\n> bar\n"
@@ -1545,7 +1369,6 @@ run =
                 [ text "bar" ]
             ]
         ]
-
     , testEq 178
         []
         "[foo]: /foo-url \"foo\"\n[bar]: /bar-url\n  \"bar\"\n[baz]: /baz-url\n\n[foo],\n[bar],\n[baz]\n"
@@ -1560,7 +1383,6 @@ run =
                 [ text "baz" ]
             ]
         ]
-
     , testEq 179
         []
         "[foo]\n\n> [foo]: /url\n"
@@ -1571,7 +1393,6 @@ run =
         , blockquote []
             []
         ]
-
     , testEq 180
         []
         "aaa\n\nbbb\n"
@@ -1580,7 +1401,6 @@ run =
         , p []
             [ text "bbb" ]
         ]
-
     , testEq 181
         []
         "aaa\nbbb\n\nccc\nddd\n"
@@ -1589,7 +1409,6 @@ run =
         , p []
             [ text "cccddd" ]
         ]
-
     , testEq 182
         []
         "aaa\n\n\nbbb\n"
@@ -1598,28 +1417,24 @@ run =
         , p []
             [ text "bbb" ]
         ]
-
     , testEq 183
         []
         "  aaa\n bbb\n"
         [ p []
             [ text "aaabbb" ]
         ]
-
     , testEq 184
         []
         "aaa\n             bbb\n                                       ccc\n"
         [ p []
             [ text "aaabbbccc" ]
         ]
-
     , testEq 185
         []
         "   aaa\nbbb\n"
         [ p []
             [ text "aaabbb" ]
         ]
-
     , testEq 186
         []
         "    aaa\nbbb\n"
@@ -1630,7 +1445,6 @@ run =
         , p []
             [ text "bbb" ]
         ]
-
     , testEq 187
         []
         "aaa     \nbbb     \n"
@@ -1641,7 +1455,6 @@ run =
             , text "bbb"
             ]
         ]
-
     , testEq 188
         []
         "  \n\naaa\n  \n\n# aaa\n\n  \n"
@@ -1650,7 +1463,6 @@ run =
         , h1 []
             [ text "aaa" ]
         ]
-
     , testEq 189
         []
         "> # Foo\n> bar\n> baz\n"
@@ -1661,7 +1473,6 @@ run =
                 [ text "barbaz" ]
             ]
         ]
-
     , testEq 190
         []
         "># Foo\n>bar\n> baz\n"
@@ -1672,7 +1483,6 @@ run =
                 [ text "barbaz" ]
             ]
         ]
-
     , testEq 191
         []
         "   > # Foo\n   > bar\n > baz\n"
@@ -1683,7 +1493,6 @@ run =
                 [ text "barbaz" ]
             ]
         ]
-
     , testEq 192
         []
         "    > # Foo\n    > bar\n    > baz\n"
@@ -1692,7 +1501,6 @@ run =
                 [ text "> # Foo> bar> baz" ]
             ]
         ]
-
     , testEq 193
         []
         "> # Foo\n> bar\nbaz\n"
@@ -1703,7 +1511,6 @@ run =
                 [ text "barbaz" ]
             ]
         ]
-
     , testEq 194
         []
         "> bar\nbaz\n> foo\n"
@@ -1712,7 +1519,6 @@ run =
                 [ text "barbazfoo" ]
             ]
         ]
-
     , testEq 195
         []
         "> foo\n---\n"
@@ -1724,7 +1530,6 @@ run =
             []
         , text ""
         ]
-
     , testEq 196
         []
         "> - foo\n- bar\n"
@@ -1739,7 +1544,6 @@ run =
                 [ text "bar" ]
             ]
         ]
-
     , testEq 197
         []
         ">     foo\n    bar\n"
@@ -1754,7 +1558,6 @@ run =
                 [ text "bar" ]
             ]
         ]
-
     , testEq 198
         []
         "> ```\nfoo\n```\n"
@@ -1771,7 +1574,6 @@ run =
                 []
             ]
         ]
-
     , testEq 199
         []
         "> foo\n    - bar\n"
@@ -1780,21 +1582,18 @@ run =
                 [ text "foo- bar" ]
             ]
         ]
-
     , testEq 200
         []
         ">\n"
         [ blockquote []
             []
         ]
-
     , testEq 201
         []
         ">\n>  \n> \n"
         [ blockquote []
             []
         ]
-
     , testEq 202
         []
         ">\n> foo\n>  \n"
@@ -1803,7 +1602,6 @@ run =
                 [ text "foo" ]
             ]
         ]
-
     , testEq 203
         []
         "> foo\n\n> bar\n"
@@ -1816,7 +1614,6 @@ run =
                 [ text "bar" ]
             ]
         ]
-
     , testEq 204
         []
         "> foo\n> bar\n"
@@ -1825,7 +1622,6 @@ run =
                 [ text "foobar" ]
             ]
         ]
-
     , testEq 205
         []
         "> foo\n>\n> bar\n"
@@ -1836,7 +1632,6 @@ run =
                 [ text "bar" ]
             ]
         ]
-
     , testEq 206
         []
         "foo\n> bar\n"
@@ -1847,7 +1642,6 @@ run =
                 [ text "bar" ]
             ]
         ]
-
     , testEq 207
         []
         "> aaa\n***\n> bbb\n"
@@ -1862,7 +1656,6 @@ run =
                 [ text "bbb" ]
             ]
         ]
-
     , testEq 208
         []
         "> bar\nbaz\n"
@@ -1871,7 +1664,6 @@ run =
                 [ text "barbaz" ]
             ]
         ]
-
     , testEq 209
         []
         "> bar\n\nbaz\n"
@@ -1882,7 +1674,6 @@ run =
         , p []
             [ text "baz" ]
         ]
-
     , testEq 210
         []
         "> bar\n>\nbaz\n"
@@ -1893,7 +1684,6 @@ run =
         , p []
             [ text "baz" ]
         ]
-
     , testEq 211
         []
         "> > > foo\nbar\n"
@@ -1906,7 +1696,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 212
         []
         ">>> foo\n> bar\n>>baz\n"
@@ -1919,7 +1708,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 213
         []
         ">     code\n\n>    not code\n"
@@ -1934,7 +1722,6 @@ run =
                 [ text "not code" ]
             ]
         ]
-
     , testEq 214
         []
         "A paragraph\nwith two lines.\n\n    indented code\n\n> A block quote.\n"
@@ -1949,7 +1736,6 @@ run =
                 [ text "A block quote." ]
             ]
         ]
-
     , testEq 215
         []
         "1.  A paragraph\n    with two lines.\n\n        indented code\n\n    > A block quote.\n"
@@ -1968,7 +1754,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 216
         []
         "- one\n\n two\n"
@@ -1979,7 +1764,6 @@ run =
         , p []
             [ text "two" ]
         ]
-
     , testEq 217
         []
         "- one\n\n  two\n"
@@ -1992,7 +1776,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 218
         []
         " -    one\n\n     two\n"
@@ -2005,7 +1788,6 @@ run =
                 [ text "two" ]
             ]
         ]
-
     , testEq 219
         []
         " -    one\n\n      two\n"
@@ -2018,7 +1800,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 220
         []
         "   > > 1.  one\n>>\n>>     two\n"
@@ -2035,7 +1816,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 221
         []
         ">>- one\n>>\n  >  > two\n"
@@ -2050,7 +1830,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 222
         []
         "-one\n\n2.two\n"
@@ -2059,7 +1838,6 @@ run =
         , p []
             [ text "2.two" ]
         ]
-
     , testEq 223
         []
         "- foo\n\n\n  bar\n"
@@ -2072,7 +1850,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 224
         []
         "1.  foo\n\n    ```\n    bar\n    ```\n\n    baz\n\n    > bam\n"
@@ -2093,7 +1870,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 225
         []
         "- Foo\n\n      bar\n\n\n      baz\n"
@@ -2108,7 +1884,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 226
         []
         "123456789. ok\n"
@@ -2117,14 +1892,12 @@ run =
                 [ text "ok" ]
             ]
         ]
-
     , testEq 227
         []
         "1234567890. not ok\n"
         [ p []
             [ text "1234567890. not ok" ]
         ]
-
     , testEq 228
         []
         "0. ok\n"
@@ -2133,7 +1906,6 @@ run =
                 [ text "ok" ]
             ]
         ]
-
     , testEq 229
         []
         "003. ok\n"
@@ -2142,14 +1914,12 @@ run =
                 [ text "ok" ]
             ]
         ]
-
     , testEq 230
         []
         "-1. not ok\n"
         [ p []
             [ text "-1. not ok" ]
         ]
-
     , testEq 231
         []
         "- foo\n\n      bar\n"
@@ -2164,7 +1934,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 232
         []
         "  10.  foo\n\n           bar\n"
@@ -2179,7 +1948,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 233
         []
         "    indented code\n\nparagraph\n\n    more code\n"
@@ -2194,7 +1962,6 @@ run =
                 [ text "more code" ]
             ]
         ]
-
     , testEq 234
         []
         "1.     indented code\n\n   paragraph\n\n       more code\n"
@@ -2213,7 +1980,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 235
         []
         "1.      indented code\n\n   paragraph\n\n       more code\n"
@@ -2232,7 +1998,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 236
         []
         "   foo\n\nbar\n"
@@ -2241,7 +2006,6 @@ run =
         , p []
             [ text "bar" ]
         ]
-
     , testEq 237
         []
         "-    foo\n\n  bar\n"
@@ -2252,7 +2016,6 @@ run =
         , p []
             [ text "bar" ]
         ]
-
     , testEq 238
         []
         "-  foo\n\n   bar\n"
@@ -2265,7 +2028,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 239
         []
         "-\n  foo\n-\n  ```\n  bar\n  ```\n-\n      baz\n"
@@ -2286,7 +2048,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 240
         []
         "-   \n  foo\n"
@@ -2295,7 +2056,6 @@ run =
                 [ text "foo" ]
             ]
         ]
-
     , testEq 241
         []
         "-\n\n  foo\n"
@@ -2306,7 +2066,6 @@ run =
         , p []
             [ text "foo" ]
         ]
-
     , testEq 242
         []
         "- foo\n-\n- bar\n"
@@ -2319,7 +2078,6 @@ run =
                 [ text "bar" ]
             ]
         ]
-
     , testEq 243
         []
         "- foo\n-   \n- bar\n"
@@ -2332,7 +2090,6 @@ run =
                 [ text "bar" ]
             ]
         ]
-
     , testEq 244
         []
         "1. foo\n2.\n3. bar\n"
@@ -2345,7 +2102,6 @@ run =
                 [ text "bar" ]
             ]
         ]
-
     , testEq 245
         []
         "*\n"
@@ -2354,7 +2110,6 @@ run =
                 []
             ]
         ]
-
     , testEq 246
         []
         "foo\n*\n\nfoo\n1.\n"
@@ -2363,7 +2118,6 @@ run =
         , p []
             [ text "foo1." ]
         ]
-
     , testEq 247
         []
         " 1.  A paragraph\n     with two lines.\n\n         indented code\n\n     > A block quote.\n"
@@ -2382,7 +2136,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 248
         []
         "  1.  A paragraph\n      with two lines.\n\n          indented code\n\n      > A block quote.\n"
@@ -2401,7 +2154,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 249
         []
         "   1.  A paragraph\n       with two lines.\n\n           indented code\n\n       > A block quote.\n"
@@ -2420,7 +2172,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 250
         []
         "    1.  A paragraph\n        with two lines.\n\n            indented code\n\n        > A block quote.\n"
@@ -2429,7 +2180,6 @@ run =
                 [ text "1.  A paragraph    with two lines.        indented code    > A block quote." ]
             ]
         ]
-
     , testEq 251
         []
         "  1.  A paragraph\nwith two lines.\n\n          indented code\n\n      > A block quote.\n"
@@ -2448,7 +2198,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 252
         []
         "  1.  A paragraph\n    with two lines.\n"
@@ -2457,7 +2206,6 @@ run =
                 [ text "A paragraphwith two lines." ]
             ]
         ]
-
     , testEq 253
         []
         "> 1. > Blockquote\ncontinued here.\n"
@@ -2472,7 +2220,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 254
         []
         "> 1. > Blockquote\n> continued here.\n"
@@ -2487,7 +2234,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 255
         []
         "- foo\n  - bar\n    - baz\n      - boo\n"
@@ -2511,7 +2257,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 256
         []
         "- foo\n - bar\n  - baz\n   - boo\n"
@@ -2526,7 +2271,6 @@ run =
                 [ text "boo" ]
             ]
         ]
-
     , testEq 257
         []
         "10) foo\n    - bar\n"
@@ -2540,7 +2284,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 258
         []
         "10) foo\n   - bar\n"
@@ -2553,7 +2296,6 @@ run =
                 [ text "bar" ]
             ]
         ]
-
     , testEq 259
         []
         "- - foo\n"
@@ -2566,7 +2308,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 260
         []
         "1. - 2. foo\n"
@@ -2583,7 +2324,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 261
         []
         "- # Foo\n- Bar\n  ---\n  baz\n"
@@ -2599,7 +2339,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 262
         []
         "- foo\n- bar\n+ baz\n"
@@ -2614,7 +2353,6 @@ run =
                 [ text "baz" ]
             ]
         ]
-
     , testEq 263
         []
         "1. foo\n2. bar\n3) baz\n"
@@ -2629,7 +2367,6 @@ run =
                 [ text "baz" ]
             ]
         ]
-
     , testEq 264
         []
         "Foo\n- bar\n- baz\n"
@@ -2642,14 +2379,12 @@ run =
                 [ text "baz" ]
             ]
         ]
-
     , testEq 265
         []
         "The number of windows in my house is\n14.  The number of doors is 6.\n"
         [ p []
             [ text "The number of windows in my house is14.  The number of doors is 6." ]
         ]
-
     , testEq 266
         []
         "The number of windows in my house is\n1.  The number of doors is 6.\n"
@@ -2660,7 +2395,6 @@ run =
                 [ text "The number of doors is 6." ]
             ]
         ]
-
     , testEq 267
         []
         "- foo\n\n- bar\n\n\n- baz\n"
@@ -2679,7 +2413,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 268
         []
         "- foo\n  - bar\n    - baz\n\n\n      bim\n"
@@ -2702,7 +2435,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 269
         []
         "- foo\n- bar\n\n<!-- -->\n\n- baz\n- bim\n"
@@ -2719,7 +2451,6 @@ run =
                 [ text "bim" ]
             ]
         ]
-
     , testEq 270
         []
         "-   foo\n\n    notcode\n\n-   foo\n\n<!-- -->\n\n    code\n"
@@ -2740,7 +2471,6 @@ run =
                 [ text "code" ]
             ]
         ]
-
     , testEq 271
         []
         "- a\n - b\n  - c\n   - d\n    - e\n   - f\n  - g\n - h\n- i\n"
@@ -2765,7 +2495,6 @@ run =
                 [ text "i" ]
             ]
         ]
-
     , testEq 272
         []
         "1. a\n\n  2. b\n\n    3. c\n"
@@ -2784,7 +2513,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 273
         []
         "- a\n- b\n\n- c\n"
@@ -2803,7 +2531,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 274
         []
         "* a\n*\n\n* c\n"
@@ -2820,7 +2547,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 275
         []
         "- a\n- b\n\n  c\n- d\n"
@@ -2841,7 +2567,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 276
         []
         "- a\n- b\n\n  [ref]: /url\n- d\n"
@@ -2860,7 +2585,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 277
         []
         "- a\n- ```\n  b\n\n\n  ```\n- c\n"
@@ -2877,7 +2601,6 @@ run =
                 [ text "c" ]
             ]
         ]
-
     , testEq 278
         []
         "- a\n  - b\n\n    c\n- d\n"
@@ -2897,7 +2620,6 @@ run =
                 [ text "d" ]
             ]
         ]
-
     , testEq 279
         []
         "* a\n  > b\n  >\n* c\n"
@@ -2913,7 +2635,6 @@ run =
                 [ text "c" ]
             ]
         ]
-
     , testEq 280
         []
         "- a\n  > b\n  ```\n  c\n  ```\n- d\n"
@@ -2933,7 +2654,6 @@ run =
                 [ text "d" ]
             ]
         ]
-
     , testEq 281
         []
         "- a\n"
@@ -2942,7 +2662,6 @@ run =
                 [ text "a" ]
             ]
         ]
-
     , testEq 282
         []
         "- a\n  - b\n"
@@ -2956,7 +2675,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 283
         []
         "1. ```\n   foo\n   ```\n\n   bar\n"
@@ -2971,7 +2689,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 284
         []
         "* foo\n  * bar\n\n  baz\n"
@@ -2988,7 +2705,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 285
         []
         "- a\n  - b\n  - c\n\n- d\n  - e\n  - f\n"
@@ -3015,7 +2731,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 286
         []
         "`hi`lo`\n"
@@ -3025,28 +2740,24 @@ run =
             , text "lo`"
             ]
         ]
-
     , testEq 287
         []
         "\\!\\\"\\#\\$\\%\\&\\'\\(\\)\\*\\+\\,\\-\\.\\/\\:\\;\\<\\=\\>\\?\\@\\[\\\\\\]\\^\\_\\`\\{\\|\\}\\~\n"
         [ p []
             [ text "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~" ]
         ]
-
     , testEq 288
         []
         "\\→\\A\\a\\ \\3\\φ\\«\n"
         [ p []
             [ text "\\→\\A\\a\\ \\3\\φ\\«" ]
         ]
-
     , testEq 289
         []
         "\\*not emphasized*\n\\<br/> not a tag\n\\[not a link](/foo)\n\\`not code`\n1\\. not a list\n\\* not a list\n\\# not a heading\n\\[foo]: /url \"not a reference\"\n"
         [ p []
             [ text "*not emphasized*<br/> not a tag[not a link](/foo)`not code`1. not a list* not a list# not a heading[foo]: /url \"not a reference\"" ]
         ]
-
     , testEq 290
         []
         "\\\\*emphasis*\n"
@@ -3056,7 +2767,6 @@ run =
                 [ text "emphasis" ]
             ]
         ]
-
     , testEq 291
         []
         "foo\\\nbar\n"
@@ -3067,7 +2777,6 @@ run =
             , text "bar"
             ]
         ]
-
     , testEq 292
         []
         "`` \\[\\` ``\n"
@@ -3076,7 +2785,6 @@ run =
                 [ text "\\[\\`" ]
             ]
         ]
-
     , testEq 293
         []
         "    \\[\\]\n"
@@ -3085,7 +2793,6 @@ run =
                 [ text "\\[\\]" ]
             ]
         ]
-
     , testEq 294
         []
         "~~~\n\\[\\]\n~~~\n"
@@ -3094,7 +2801,6 @@ run =
                 [ text "\\[\\]" ]
             ]
         ]
-
     , testEq 295
         []
         "<http://example.com?find=\\*>\n"
@@ -3103,12 +2809,10 @@ run =
                 [ text "http://example.com?find=\\*" ]
             ]
         ]
-
     , testEq 296
         []
         "<a href=\"/bar\\/)\">\n"
         []
-
     , testEq 297
         []
         "[foo](/bar\\* \"ti\\*tle\")\n"
@@ -3117,7 +2821,6 @@ run =
                 [ text "foo" ]
             ]
         ]
-
     , testEq 298
         []
         "[foo]\n\n[foo]: /bar\\* \"ti\\*tle\"\n"
@@ -3126,7 +2829,6 @@ run =
                 [ text "foo" ]
             ]
         ]
-
     , testEq 299
         []
         "``` foo\\+bar\nfoo\n```\n"
@@ -3135,54 +2837,46 @@ run =
                 [ text "foo" ]
             ]
         ]
-
     , testEq 300
         []
         "&nbsp; &amp; &copy; &AElig; &Dcaron;\n&frac34; &HilbertSpace; &DifferentialD;\n&ClockwiseContourIntegral; &ngE;\n"
         [ p []
             [ text "& © Æ Ď¾ ℋ ⅆ∲ ≧̸" ]
         ]
-
     , testEq 301
         []
         "&#35; &#1234; &#992; &#98765432; &#0;\n"
         [ p []
             [ text "# Ӓ Ϡ � �" ]
         ]
-
     , testEq 302
         []
         "&#X22; &#XD06; &#xcab;\n"
         [ p []
             [ text "\" ആ ಫ" ]
         ]
-
     , testEq 303
         []
         "&nbsp &x; &#; &#x;\n&ThisIsNotDefined; &hi?;\n"
         [ p []
             [ text "&nbsp &x; &#; &#x;&ThisIsNotDefined; &hi?;" ]
         ]
-
     , testEq 304
         []
         "&copy\n"
         [ p []
             [ text "&copy" ]
         ]
-
     , testEq 305
         []
         "&MadeUpEntity;\n"
         [ p []
             [ text "&MadeUpEntity;" ]
         ]
-
     , testEq 306
         []
         "<a href=\"&ouml;&ouml;.html\">\n"
         []
-
     , testEq 307
         []
         "[foo](/f&ouml;&ouml; \"f&ouml;&ouml;\")\n"
@@ -3191,7 +2885,6 @@ run =
                 [ text "foo" ]
             ]
         ]
-
     , testEq 308
         []
         "[foo]\n\n[foo]: /f&ouml;&ouml; \"f&ouml;&ouml;\"\n"
@@ -3200,7 +2893,6 @@ run =
                 [ text "foo" ]
             ]
         ]
-
     , testEq 309
         []
         "``` f&ouml;&ouml;\nfoo\n```\n"
@@ -3209,7 +2901,6 @@ run =
                 [ text "foo" ]
             ]
         ]
-
     , testEq 310
         []
         "`f&ouml;&ouml;`\n"
@@ -3218,7 +2909,6 @@ run =
                 [ text "f&ouml;&ouml;" ]
             ]
         ]
-
     , testEq 311
         []
         "    f&ouml;f&ouml;\n"
@@ -3227,7 +2917,6 @@ run =
                 [ text "f&ouml;f&ouml;" ]
             ]
         ]
-
     , testEq 312
         []
         "`foo`\n"
@@ -3236,7 +2925,6 @@ run =
                 [ text "foo" ]
             ]
         ]
-
     , testEq 313
         []
         "`` foo ` bar  ``\n"
@@ -3245,7 +2933,6 @@ run =
                 [ text "foo ` bar" ]
             ]
         ]
-
     , testEq 314
         []
         "` `` `\n"
@@ -3254,7 +2941,6 @@ run =
                 [ text "``" ]
             ]
         ]
-
     , testEq 315
         []
         "``\nfoo\n``\n"
@@ -3263,7 +2949,6 @@ run =
                 [ text "foo" ]
             ]
         ]
-
     , testEq 316
         []
         "`foo   bar\n  baz`\n"
@@ -3272,7 +2957,6 @@ run =
                 [ text "foo bar baz" ]
             ]
         ]
-
     , testEq 317
         []
         "`a  b`\n"
@@ -3281,7 +2965,6 @@ run =
                 [ text "a  b" ]
             ]
         ]
-
     , testEq 318
         []
         "`foo `` bar`\n"
@@ -3290,7 +2973,6 @@ run =
                 [ text "foo `` bar" ]
             ]
         ]
-
     , testEq 319
         []
         "`foo\\`bar`\n"
@@ -3300,7 +2982,6 @@ run =
             , text "bar`"
             ]
         ]
-
     , testEq 320
         []
         "*foo`*`\n"
@@ -3310,7 +2991,6 @@ run =
                 [ text "*" ]
             ]
         ]
-
     , testEq 321
         []
         "[not a `link](/foo`)\n"
@@ -3321,7 +3001,6 @@ run =
             , text ")"
             ]
         ]
-
     , testEq 322
         []
         "`<a href=\"`\">`\n"
@@ -3331,12 +3010,10 @@ run =
             , text "\">`"
             ]
         ]
-
     , testEq 323
         []
         "<a href=\"`\">`\n"
         []
-
     , testEq 324
         []
         "`<http://foo.bar.`baz>`\n"
@@ -3346,7 +3023,6 @@ run =
             , text "baz>`"
             ]
         ]
-
     , testEq 325
         []
         "<http://foo.bar.`baz>`\n"
@@ -3356,21 +3032,18 @@ run =
             , text "`"
             ]
         ]
-
     , testEq 326
         []
         "```foo``\n"
         [ p []
             [ text "```foo``" ]
         ]
-
     , testEq 327
         []
         "`foo\n"
         [ p []
             [ text "`foo" ]
         ]
-
     , testEq 328
         []
         "*foo bar*\n"
@@ -3379,28 +3052,24 @@ run =
                 [ text "foo bar" ]
             ]
         ]
-
     , testEq 329
         []
         "a * foo bar*\n"
         [ p []
             [ text "a * foo bar*" ]
         ]
-
     , testEq 330
         []
         "a*\"foo\"*\n"
         [ p []
             [ text "a*\"foo\"*" ]
         ]
-
     , testEq 331
         []
         "* a *\n"
         [ p []
             [ text "* a *" ]
         ]
-
     , testEq 332
         []
         "foo*bar*\n"
@@ -3410,7 +3079,6 @@ run =
                 [ text "bar" ]
             ]
         ]
-
     , testEq 333
         []
         "5*6*78\n"
@@ -3421,7 +3089,6 @@ run =
             , text "78"
             ]
         ]
-
     , testEq 334
         []
         "_foo bar_\n"
@@ -3430,49 +3097,42 @@ run =
                 [ text "foo bar" ]
             ]
         ]
-
     , testEq 335
         []
         "_ foo bar_\n"
         [ p []
             [ text "_ foo bar_" ]
         ]
-
     , testEq 336
         []
         "a_\"foo\"_\n"
         [ p []
             [ text "a_\"foo\"_" ]
         ]
-
     , testEq 337
         []
         "foo_bar_\n"
         [ p []
             [ text "foo_bar_" ]
         ]
-
     , testEq 338
         []
         "5_6_78\n"
         [ p []
             [ text "5_6_78" ]
         ]
-
     , testEq 339
         []
         "пристаням_стремятся_\n"
         [ p []
             [ text "пристаням_стремятся_" ]
         ]
-
     , testEq 340
         []
         "aa_\"bb\"_cc\n"
         [ p []
             [ text "aa_\"bb\"_cc" ]
         ]
-
     , testEq 341
         []
         "foo-_(bar)_\n"
@@ -3482,35 +3142,30 @@ run =
                 [ text "(bar)" ]
             ]
         ]
-
     , testEq 342
         []
         "_foo*\n"
         [ p []
             [ text "_foo*" ]
         ]
-
     , testEq 343
         []
         "*foo bar *\n"
         [ p []
             [ text "*foo bar *" ]
         ]
-
     , testEq 344
         []
         "*foo bar\n*\n"
         [ p []
             [ text "*foo bar*" ]
         ]
-
     , testEq 345
         []
         "*(*foo)\n"
         [ p []
             [ text "*(*foo)" ]
         ]
-
     , testEq 346
         []
         "*(*foo*)*\n"
@@ -3523,7 +3178,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 347
         []
         "*foo*bar\n"
@@ -3533,21 +3187,18 @@ run =
             , text "bar"
             ]
         ]
-
     , testEq 348
         []
         "_foo bar _\n"
         [ p []
             [ text "_foo bar _" ]
         ]
-
     , testEq 349
         []
         "_(_foo)\n"
         [ p []
             [ text "_(_foo)" ]
         ]
-
     , testEq 350
         []
         "_(_foo_)_\n"
@@ -3560,21 +3211,18 @@ run =
                 ]
             ]
         ]
-
     , testEq 351
         []
         "_foo_bar\n"
         [ p []
             [ text "_foo_bar" ]
         ]
-
     , testEq 352
         []
         "_пристаням_стремятся\n"
         [ p []
             [ text "_пристаням_стремятся" ]
         ]
-
     , testEq 353
         []
         "_foo_bar_baz_\n"
@@ -3583,7 +3231,6 @@ run =
                 [ text "foo_bar_baz" ]
             ]
         ]
-
     , testEq 354
         []
         "_(bar)_.\n"
@@ -3593,7 +3240,6 @@ run =
             , text "."
             ]
         ]
-
     , testEq 355
         []
         "**foo bar**\n"
@@ -3602,21 +3248,18 @@ run =
                 [ text "foo bar" ]
             ]
         ]
-
     , testEq 356
         []
         "** foo bar**\n"
         [ p []
             [ text "** foo bar**" ]
         ]
-
     , testEq 357
         []
         "a**\"foo\"**\n"
         [ p []
             [ text "a**\"foo\"**" ]
         ]
-
     , testEq 358
         []
         "foo**bar**\n"
@@ -3626,7 +3269,6 @@ run =
                 [ text "bar" ]
             ]
         ]
-
     , testEq 359
         []
         "__foo bar__\n"
@@ -3635,49 +3277,42 @@ run =
                 [ text "foo bar" ]
             ]
         ]
-
     , testEq 360
         []
         "__ foo bar__\n"
         [ p []
             [ text "__ foo bar__" ]
         ]
-
     , testEq 361
         []
         "__\nfoo bar__\n"
         [ p []
             [ text "__foo bar__" ]
         ]
-
     , testEq 362
         []
         "a__\"foo\"__\n"
         [ p []
             [ text "a__\"foo\"__" ]
         ]
-
     , testEq 363
         []
         "foo__bar__\n"
         [ p []
             [ text "foo__bar__" ]
         ]
-
     , testEq 364
         []
         "5__6__78\n"
         [ p []
             [ text "5__6__78" ]
         ]
-
     , testEq 365
         []
         "пристаням__стремятся__\n"
         [ p []
             [ text "пристаням__стремятся__" ]
         ]
-
     , testEq 366
         []
         "__foo, __bar__, baz__\n"
@@ -3690,7 +3325,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 367
         []
         "foo-__(bar)__\n"
@@ -3700,21 +3334,18 @@ run =
                 [ text "(bar)" ]
             ]
         ]
-
     , testEq 368
         []
         "**foo bar **\n"
         [ p []
             [ text "**foo bar **" ]
         ]
-
     , testEq 369
         []
         "**(**foo)\n"
         [ p []
             [ text "**(**foo)" ]
         ]
-
     , testEq 370
         []
         "*(**foo**)*\n"
@@ -3727,7 +3358,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 371
         []
         "**Gomphocarpus (*Gomphocarpus physocarpus*, syn.\n*Asclepias physocarpa*)**\n"
@@ -3743,7 +3373,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 372
         []
         "**foo \"*bar*\" foo**\n"
@@ -3756,7 +3385,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 373
         []
         "**foo**bar\n"
@@ -3766,21 +3394,18 @@ run =
             , text "bar"
             ]
         ]
-
     , testEq 374
         []
         "__foo bar __\n"
         [ p []
             [ text "__foo bar __" ]
         ]
-
     , testEq 375
         []
         "__(__foo)\n"
         [ p []
             [ text "__(__foo)" ]
         ]
-
     , testEq 376
         []
         "_(__foo__)_\n"
@@ -3793,21 +3418,18 @@ run =
                 ]
             ]
         ]
-
     , testEq 377
         []
         "__foo__bar\n"
         [ p []
             [ text "__foo__bar" ]
         ]
-
     , testEq 378
         []
         "__пристаням__стремятся\n"
         [ p []
             [ text "__пристаням__стремятся" ]
         ]
-
     , testEq 379
         []
         "__foo__bar__baz__\n"
@@ -3816,7 +3438,6 @@ run =
                 [ text "foo__bar__baz" ]
             ]
         ]
-
     , testEq 380
         []
         "__(bar)__.\n"
@@ -3826,7 +3447,6 @@ run =
             , text "."
             ]
         ]
-
     , testEq 381
         []
         "*foo [bar](/url)*\n"
@@ -3838,7 +3458,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 382
         []
         "*foo\nbar*\n"
@@ -3847,7 +3466,6 @@ run =
                 [ text "foobar" ]
             ]
         ]
-
     , testEq 383
         []
         "_foo __bar__ baz_\n"
@@ -3860,7 +3478,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 384
         []
         "_foo _bar_ baz_\n"
@@ -3873,7 +3490,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 385
         []
         "__foo_ bar_\n"
@@ -3885,7 +3501,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 386
         []
         "*foo *bar**\n"
@@ -3897,7 +3512,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 387
         []
         "*foo **bar** baz*\n"
@@ -3910,7 +3524,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 388
         []
         "*foo**bar**baz*\n"
@@ -3923,7 +3536,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 389
         []
         "***foo** bar*\n"
@@ -3935,7 +3547,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 390
         []
         "*foo **bar***\n"
@@ -3947,7 +3558,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 391
         []
         "*foo**bar***\n"
@@ -3959,7 +3569,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 392
         []
         "*foo **bar *baz* bim** bop*\n"
@@ -3976,7 +3585,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 393
         []
         "*foo [*bar*](/url)*\n"
@@ -3990,21 +3598,18 @@ run =
                 ]
             ]
         ]
-
     , testEq 394
         []
         "** is not an empty emphasis\n"
         [ p []
             [ text "** is not an empty emphasis" ]
         ]
-
     , testEq 395
         []
         "**** is not an empty strong emphasis\n"
         [ p []
             [ text "**** is not an empty strong emphasis" ]
         ]
-
     , testEq 396
         []
         "**foo [bar](/url)**\n"
@@ -4016,7 +3621,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 397
         []
         "**foo\nbar**\n"
@@ -4025,7 +3629,6 @@ run =
                 [ text "foobar" ]
             ]
         ]
-
     , testEq 398
         []
         "__foo _bar_ baz__\n"
@@ -4038,7 +3641,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 399
         []
         "__foo __bar__ baz__\n"
@@ -4051,7 +3653,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 400
         []
         "____foo__ bar__\n"
@@ -4063,7 +3664,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 401
         []
         "**foo **bar****\n"
@@ -4075,7 +3675,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 402
         []
         "**foo *bar* baz**\n"
@@ -4088,7 +3687,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 403
         []
         "**foo*bar*baz**\n"
@@ -4101,7 +3699,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 404
         []
         "***foo* bar**\n"
@@ -4113,7 +3710,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 405
         []
         "**foo *bar***\n"
@@ -4125,7 +3721,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 406
         []
         "**foo *bar **baz**\nbim* bop**\n"
@@ -4142,7 +3737,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 407
         []
         "**foo [*bar*](/url)**\n"
@@ -4156,28 +3750,24 @@ run =
                 ]
             ]
         ]
-
     , testEq 408
         []
         "__ is not an empty emphasis\n"
         [ p []
             [ text "__ is not an empty emphasis" ]
         ]
-
     , testEq 409
         []
         "____ is not an empty strong emphasis\n"
         [ p []
             [ text "____ is not an empty strong emphasis" ]
         ]
-
     , testEq 410
         []
         "foo ***\n"
         [ p []
             [ text "foo ***" ]
         ]
-
     , testEq 411
         []
         "foo *\\**\n"
@@ -4187,7 +3777,6 @@ run =
                 [ text "*" ]
             ]
         ]
-
     , testEq 412
         []
         "foo *_*\n"
@@ -4197,14 +3786,12 @@ run =
                 [ text "_" ]
             ]
         ]
-
     , testEq 413
         []
         "foo *****\n"
         [ p []
             [ text "foo *****" ]
         ]
-
     , testEq 414
         []
         "foo **\\***\n"
@@ -4214,7 +3801,6 @@ run =
                 [ text "*" ]
             ]
         ]
-
     , testEq 415
         []
         "foo **_**\n"
@@ -4224,7 +3810,6 @@ run =
                 [ text "_" ]
             ]
         ]
-
     , testEq 416
         []
         "**foo*\n"
@@ -4234,7 +3819,6 @@ run =
                 [ text "foo" ]
             ]
         ]
-
     , testEq 417
         []
         "*foo**\n"
@@ -4244,7 +3828,6 @@ run =
             , text "*"
             ]
         ]
-
     , testEq 418
         []
         "***foo**\n"
@@ -4254,7 +3837,6 @@ run =
                 [ text "foo" ]
             ]
         ]
-
     , testEq 419
         []
         "****foo*\n"
@@ -4264,7 +3846,6 @@ run =
                 [ text "foo" ]
             ]
         ]
-
     , testEq 420
         []
         "**foo***\n"
@@ -4274,7 +3855,6 @@ run =
             , text "*"
             ]
         ]
-
     , testEq 421
         []
         "*foo****\n"
@@ -4284,14 +3864,12 @@ run =
             , text "***"
             ]
         ]
-
     , testEq 422
         []
         "foo ___\n"
         [ p []
             [ text "foo ___" ]
         ]
-
     , testEq 423
         []
         "foo _\\__\n"
@@ -4301,7 +3879,6 @@ run =
                 [ text "_" ]
             ]
         ]
-
     , testEq 424
         []
         "foo _*_\n"
@@ -4311,14 +3888,12 @@ run =
                 [ text "*" ]
             ]
         ]
-
     , testEq 425
         []
         "foo _____\n"
         [ p []
             [ text "foo _____" ]
         ]
-
     , testEq 426
         []
         "foo __\\___\n"
@@ -4328,7 +3903,6 @@ run =
                 [ text "_" ]
             ]
         ]
-
     , testEq 427
         []
         "foo __*__\n"
@@ -4338,7 +3912,6 @@ run =
                 [ text "*" ]
             ]
         ]
-
     , testEq 428
         []
         "__foo_\n"
@@ -4348,7 +3921,6 @@ run =
                 [ text "foo" ]
             ]
         ]
-
     , testEq 429
         []
         "_foo__\n"
@@ -4358,7 +3930,6 @@ run =
             , text "_"
             ]
         ]
-
     , testEq 430
         []
         "___foo__\n"
@@ -4368,7 +3939,6 @@ run =
                 [ text "foo" ]
             ]
         ]
-
     , testEq 431
         []
         "____foo_\n"
@@ -4378,7 +3948,6 @@ run =
                 [ text "foo" ]
             ]
         ]
-
     , testEq 432
         []
         "__foo___\n"
@@ -4388,7 +3957,6 @@ run =
             , text "_"
             ]
         ]
-
     , testEq 433
         []
         "_foo____\n"
@@ -4398,7 +3966,6 @@ run =
             , text "___"
             ]
         ]
-
     , testEq 434
         []
         "**foo**\n"
@@ -4407,7 +3974,6 @@ run =
                 [ text "foo" ]
             ]
         ]
-
     , testEq 435
         []
         "*_foo_*\n"
@@ -4418,7 +3984,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 436
         []
         "__foo__\n"
@@ -4427,7 +3992,6 @@ run =
                 [ text "foo" ]
             ]
         ]
-
     , testEq 437
         []
         "_*foo*_\n"
@@ -4438,7 +4002,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 438
         []
         "****foo****\n"
@@ -4449,7 +4012,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 439
         []
         "____foo____\n"
@@ -4460,7 +4022,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 440
         []
         "******foo******\n"
@@ -4473,7 +4034,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 441
         []
         "***foo***\n"
@@ -4484,7 +4044,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 442
         []
         "_____foo_____\n"
@@ -4497,7 +4056,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 443
         []
         "*foo _bar* baz_\n"
@@ -4507,7 +4065,6 @@ run =
             , text "baz_"
             ]
         ]
-
     , testEq 444
         []
         "*foo __bar *baz bim__ bam*\n"
@@ -4520,7 +4077,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 445
         []
         "**foo **bar baz**\n"
@@ -4530,7 +4086,6 @@ run =
                 [ text "bar baz" ]
             ]
         ]
-
     , testEq 446
         []
         "*foo *bar baz*\n"
@@ -4540,7 +4095,6 @@ run =
                 [ text "bar baz" ]
             ]
         ]
-
     , testEq 447
         []
         "*[bar*](/url)\n"
@@ -4550,7 +4104,6 @@ run =
                 [ text "bar*" ]
             ]
         ]
-
     , testEq 448
         []
         "_foo [bar_](/url)\n"
@@ -4560,7 +4113,6 @@ run =
                 [ text "bar_" ]
             ]
         ]
-
     , testEq 449
         []
         "*<img src=\"foo\" title=\"*\"/>\n"
@@ -4570,17 +4122,14 @@ run =
                 []
             ]
         ]
-
     , testEq 450
         []
         "**<a href=\"**\">\n"
         []
-
     , testEq 451
         []
         "__<a href=\"__\">\n"
         []
-
     , testEq 452
         []
         "*a `*`*\n"
@@ -4592,7 +4141,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 453
         []
         "_a `_`_\n"
@@ -4604,7 +4152,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 454
         []
         "**a<http://foo.bar/?q=**>\n"
@@ -4614,7 +4161,6 @@ run =
                 [ text "http://foo.bar/?q=**" ]
             ]
         ]
-
     , testEq 455
         []
         "__a<http://foo.bar/?q=__>\n"
@@ -4624,7 +4170,6 @@ run =
                 [ text "http://foo.bar/?q=__" ]
             ]
         ]
-
     , testEq 456
         []
         "[link](/uri \"title\")\n"
@@ -4633,7 +4178,6 @@ run =
                 [ text "link" ]
             ]
         ]
-
     , testEq 457
         []
         "[link](/uri)\n"
@@ -4642,7 +4186,6 @@ run =
                 [ text "link" ]
             ]
         ]
-
     , testEq 458
         []
         "[link]()\n"
@@ -4651,7 +4194,6 @@ run =
                 [ text "link" ]
             ]
         ]
-
     , testEq 459
         []
         "[link](<>)\n"
@@ -4660,33 +4202,28 @@ run =
                 [ text "link" ]
             ]
         ]
-
     , testEq 460
         []
         "[link](/my uri)\n"
         [ p []
             [ text "[link](/my uri)" ]
         ]
-
     , testEq 461
         []
         "[link](</my uri>)\n"
         [ p []
             [ text "[link](</my uri>)" ]
         ]
-
     , testEq 462
         []
         "[link](foo\nbar)\n"
         [ p []
             [ text "[link](foobar)" ]
         ]
-
     , testEq 463
         []
         "[link](<foo\nbar>)\n"
         []
-
     , testEq 464
         []
         "[link](\\(foo\\))\n"
@@ -4695,7 +4232,6 @@ run =
                 [ text "link" ]
             ]
         ]
-
     , testEq 465
         []
         "[link](foo(and(bar)))\n"
@@ -4704,7 +4240,6 @@ run =
                 [ text "link" ]
             ]
         ]
-
     , testEq 466
         []
         "[link](foo\\(and\\(bar\\))\n"
@@ -4713,7 +4248,6 @@ run =
                 [ text "link" ]
             ]
         ]
-
     , testEq 467
         []
         "[link](<foo(and(bar)>)\n"
@@ -4722,7 +4256,6 @@ run =
                 [ text "link" ]
             ]
         ]
-
     , testEq 468
         []
         "[link](foo\\)\\:)\n"
@@ -4731,7 +4264,6 @@ run =
                 [ text "link" ]
             ]
         ]
-
     , testEq 469
         []
         "[link](#fragment)\n\n[link](http://example.com#fragment)\n\n[link](http://example.com?foo=3#frag)\n"
@@ -4748,7 +4280,6 @@ run =
                 [ text "link" ]
             ]
         ]
-
     , testEq 470
         []
         "[link](foo\\bar)\n"
@@ -4757,7 +4288,6 @@ run =
                 [ text "link" ]
             ]
         ]
-
     , testEq 471
         []
         "[link](foo%20b&auml;)\n"
@@ -4766,7 +4296,6 @@ run =
                 [ text "link" ]
             ]
         ]
-
     , testEq 472
         []
         "[link](\"title\")\n"
@@ -4775,7 +4304,6 @@ run =
                 [ text "link" ]
             ]
         ]
-
     , testEq 473
         []
         "[link](/url \"title\")\n[link](/url 'title')\n[link](/url (title))\n"
@@ -4788,7 +4316,6 @@ run =
                 [ text "link" ]
             ]
         ]
-
     , testEq 474
         []
         "[link](/url \"title \\\"&quot;\")\n"
@@ -4797,7 +4324,6 @@ run =
                 [ text "link" ]
             ]
         ]
-
     , testEq 475
         []
         "[link](/url \"title\")\n"
@@ -4806,14 +4332,12 @@ run =
                 [ text "link" ]
             ]
         ]
-
     , testEq 476
         []
         "[link](/url \"title \"and\" title\")\n"
         [ p []
             [ text "[link](/url \"title \"and\" title\")" ]
         ]
-
     , testEq 477
         []
         "[link](/url 'title \"and\" title')\n"
@@ -4822,7 +4346,6 @@ run =
                 [ text "link" ]
             ]
         ]
-
     , testEq 478
         []
         "[link](   /uri\n  \"title\"  )\n"
@@ -4831,14 +4354,12 @@ run =
                 [ text "link" ]
             ]
         ]
-
     , testEq 479
         []
         "[link] (/uri)\n"
         [ p []
             [ text "[link] (/uri)" ]
         ]
-
     , testEq 480
         []
         "[link [foo [bar]]](/uri)\n"
@@ -4847,14 +4368,12 @@ run =
                 [ text "link [foo [bar]]" ]
             ]
         ]
-
     , testEq 481
         []
         "[link] bar](/uri)\n"
         [ p []
             [ text "[link] bar](/uri)" ]
         ]
-
     , testEq 482
         []
         "[link [bar](/uri)\n"
@@ -4864,7 +4383,6 @@ run =
                 [ text "bar" ]
             ]
         ]
-
     , testEq 483
         []
         "[link \\[bar](/uri)\n"
@@ -4873,7 +4391,6 @@ run =
                 [ text "link [bar" ]
             ]
         ]
-
     , testEq 484
         []
         "[link *foo **bar** `#`*](/uri)\n"
@@ -4890,7 +4407,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 485
         []
         "[![moon](moon.jpg)](/uri)\n"
@@ -4901,7 +4417,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 486
         []
         "[foo [bar](/uri)](/uri)\n"
@@ -4912,7 +4427,6 @@ run =
             , text "](/uri)"
             ]
         ]
-
     , testEq 487
         []
         "[foo *[bar [baz](/uri)](/uri)*](/uri)\n"
@@ -4927,7 +4441,6 @@ run =
             , text "](/uri)"
             ]
         ]
-
     , testEq 488
         []
         "![[[foo](uri1)](uri2)](uri3)\n"
@@ -4936,7 +4449,6 @@ run =
                 []
             ]
         ]
-
     , testEq 489
         []
         "*[foo*](/uri)\n"
@@ -4946,7 +4458,6 @@ run =
                 [ text "foo*" ]
             ]
         ]
-
     , testEq 490
         []
         "[foo *bar](baz*)\n"
@@ -4955,7 +4466,6 @@ run =
                 [ text "foo *bar" ]
             ]
         ]
-
     , testEq 491
         []
         "*foo [bar* baz]\n"
@@ -4965,12 +4475,10 @@ run =
             , text "baz]"
             ]
         ]
-
     , testEq 492
         []
         "[foo <bar attr=\"](baz)\">\n"
         []
-
     , testEq 493
         []
         "[foo`](/uri)`\n"
@@ -4980,7 +4488,6 @@ run =
                 [ text "](/uri)" ]
             ]
         ]
-
     , testEq 494
         []
         "[foo<http://example.com/?search=](uri)>\n"
@@ -4990,7 +4497,6 @@ run =
                 [ text "http://example.com/?search=](uri)" ]
             ]
         ]
-
     , testEq 495
         []
         "[foo][bar]\n\n[bar]: /url \"title\"\n"
@@ -4999,7 +4505,6 @@ run =
                 [ text "foo" ]
             ]
         ]
-
     , testEq 496
         []
         "[link [foo [bar]]][ref]\n\n[ref]: /uri\n"
@@ -5008,7 +4513,6 @@ run =
                 [ text "link [foo [bar]]" ]
             ]
         ]
-
     , testEq 497
         []
         "[link \\[bar][ref]\n\n[ref]: /uri\n"
@@ -5017,7 +4521,6 @@ run =
                 [ text "link [bar" ]
             ]
         ]
-
     , testEq 498
         []
         "[link *foo **bar** `#`*][ref]\n\n[ref]: /uri\n"
@@ -5034,7 +4537,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 499
         []
         "[![moon](moon.jpg)][ref]\n\n[ref]: /uri\n"
@@ -5045,7 +4547,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 500
         []
         "[foo [bar](/uri)][ref]\n\n[ref]: /uri\n"
@@ -5058,7 +4559,6 @@ run =
                 [ text "ref" ]
             ]
         ]
-
     , testEq 501
         []
         "[foo *bar [baz][ref]*][ref]\n\n[ref]: /uri\n"
@@ -5074,7 +4574,6 @@ run =
                 [ text "ref" ]
             ]
         ]
-
     , testEq 502
         []
         "*[foo*][ref]\n\n[ref]: /uri\n"
@@ -5084,7 +4583,6 @@ run =
                 [ text "foo*" ]
             ]
         ]
-
     , testEq 503
         []
         "[foo *bar][ref]\n\n[ref]: /uri\n"
@@ -5093,17 +4591,14 @@ run =
                 [ text "foo *bar" ]
             ]
         ]
-
     , testEq 504
         []
         "[foo <bar attr=\"][ref]\">\n\n[ref]: /uri\n"
         []
-
     , testEq 505
         []
         "[foo`][ref]`\n\n[ref]: /uri\n"
         []
-
     , testEq 506
         []
         "[foo<http://example.com/?search=][ref]>\n\n[ref]: /uri\n"
@@ -5113,7 +4608,6 @@ run =
                 [ text "http://example.com/?search=][ref]" ]
             ]
         ]
-
     , testEq 507
         []
         "[foo][BaR]\n\n[bar]: /url \"title\"\n"
@@ -5122,7 +4616,6 @@ run =
                 [ text "foo" ]
             ]
         ]
-
     , testEq 508
         []
         "[Толпой][Толпой] is a Russian word.\n\n[ТОЛПОЙ]: /url\n"
@@ -5132,7 +4625,6 @@ run =
             , text "is a Russian word."
             ]
         ]
-
     , testEq 509
         []
         "[Foo\n  bar]: /url\n\n[Baz][Foo bar]\n"
@@ -5141,7 +4633,6 @@ run =
                 [ text "Baz" ]
             ]
         ]
-
     , testEq 510
         []
         "[foo] [bar]\n\n[bar]: /url \"title\"\n"
@@ -5151,7 +4642,6 @@ run =
                 [ text "bar" ]
             ]
         ]
-
     , testEq 511
         []
         "[foo]\n[bar]\n\n[bar]: /url \"title\"\n"
@@ -5161,7 +4651,6 @@ run =
                 [ text "bar" ]
             ]
         ]
-
     , testEq 512
         []
         "[foo]: /url1\n\n[foo]: /url2\n\n[bar][foo]\n"
@@ -5170,14 +4659,12 @@ run =
                 [ text "bar" ]
             ]
         ]
-
     , testEq 513
         []
         "[bar][foo\\!]\n\n[foo!]: /url\n"
         [ p []
             [ text "[bar][foo!]" ]
         ]
-
     , testEq 514
         []
         "[foo][ref[]\n\n[ref[]: /uri\n"
@@ -5186,7 +4673,6 @@ run =
         , p []
             [ text "[ref[]: /uri" ]
         ]
-
     , testEq 515
         []
         "[foo][ref[bar]]\n\n[ref[bar]]: /uri\n"
@@ -5195,7 +4681,6 @@ run =
         , p []
             [ text "[ref[bar]]: /uri" ]
         ]
-
     , testEq 516
         []
         "[[[foo]]]\n\n[[[foo]]]: /url\n"
@@ -5204,7 +4689,6 @@ run =
         , p []
             [ text "[[[foo]]]: /url" ]
         ]
-
     , testEq 517
         []
         "[foo][ref\\[]\n\n[ref\\[]: /uri\n"
@@ -5213,7 +4697,6 @@ run =
                 [ text "foo" ]
             ]
         ]
-
     , testEq 518
         []
         "[bar\\\\]: /uri\n\n[bar\\\\]\n"
@@ -5222,7 +4705,6 @@ run =
                 [ text "bar\\" ]
             ]
         ]
-
     , testEq 519
         []
         "[]\n\n[]: /uri\n"
@@ -5231,7 +4713,6 @@ run =
         , p []
             [ text "[]: /uri" ]
         ]
-
     , testEq 520
         []
         "[\n ]\n\n[\n ]: /uri\n"
@@ -5240,7 +4721,6 @@ run =
         , p []
             [ text "[]: /uri" ]
         ]
-
     , testEq 521
         []
         "[foo][]\n\n[foo]: /url \"title\"\n"
@@ -5249,7 +4729,6 @@ run =
                 [ text "foo" ]
             ]
         ]
-
     , testEq 522
         []
         "[*foo* bar][]\n\n[*foo* bar]: /url \"title\"\n"
@@ -5261,7 +4740,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 523
         []
         "[Foo][]\n\n[foo]: /url \"title\"\n"
@@ -5270,7 +4748,6 @@ run =
                 [ text "Foo" ]
             ]
         ]
-
     , testEq 524
         []
         "[foo] \n[]\n\n[foo]: /url \"title\"\n"
@@ -5280,7 +4757,6 @@ run =
             , text "[]"
             ]
         ]
-
     , testEq 525
         []
         "[foo]\n\n[foo]: /url \"title\"\n"
@@ -5289,7 +4765,6 @@ run =
                 [ text "foo" ]
             ]
         ]
-
     , testEq 526
         []
         "[*foo* bar]\n\n[*foo* bar]: /url \"title\"\n"
@@ -5301,7 +4776,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 527
         []
         "[[*foo* bar]]\n\n[*foo* bar]: /url \"title\"\n"
@@ -5315,7 +4789,6 @@ run =
             , text "]"
             ]
         ]
-
     , testEq 528
         []
         "[[bar [foo]\n\n[foo]: /url\n"
@@ -5325,7 +4798,6 @@ run =
                 [ text "foo" ]
             ]
         ]
-
     , testEq 529
         []
         "[Foo]\n\n[foo]: /url \"title\"\n"
@@ -5334,7 +4806,6 @@ run =
                 [ text "Foo" ]
             ]
         ]
-
     , testEq 530
         []
         "[foo] bar\n\n[foo]: /url\n"
@@ -5344,14 +4815,12 @@ run =
             , text "bar"
             ]
         ]
-
     , testEq 531
         []
         "\\[foo]\n\n[foo]: /url \"title\"\n"
         [ p []
             [ text "[foo]" ]
         ]
-
     , testEq 532
         []
         "[foo*]: /url\n\n*[foo*]\n"
@@ -5361,7 +4830,6 @@ run =
                 [ text "foo*" ]
             ]
         ]
-
     , testEq 533
         []
         "[foo][bar]\n\n[foo]: /url1\n[bar]: /url2\n"
@@ -5370,7 +4838,6 @@ run =
                 [ text "foo" ]
             ]
         ]
-
     , testEq 534
         []
         "[foo][]\n\n[foo]: /url1\n"
@@ -5379,7 +4846,6 @@ run =
                 [ text "foo" ]
             ]
         ]
-
     , testEq 535
         []
         "[foo]()\n\n[foo]: /url1\n"
@@ -5388,7 +4854,6 @@ run =
                 [ text "foo" ]
             ]
         ]
-
     , testEq 536
         []
         "[foo](not a link)\n\n[foo]: /url1\n"
@@ -5398,7 +4863,6 @@ run =
             , text "(not a link)"
             ]
         ]
-
     , testEq 537
         []
         "[foo][bar][baz]\n\n[baz]: /url\n"
@@ -5408,7 +4872,6 @@ run =
                 [ text "bar" ]
             ]
         ]
-
     , testEq 538
         []
         "[foo][bar][baz]\n\n[baz]: /url1\n[bar]: /url2\n"
@@ -5419,7 +4882,6 @@ run =
                 [ text "baz" ]
             ]
         ]
-
     , testEq 539
         []
         "[foo][bar][baz]\n\n[baz]: /url1\n[foo]: /url2\n"
@@ -5429,7 +4891,6 @@ run =
                 [ text "bar" ]
             ]
         ]
-
     , testEq 540
         []
         "![foo](/url \"title\")\n"
@@ -5438,7 +4899,6 @@ run =
                 []
             ]
         ]
-
     , testEq 541
         []
         "![foo *bar*]\n\n[foo *bar*]: train.jpg \"train & tracks\"\n"
@@ -5447,7 +4907,6 @@ run =
                 []
             ]
         ]
-
     , testEq 542
         []
         "![foo ![bar](/url)](/url2)\n"
@@ -5456,7 +4915,6 @@ run =
                 []
             ]
         ]
-
     , testEq 543
         []
         "![foo [bar](/url)](/url2)\n"
@@ -5465,7 +4923,6 @@ run =
                 []
             ]
         ]
-
     , testEq 544
         []
         "![foo *bar*][]\n\n[foo *bar*]: train.jpg \"train & tracks\"\n"
@@ -5474,7 +4931,6 @@ run =
                 []
             ]
         ]
-
     , testEq 545
         []
         "![foo *bar*][foobar]\n\n[FOOBAR]: train.jpg \"train & tracks\"\n"
@@ -5483,7 +4939,6 @@ run =
                 []
             ]
         ]
-
     , testEq 546
         []
         "![foo](train.jpg)\n"
@@ -5492,7 +4947,6 @@ run =
                 []
             ]
         ]
-
     , testEq 547
         []
         "My ![foo bar](/path/to/train.jpg  \"title\"   )\n"
@@ -5502,7 +4956,6 @@ run =
                 []
             ]
         ]
-
     , testEq 548
         []
         "![foo](<url>)\n"
@@ -5511,7 +4964,6 @@ run =
                 []
             ]
         ]
-
     , testEq 549
         []
         "![](/url)\n"
@@ -5520,7 +4972,6 @@ run =
                 []
             ]
         ]
-
     , testEq 550
         []
         "![foo][bar]\n\n[bar]: /url\n"
@@ -5529,7 +4980,6 @@ run =
                 []
             ]
         ]
-
     , testEq 551
         []
         "![foo][bar]\n\n[BAR]: /url\n"
@@ -5538,7 +4988,6 @@ run =
                 []
             ]
         ]
-
     , testEq 552
         []
         "![foo][]\n\n[foo]: /url \"title\"\n"
@@ -5547,7 +4996,6 @@ run =
                 []
             ]
         ]
-
     , testEq 553
         []
         "![*foo* bar][]\n\n[*foo* bar]: /url \"title\"\n"
@@ -5556,7 +5004,6 @@ run =
                 []
             ]
         ]
-
     , testEq 554
         []
         "![Foo][]\n\n[foo]: /url \"title\"\n"
@@ -5565,7 +5012,6 @@ run =
                 []
             ]
         ]
-
     , testEq 555
         []
         "![foo] \n[]\n\n[foo]: /url \"title\"\n"
@@ -5575,7 +5021,6 @@ run =
             , text "[]"
             ]
         ]
-
     , testEq 556
         []
         "![foo]\n\n[foo]: /url \"title\"\n"
@@ -5584,7 +5029,6 @@ run =
                 []
             ]
         ]
-
     , testEq 557
         []
         "![*foo* bar]\n\n[*foo* bar]: /url \"title\"\n"
@@ -5593,7 +5037,6 @@ run =
                 []
             ]
         ]
-
     , testEq 558
         []
         "![[foo]]\n\n[[foo]]: /url \"title\"\n"
@@ -5602,7 +5045,6 @@ run =
         , p []
             [ text "[[foo]]: /url \"title\"" ]
         ]
-
     , testEq 559
         []
         "![Foo]\n\n[foo]: /url \"title\"\n"
@@ -5611,14 +5053,12 @@ run =
                 []
             ]
         ]
-
     , testEq 560
         []
         "\\!\\[foo]\n\n[foo]: /url \"title\"\n"
         [ p []
             [ text "![foo]" ]
         ]
-
     , testEq 561
         []
         "\\![foo]\n\n[foo]: /url \"title\"\n"
@@ -5628,7 +5068,6 @@ run =
                 [ text "foo" ]
             ]
         ]
-
     , testEq 562
         []
         "<http://foo.bar.baz>\n"
@@ -5637,7 +5076,6 @@ run =
                 [ text "http://foo.bar.baz" ]
             ]
         ]
-
     , testEq 563
         []
         "<http://foo.bar.baz/test?q=hello&id=22&boolean>\n"
@@ -5646,7 +5084,6 @@ run =
                 [ text "http://foo.bar.baz/test?q=hello&id=22&boolean" ]
             ]
         ]
-
     , testEq 564
         []
         "<irc://foo.bar:2233/baz>\n"
@@ -5655,7 +5092,6 @@ run =
                 [ text "irc://foo.bar:2233/baz" ]
             ]
         ]
-
     , testEq 565
         []
         "<MAILTO:FOO@BAR.BAZ>\n"
@@ -5664,7 +5100,6 @@ run =
                 [ text "MAILTO:FOO@BAR.BAZ" ]
             ]
         ]
-
     , testEq 566
         []
         "<a+b+c:d>\n"
@@ -5673,7 +5108,6 @@ run =
                 [ text "a+b+c:d" ]
             ]
         ]
-
     , testEq 567
         []
         "<made-up-scheme://foo,bar>\n"
@@ -5682,7 +5116,6 @@ run =
                 [ text "made-up-scheme://foo,bar" ]
             ]
         ]
-
     , testEq 568
         []
         "<http://../>\n"
@@ -5691,7 +5124,6 @@ run =
                 [ text "http://../" ]
             ]
         ]
-
     , testEq 569
         []
         "<localhost:5001/foo>\n"
@@ -5700,14 +5132,12 @@ run =
                 [ text "localhost:5001/foo" ]
             ]
         ]
-
     , testEq 570
         []
         "<http://foo.bar/baz bim>\n"
         [ p []
             [ text "<http://foo.bar/baz bim>" ]
         ]
-
     , testEq 571
         []
         "<http://example.com/\\[\\>\n"
@@ -5716,7 +5146,6 @@ run =
                 [ text "http://example.com/\\[\\" ]
             ]
         ]
-
     , testEq 572
         []
         "<foo@bar.example.com>\n"
@@ -5725,7 +5154,6 @@ run =
                 [ text "foo@bar.example.com" ]
             ]
         ]
-
     , testEq 573
         []
         "<foo+special@Bar.baz-bar0.com>\n"
@@ -5734,147 +5162,126 @@ run =
                 [ text "foo+special@Bar.baz-bar0.com" ]
             ]
         ]
-
     , testEq 574
         []
         "<foo\\+@bar.example.com>\n"
         [ p []
             [ text "<foo+@bar.example.com>" ]
         ]
-
     , testEq 575
         []
         "<>\n"
         [ p []
             [ text "<>" ]
         ]
-
     , testEq 576
         []
         "< http://foo.bar >\n"
         [ p []
             [ text "< http://foo.bar >" ]
         ]
-
     , testEq 577
         []
         "<m:abc>\n"
         [ p []
             [ text "<m:abc>" ]
         ]
-
     , testEq 578
         []
         "<foo.bar.baz>\n"
         [ p []
             [ text "<foo.bar.baz>" ]
         ]
-
     , testEq 579
         []
         "http://example.com\n"
         [ p []
             [ text "http://example.com" ]
         ]
-
     , testEq 580
         []
         "foo@bar.example.com\n"
         [ p []
             [ text "foo@bar.example.com" ]
         ]
-
     , testEq 581
         []
         "<a><bab><c2c>\n"
         []
-
     , testEq 582
         []
         "<a/><b2/>\n"
         []
-
     , testEq 583
         []
         "<a  /><b2\ndata=\"foo\" >\n"
         []
-
     , testEq 584
         []
         "<a foo=\"bar\" bam = 'baz <em>\"</em>'\n_boolean zoop:33=zoop:33 />\n"
         []
-
     , testEq 585
         []
         "Foo <responsive-image src=\"foo.jpg\" />\n"
         [ p []
             [ text "Foo "
-            , node "responsive-image" [ src "foo.jpg" ]
+            , node "responsive-image"
+                [ src "foo.jpg" ]
                 []
             ]
         ]
-
     , testEq 586
         []
         "<33> <__>\n"
         [ p []
             [ text "<33> <__>" ]
         ]
-
     , testEq 587
         []
         "<a h*#ref=\"hi\">\n"
         [ p []
             [ text "<a h*#ref=\"hi\">" ]
         ]
-
     , testEq 588
         []
         "<a href=\"hi'> <a href=hi'>\n"
         [ p []
             [ text "<a href=\"hi'> <a href=hi'>" ]
         ]
-
     , testEq 589
         []
         "< a><\nfoo><bar/ >\n"
         [ p []
             [ text "< a><foo><bar/ >" ]
         ]
-
     , testEq 590
         []
         "<a href='bar'title=title>\n"
         [ p []
             [ text "<a href='bar'title=title>" ]
         ]
-
     , testEq 591
         []
         "</a></foo >\n"
         []
-
     , testEq 592
         []
         "</a href=\"foo\">\n"
         [ p []
             [ text "</a href=\"foo\">" ]
         ]
-
     , testEq 593
         []
         "foo <!-- this is a\ncomment - with hyphen -->\n"
         [ p []
             [ text "foo " ]
         ]
-
     , testEq 594
         []
         "foo <!-- not a comment -- two hyphens -->\n"
         [ p []
             [ text "foo <!-- not a comment -- two hyphens -->" ]
         ]
-
     , testEq 595
         []
         "foo <!--> foo -->\n\nfoo <!-- foo--->\n"
@@ -5883,39 +5290,32 @@ run =
         , p []
             [ text "foo <!-- foo--->" ]
         ]
-
     , testEq 596
         []
         "foo <?php echo $a; ?>\n"
         []
-
     , testEq 597
         []
         "foo <!ELEMENT br EMPTY>\n"
         []
-
     , testEq 598
         []
         "foo <![CDATA[>&<]]>\n"
         []
-
     , testEq 599
         []
         "foo <a href=\"&ouml;\">\n"
         []
-
     , testEq 600
         []
         "foo <a href=\"\\*\">\n"
         []
-
     , testEq 601
         []
         "<a href=\"\\\"\">\n"
         [ p []
             [ text "<a href=\"\"\">" ]
         ]
-
     , testEq 602
         []
         "foo  \nbaz\n"
@@ -5926,7 +5326,6 @@ run =
             , text "baz"
             ]
         ]
-
     , testEq 603
         []
         "foo\\\nbaz\n"
@@ -5937,7 +5336,6 @@ run =
             , text "baz"
             ]
         ]
-
     , testEq 604
         []
         "foo       \nbaz\n"
@@ -5948,7 +5346,6 @@ run =
             , text "baz"
             ]
         ]
-
     , testEq 605
         []
         "foo  \n     bar\n"
@@ -5959,7 +5356,6 @@ run =
             , text "bar"
             ]
         ]
-
     , testEq 606
         []
         "foo\\\n     bar\n"
@@ -5970,7 +5366,6 @@ run =
             , text "bar"
             ]
         ]
-
     , testEq 607
         []
         "*foo  \nbar*\n"
@@ -5983,7 +5378,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 608
         []
         "*foo\\\nbar*\n"
@@ -5996,7 +5390,6 @@ run =
                 ]
             ]
         ]
-
     , testEq 609
         []
         "`code  \nspan`\n"
@@ -6005,7 +5398,6 @@ run =
                 [ text "code span" ]
             ]
         ]
-
     , testEq 610
         []
         "`code\\\nspan`\n"
@@ -6014,78 +5406,66 @@ run =
                 [ text "code\\ span" ]
             ]
         ]
-
     , testEq 611
         []
         "<a href=\"foo  \nbar\">\n"
         []
-
     , testEq 612
         []
         "<a href=\"foo\\\nbar\">\n"
         []
-
     , testEq 613
         []
         "foo\\\n"
         [ p []
             [ text "foo\\" ]
         ]
-
     , testEq 614
         []
         "foo  \n"
         [ p []
             [ text "foo" ]
         ]
-
     , testEq 615
         []
         "### foo\\\n"
         [ h3 []
             [ text "foo\\" ]
         ]
-
     , testEq 616
         []
         "### foo  \n"
         [ h3 []
             [ text "foo" ]
         ]
-
     , testEq 617
         []
         "foo\nbaz\n"
         [ p []
             [ text "foo\nbaz" ]
         ]
-
     , testEq 618
         []
         "foo \n baz\n"
         [ p []
             [ text "foo\nbaz" ]
         ]
-
     , testEq 619
         []
         "hello $.;'there\n"
         [ p []
             [ text "hello $.;'there" ]
         ]
-
     , testEq 620
         []
         "Foo χρῆν\n"
         [ p []
             [ text "Foo χρῆν" ]
         ]
-
     , testEq 621
         []
         "Multiple     spaces\n"
         [ p []
             [ text "Multiple     spaces" ]
         ]
-
     ]

@@ -1,6 +1,5 @@
 module Test.Inline.Autolinks exposing (run)
 
-
 import Html exposing (..)
 import Html.Attributes exposing (href)
 import Test.Helpers exposing (..)
@@ -20,7 +19,6 @@ run =
                 [ text "http://foo.bar.baz" ]
             ]
         ]
-
     , testEq 563
         []
         "<http://foo.bar.baz/test?q=hello&id=22&boolean>\n"
@@ -29,7 +27,6 @@ run =
                 [ text "http://foo.bar.baz/test?q=hello&id=22&boolean" ]
             ]
         ]
-
     , testEq 564
         []
         "<irc://foo.bar:2233/baz>\n"
@@ -38,7 +35,6 @@ run =
                 [ text "irc://foo.bar:2233/baz" ]
             ]
         ]
-
     , testEq 565
         []
         "<MAILTO:FOO@BAR.BAZ>\n"
@@ -47,7 +43,6 @@ run =
                 [ text "MAILTO:FOO@BAR.BAZ" ]
             ]
         ]
-
     , testEq 566
         []
         "<a+b+c:d>\n"
@@ -56,7 +51,6 @@ run =
                 [ text "a+b+c:d" ]
             ]
         ]
-
     , testEq 567
         []
         "<made-up-scheme://foo,bar>\n"
@@ -65,7 +59,6 @@ run =
                 [ text "made-up-scheme://foo,bar" ]
             ]
         ]
-
     , testEq 568
         []
         "<http://../>\n"
@@ -74,7 +67,6 @@ run =
                 [ text "http://../" ]
             ]
         ]
-
     , testEq 569
         []
         "<localhost:5001/foo>\n"
@@ -83,14 +75,12 @@ run =
                 [ text "localhost:5001/foo" ]
             ]
         ]
-
     , testEq 570
         []
         "<http://foo.bar/baz bim>\n"
         [ p []
             [ text "<http://foo.bar/baz bim>" ]
         ]
-
     , testEq 571
         []
         "<http://example.com/\\[\\>\n"
@@ -99,7 +89,6 @@ run =
                 [ text "http://example.com/\\[\\" ]
             ]
         ]
-
     , testEq 572
         []
         "<foo@bar.example.com>\n"
@@ -108,7 +97,6 @@ run =
                 [ text "foo@bar.example.com" ]
             ]
         ]
-
     , testEq 573
         []
         "<foo+special@Bar.baz-bar0.com>\n"
@@ -117,49 +105,42 @@ run =
                 [ text "foo+special@Bar.baz-bar0.com" ]
             ]
         ]
-
     , testEq 574
         []
         "<foo\\+@bar.example.com>\n"
         [ p []
             [ text "<foo+@bar.example.com>" ]
         ]
-
     , testEq 575
         []
         "<>\n"
         [ p []
             [ text "<>" ]
         ]
-
     , testEq 576
         []
         "< http://foo.bar >\n"
         [ p []
             [ text "< http://foo.bar >" ]
         ]
-
     , testEq 577
         []
         "<m:abc>\n"
         [ p []
             [ text "<m:abc>" ]
         ]
-
     , testEq 578
         []
         "<foo.bar.baz>\n"
         [ p []
             [ text "<foo.bar.baz>" ]
         ]
-
     , testEq 579
         []
         "http://example.com\n"
         [ p []
             [ text "http://example.com" ]
         ]
-
     , testEq 580
         []
         "foo@bar.example.com\n"

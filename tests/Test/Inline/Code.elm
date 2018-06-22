@@ -1,8 +1,7 @@
 module Test.Inline.Code exposing (run)
 
-
 import Html exposing (..)
-import Html.Attributes exposing (href, attribute)
+import Html.Attributes exposing (attribute, href)
 import Test.Helpers exposing (..)
 
 
@@ -20,7 +19,6 @@ run =
                 [ text "foo" ]
             ]
         ]
-
     , testEq 313
         []
         "`` foo ` bar  ``\n"
@@ -29,7 +27,6 @@ run =
                 [ text "foo ` bar" ]
             ]
         ]
-
     , testEq 314
         []
         "` `` `\n"
@@ -38,7 +35,6 @@ run =
                 [ text "``" ]
             ]
         ]
-
     , testEq 315
         []
         "``\nfoo\n``\n"
@@ -47,7 +43,6 @@ run =
                 [ text "foo" ]
             ]
         ]
-
     , testEq 316
         []
         "`foo   bar\n  baz`\n"
@@ -56,7 +51,6 @@ run =
                 [ text "foo bar baz" ]
             ]
         ]
-
     , testEq 317
         []
         "`a  b`\n"
@@ -65,7 +59,6 @@ run =
                 [ text "a  b" ]
             ]
         ]
-
     , testEq 318
         []
         "`foo `` bar`\n"
@@ -74,7 +67,6 @@ run =
                 [ text "foo `` bar" ]
             ]
         ]
-
     , testEq 319
         []
         "`foo\\`bar`\n"
@@ -84,7 +76,6 @@ run =
             , text "bar`"
             ]
         ]
-
     , testEq 320
         []
         "*foo`*`\n"
@@ -94,7 +85,6 @@ run =
                 [ text "*" ]
             ]
         ]
-
     , testEq 321
         []
         "[not a `link](/foo`)\n"
@@ -105,7 +95,6 @@ run =
             , text ")"
             ]
         ]
-
     , testEq 322
         []
         "`<a href=\"`\">`\n"
@@ -115,7 +104,6 @@ run =
             , text "\">`"
             ]
         ]
-
     , testEq 323
         []
         "<a href=\"`\">`\n"
@@ -124,7 +112,6 @@ run =
             , text "`"
             ]
         ]
-
     , testEq 324
         []
         "`<http://foo.bar.`baz>`\n"
@@ -134,7 +121,6 @@ run =
             , text "baz>`"
             ]
         ]
-
     , testEq 325
         []
         "<http://foo.bar.`baz>`\n"
@@ -144,14 +130,12 @@ run =
             , text "`"
             ]
         ]
-
     , testEq 326
         []
         "```foo``\n"
         [ p []
             [ text "```foo``" ]
         ]
-
     , testEq 327
         []
         "`foo\n"

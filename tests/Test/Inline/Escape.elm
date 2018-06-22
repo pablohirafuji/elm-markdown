@@ -1,8 +1,7 @@
 module Test.Inline.Escape exposing (run)
 
-
 import Html exposing (..)
-import Html.Attributes exposing (href, src, class, title, attribute)
+import Html.Attributes exposing (attribute, class, href, src, title)
 import Test.Helpers exposing (..)
 
 
@@ -21,28 +20,24 @@ run =
             , text "lo`"
             ]
         ]
-
     , testEq 287
         []
         "\\!\\\"\\#\\$\\%\\&\\'\\(\\)\\*\\+\\,\\-\\.\\/\\:\\;\\<\\=\\>\\?\\@\\[\\\\\\]\\^\\_\\`\\{\\|\\}\\~\n"
         [ p []
             [ text "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~" ]
         ]
-
     , testEq 288
         []
         "\\→\\A\\a\\ \\3\\φ\\«\n"
         [ p []
             [ text "\\→\\A\\a\\ \\3\\φ\\«" ]
         ]
-
     , testEq 289
         []
         "\\*not emphasized*\n\\<br/> not a tag\n\\[not a link](/foo)\n\\`not code`\n1\\. not a list\n\\* not a list\n\\# not a heading\n\\[foo]: /url \"not a reference\"\n"
         [ p []
             [ text "*not emphasized*\n<br/> not a tag\n[not a link](/foo)\n`not code`\n1. not a list\n* not a list\n# not a heading\n[foo]: /url \"not a reference\"" ]
         ]
-
     , testEq 290
         []
         "\\\\*emphasis*\n"
@@ -52,7 +47,6 @@ run =
                 [ text "emphasis" ]
             ]
         ]
-
     , testEq 291
         []
         "foo\\\nbar\n"
@@ -63,7 +57,6 @@ run =
             , text "bar"
             ]
         ]
-
     , testEq 292
         []
         "`` \\[\\` ``\n"
@@ -72,7 +65,6 @@ run =
                 [ text "\\[\\`" ]
             ]
         ]
-
     , testEq 293
         []
         "    \\[\\]\n"
@@ -81,7 +73,6 @@ run =
                 [ text "\\[\\]\n" ]
             ]
         ]
-
     , testEq 294
         []
         "~~~\n\\[\\]\n~~~\n"
@@ -90,7 +81,6 @@ run =
                 [ text "\\[\\]\n" ]
             ]
         ]
-
     , testEq 295
         []
         "<http://example.com?find=\\*>\n"
@@ -99,12 +89,10 @@ run =
                 [ text "http://example.com?find=\\*" ]
             ]
         ]
-
     , testEq 296
         []
         "<a href=\"/bar\\/)\">\n"
         [ a [ attribute "href" "/bar\\/)" ] [] ]
-
     , testEq 297
         []
         "[foo](/bar\\* \"ti\\*tle\")\n"
@@ -113,7 +101,6 @@ run =
                 [ text "foo" ]
             ]
         ]
-
     , testEq 298
         []
         "[foo]\n\n[foo]: /bar\\* \"ti\\*tle\"\n"
@@ -122,7 +109,6 @@ run =
                 [ text "foo" ]
             ]
         ]
-
     , testEq 299
         []
         "``` foo\\+bar\nfoo\n```\n"
@@ -131,4 +117,4 @@ run =
                 [ text "foo\n" ]
             ]
         ]
-       ]
+    ]

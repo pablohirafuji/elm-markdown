@@ -1,8 +1,9 @@
 module Test.Inline.Entity exposing (run)
 
 import Html exposing (..)
-import Html.Attributes exposing (href, src, class, title, attribute)
+import Html.Attributes exposing (attribute, class, href, src, title)
 import Test.Helpers exposing (..)
+
 
 
 -- Based on http://spec.commonmark.org/0.27/#entity-and-numeric-character-references
