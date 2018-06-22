@@ -1096,7 +1096,7 @@ htmlRegex =
 
 htmlFromRegex : Parser -> MatchModel -> Regex.Match -> Maybe Parser
 htmlFromRegex model match regexMatch =
-    case Debug.log "x" regexMatch.submatches of
+    case regexMatch.submatches of
         maybeClose :: (Just tag) :: maybeAttributes :: maybeSelfClosing :: _ ->
             let
                 updateModel : List Attribute -> Parser
@@ -1175,7 +1175,7 @@ htmlAttributesRegex =
 
 attributesFromRegex : Regex.Match -> Maybe Attribute
 attributesFromRegex regexMatch =
-    case Debug.log "y" regexMatch.submatches of
+    case regexMatch.submatches of
         (Just "") :: _ ->
             Nothing
 
