@@ -8,6 +8,7 @@ elm-reactor
 
 Then open this url: `http://localhost:8000/index.html`.
 
+The progress will be visible at the console.
 
 Results of 2.0.2 in Windows 10 Chrome:
 

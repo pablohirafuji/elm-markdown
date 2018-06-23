@@ -16,7 +16,8 @@
  <script src="node_modules/markdown-it/dist/markdown-it.js"></script>
  <script src="node_modules/commonmark/dist/commonmark.js"></script>
  <script src="node_modules/showdown/dist/showdown.js"></script>
- <script src="/_compile/Bench.elm" charset="utf-8"></script>
+ <script src="0.18/elm.min.js" charset="utf-8"></script>
+ <script src="0.19/elm.min.js" charset="utf-8"></script>
 </head>
 <body>
 <h1>Benchmarks</h1>
@@ -55,9 +56,13 @@ var showdown = new showdown.Converter();
 var markdown_it = markdownit('commonmark');
 var parser = new commonmark.Parser();
 var renderer = new commonmark.HtmlRenderer();
-var elm_markdown = Elm.Main.worker();
+var elm_markdown18 = Elm.Bench18.worker();
+var elm_markdown19 = Elm.Main.init();
 var deferredKeep = [];
-elm_markdown.ports.markdownHtml.subscribe(function(word){
+elm_markdown18.ports.markdownHtml.subscribe(function(word){
+  deferredKeep.shift().resolve();
+})
+elm_markdown19.ports.markdownHtml.subscribe(function(word){
   deferredKeep.shift().resolve();
 })
 var results = {};
@@ -102,12 +107,20 @@ var addBenchmarks = function() {
     .add('markdown-it', function() {
       markdown_it.render(benchmarks[this.id]);
     }, { id : name })
-    .add('elm-markdown', {
+    .add('elm-markdown 0.18', {
       id : name,
       defer: true,
       fn: function(deferred) {
         deferredKeep.push(deferred);
-        elm_markdown.ports.toHtml.send(benchmarks[this.id]);
+        elm_markdown18.ports.toHtml.send(benchmarks[this.id]);
+      }
+    })
+    .add('elm-markdown 0.19', {
+      id : name,
+      defer: true,
+      fn: function(deferred) {
+        deferredKeep.push(deferred);
+        elm_markdown19.ports.toHtml.send(benchmarks[this.id]);
       }
     })
     .on('start', function(event) {

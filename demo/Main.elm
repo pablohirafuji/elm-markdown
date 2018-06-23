@@ -1,6 +1,6 @@
 module Main exposing (..)
 
-import Browser exposing (Page)
+import Browser exposing (Document)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onCheck, onClick, onInput)
@@ -13,12 +13,11 @@ import Regex exposing (Regex)
 
 main : Program JE.Value Model Msg
 main =
-    Browser.fullscreen
+    Browser.document
         { init = \_ -> ( init, Cmd.none )
-        , view = page
+        , view = document
         , update = update
         , subscriptions = \_ -> Sub.none
-        , onNavigation = Nothing
         }
 
 
@@ -86,9 +85,9 @@ update msg model =
             )
 
 
-page : Model -> Page Msg
-page model =
-    Page "Elm Markdown" (view model)
+document : Model -> Document Msg
+document model =
+    Document "Elm Markdown" (view model)
 
 
 view : Model -> List (Html Msg)
@@ -194,7 +193,6 @@ markdownView { options, textarea, showToC } =
     if showToC then
         blocksView
             |> (::) (tocView blocks)
-
     else
         blocksView
 
@@ -283,7 +281,6 @@ organizeHeadings ( lvl, str ) items =
         (Item lvl_ str_ items_) :: tail ->
             if lvl <= lvl_ then
                 Item lvl str [] :: items
-
             else
                 organizeHeadings ( lvl, str ) items_
                     |> Item lvl_ str_
@@ -307,7 +304,6 @@ tocItemView : ToCItem -> Html Msg
 tocItemView (Item lvl heading subHeadings) =
     if List.isEmpty subHeadings then
         li [] [ tocLinkView heading ]
-
     else
         li []
             [ tocLinkView heading

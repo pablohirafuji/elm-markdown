@@ -3,19 +3,22 @@ port module Main exposing (..)
 import Markdown
 import Markdown.Block as Block
 
-main : Program Never Model Msg
+
+main : Program () Model Msg
 main =
-    Platform.program
-        { init = init
+    Platform.worker
+        { init = \_ -> init
         , update = update
         , subscriptions = subscriptions
         }
 
 
+
 -- TYPES
 
 
-type alias Model = Bool
+type alias Model =
+    Bool
 
 
 type Msg
@@ -42,22 +45,25 @@ update msg model =
         Parse str ->
             ( True
             , Block.parse Nothing str
-                |> toString
+                |> (\_ -> "ss")
                 |> markdownHtml
             )
 
         ToHtml str ->
             ( True
             , Markdown.toHtml Nothing str
-                |> toString
+                |> (\_ -> "ss")
                 |> markdownHtml
             )
+
 
 
 -- SUBSCRIPTIONS
 
 
 port toHtml : (String -> msg) -> Sub msg
+
+
 port parse : (String -> msg) -> Sub msg
 
 
@@ -70,6 +76,3 @@ subscriptions model =
 
 
 port markdownHtml : String -> Cmd msg
-
-
-
