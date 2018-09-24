@@ -1,9 +1,10 @@
-module Main exposing (..)
+module Main exposing (main)
 
 import Browser exposing (Document)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onCheck, onClick, onInput)
+import Html.Lazy
 import Json.Encode as JE
 import Markdown.Block as Block exposing (Block)
 import Markdown.Config exposing (HtmlOption(..), defaultOptions, defaultSanitizeOptions)
@@ -11,11 +12,11 @@ import Markdown.Inline as Inline
 import Regex exposing (Regex)
 
 
-main : Program JE.Value Model Msg
+main : Program () Model Msg
 main =
-    Browser.document
+    Browser.element
         { init = \_ -> ( init, Cmd.none )
-        , view = document
+        , view = view
         , update = update
         , subscriptions = \_ -> Sub.none
         }
@@ -23,17 +24,33 @@ main =
 
 type alias Model =
     { textarea : String
+    , onDemandText : String
     , options : Markdown.Config.Options
     , showToC : Bool
+    , selectedTab : EditorTab
+    , selectedPreviewTab : PreviewTab
     }
 
 
 init : Model
 init =
     { textarea = readmeMD
+    , onDemandText = ""
     , options = defaultOptions
     , showToC = False
+    , selectedTab = Editor
+    , selectedPreviewTab = RealTime
     }
+
+
+type EditorTab
+    = Editor
+    | Options
+
+
+type PreviewTab
+    = RealTime
+    | OnDemand
 
 
 type Msg
@@ -41,6 +58,8 @@ type Msg
     | SoftAsHardLineBreak Bool
     | HtmlOption HtmlOption
     | ShowToC Bool
+    | ChangeTab EditorTab
+    | ChangePreviewTab PreviewTab
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -84,85 +103,154 @@ update msg model =
             , Cmd.none
             )
 
+        ChangeTab tab ->
+            ( { model | selectedTab = tab }
+            , Cmd.none
+            )
 
-document : Model -> Document Msg
-document model =
-    Document "Elm Markdown" (view model)
+        ChangePreviewTab tab ->
+            ( { model
+                | selectedPreviewTab = tab
+                , onDemandText = model.textarea
+              }
+            , Cmd.none
+            )
 
 
-view : Model -> List (Html Msg)
+view : Model -> Html Msg
 view model =
-    [ topStyles
-    , h1 [ class "heading" ] [ text "Elm Markdown" ]
-    , p [ class "subheading" ]
-        [ a [ href "http://package.elm-lang.org/packages/pablohirafuji/elm-markdown/latest" ]
-            [ text "Package" ]
-        , text " / "
-        , a [ href "https://github.com/pablohirafuji/elm-markdown" ]
-            [ text "GitHub" ]
-        , text " / "
-        , a [ href "https://github.com/pablohirafuji/elm-markdown/blob/master/demo/Main.elm" ]
-            [ text "Source" ]
-        ]
-    , div [ style "display" "flex" ]
-        [ div [ style "width" "50%" ]
-            [ textarea
-                [ onInput TextAreaInput
-                , property "defaultValue" (JE.string model.textarea)
-                , style "width" "90%"
-                , style "height" "400px"
-                ]
-                []
-            , details []
-                [ summary [] [ text "Options" ]
-                , optionsView model
-                , h2 [] [ text "Custom" ]
-                , label []
-                    [ input
-                        [ type_ "checkbox"
-                        , onCheck ShowToC
-                        , checked model.showToC
+    div [ class "container" ]
+        [ h1 [ class "heading" ]
+            [ text "Elm Markdown "
+            , small [] [ text "v2.0.5" ]
+            ]
+        , p [ class "subheading" ]
+            [ a [ href "http://package.elm-lang.org/packages/pablohirafuji/elm-markdown/latest" ]
+                [ text "Package" ]
+            , text " / "
+            , a [ href "https://github.com/pablohirafuji/elm-markdown" ]
+                [ text "GitHub" ]
+            , text " / "
+            , a [ href "https://github.com/pablohirafuji/elm-markdown/blob/master/demo/Main.elm" ]
+                [ text "Source" ]
+            ]
+        , div [ class "content" ]
+            [ div [ class "content-container" ]
+                [ div [ class "tabs" ]
+                    [ button
+                        [ class "tab"
+                        , onClick (ChangeTab Editor)
+                        , disabled (model.selectedTab == Editor)
                         ]
-                        []
-                    , text " Show dynamic Table of Content"
+                        [ text "Edit"
+                        ]
+                    , button
+                        [ class "tab"
+                        , onClick (ChangeTab Options)
+                        , disabled (model.selectedTab == Options)
+                        ]
+                        [ text "Options"
+                        ]
                     ]
+                , if model.selectedTab == Editor then
+                    editorView model.textarea
+
+                  else
+                    optionsView model
+                ]
+            , div [ class "content-container" ]
+                [ div [ class "tabs" ]
+                    [ button
+                        [ class "tab"
+                        , onClick (ChangePreviewTab RealTime)
+                        , disabled (model.selectedPreviewTab == RealTime)
+                        ]
+                        [ text "Real-Time"
+                        ]
+                    , button
+                        [ class "tab"
+                        , onClick (ChangePreviewTab OnDemand)
+                        , disabled (model.selectedPreviewTab == OnDemand)
+                        ]
+                        [ text "On-Demand"
+                        ]
+                    , if model.selectedPreviewTab == OnDemand then
+                        button
+                            [ class "tab"
+                            , onClick (ChangePreviewTab OnDemand)
+                            ]
+                            [ text "Render"
+                            ]
+
+                      else
+                        text ""
+                    ]
+                , markdownView model
                 ]
             ]
-        , div
-            [ style "width" "50%"
-            , style "height" "400px"
-            , style "overflow-y" "auto"
-            , style "overflow-x" "hidden"
-            ]
-            (markdownView model)
         ]
-    ]
+
+
+editorView : String -> Html Msg
+editorView md =
+    textarea
+        [ onInput TextAreaInput
+        , property "defaultValue" (JE.string md)
+        , class "editor"
+        , spellcheck False
+        ]
+        []
 
 
 optionsView : Model -> Html Msg
-optionsView { options } =
-    [ li []
-        [ label []
-            [ input
-                [ type_ "checkbox"
-                , onCheck SoftAsHardLineBreak
-                , checked options.softAsHardLineBreak
+optionsView { options, showToC } =
+    ul
+        [ class "preview"
+        , style "list-style" "none"
+        ]
+        [ li []
+            [ label []
+                [ input
+                    [ type_ "checkbox"
+                    , onCheck SoftAsHardLineBreak
+                    , checked options.softAsHardLineBreak
+                    ]
+                    []
+                , text " softAsHardLineBreak"
                 ]
-                []
-            , text " softAsHardLineBreak"
+            ]
+        , li []
+            [ b [] [ text "rawHtml" ]
+            , ul
+                [ style "list-style" "none"
+                , style "padding" "0"
+                ]
+                [ rawHtmlItem options "ParseUnsafe" ParseUnsafe
+                , rawHtmlItem options "Sanitize defaultAllowed" <|
+                    Sanitize defaultSanitizeOptions
+                , rawHtmlItem options "DontParse" DontParse
+                ]
+            ]
+        , li []
+            [ b [] [ text "Custom" ]
+            , ul
+                [ style "list-style" "none"
+                , style "padding" "0"
+                ]
+                [ li []
+                    [ label []
+                        [ input
+                            [ type_ "checkbox"
+                            , onCheck ShowToC
+                            , checked showToC
+                            ]
+                            []
+                        , text " Show dynamic Table of Content"
+                        ]
+                    ]
+                ]
             ]
         ]
-    , li []
-        [ b [] [ text "rawHtml:" ]
-        , ul [ style "list-style" "none" ]
-            [ rawHtmlItem options "ParseUnsafe" ParseUnsafe
-            , rawHtmlItem options "Sanitize defaultAllowed" <|
-                Sanitize defaultSanitizeOptions
-            , rawHtmlItem options "DontParse" DontParse
-            ]
-        ]
-    ]
-        |> ul [ style "list-style" "none" ]
 
 
 rawHtmlItem : Markdown.Config.Options -> String -> HtmlOption -> Html Msg
@@ -181,11 +269,25 @@ rawHtmlItem { rawHtml } value msg =
         |> li []
 
 
-markdownView : Model -> List (Html Msg)
-markdownView { options, textarea, showToC } =
+markdownView : Model -> Html Msg
+markdownView { options, textarea, onDemandText, showToC, selectedPreviewTab } =
+    let
+        textToParse =
+            if selectedPreviewTab == OnDemand then
+                onDemandText
+
+            else
+                textarea
+    in
+    Html.Lazy.lazy3 render options showToC textToParse
+
+
+render : Markdown.Config.Options -> Bool -> String -> Html Msg
+render options showToC md =
     let
         blocks =
-            Block.parse (Just options) textarea
+            Debug.log "x" "run"
+                |> (\_ -> Block.parse (Just options) md)
 
         blocksView =
             List.concatMap customHtmlBlock blocks
@@ -193,8 +295,10 @@ markdownView { options, textarea, showToC } =
     if showToC then
         blocksView
             |> (::) (tocView blocks)
+            |> div [ class "preview" ]
+
     else
-        blocksView
+        div [ class "preview" ] blocksView
 
 
 
@@ -281,6 +385,7 @@ organizeHeadings ( lvl, str ) items =
         (Item lvl_ str_ items_) :: tail ->
             if lvl <= lvl_ then
                 Item lvl str [] :: items
+
             else
                 organizeHeadings ( lvl, str ) items_
                     |> Item lvl_ str_
@@ -304,6 +409,7 @@ tocItemView : ToCItem -> Html Msg
 tocItemView (Item lvl heading subHeadings) =
     if List.isEmpty subHeadings then
         li [] [ tocLinkView heading ]
+
     else
         li []
             [ tocLinkView heading
@@ -331,38 +437,6 @@ oneOrMoreSpaces : Regex
 oneOrMoreSpaces =
     Regex.fromString "\\s+"
         |> Maybe.withDefault Regex.never
-
-
-
--- Styles
-
-
-topStyles : Html Msg
-topStyles =
-    Html.node "style"
-        []
-        [ text """
-body {
-    margin:0 auto;max-width:1080px;
-    line-height:1.6;
-    font-size:18px;
-    color:#444;
-    padding:0 10px;
-}
-h1 {
-    padding-bottom: 0;
-    margin-bottom: 0;
-}
-h1, h2,h3 {
-    line-height:1.2;
-}
-.heading, .subheading, .loading  {
-    text-align: center;
-}
-.subheading {
-    margin-top: 0;
-}"""
-        ]
 
 
 

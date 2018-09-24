@@ -5,30 +5,117 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>Elm Markdown</title>
 	<style type="text/css">
-		body {
-			margin:40px auto;max-width:1080px;
-			line-height:1.6;
-			font-size:18px;
-			color:#444;
-			padding:0 10px;
-		}
-		h1 {
-			padding-bottom: 0;
-			margin-bottom: 0;
-		}
-		h1, h2,h3 {
-			line-height:1.2;
-		}
-		.heading, .subheading, .loading  {
-			text-align: center;
-		}
-		.subheading {
-			margin-top: 0;
-		}
+* {
+    box-sizing: border-box;
+}
+html, body {
+    width: 100%;
+    height: 100%
+}
+body {
+    margin:0 auto;
+    max-width:1080px;
+    line-height:1.6;
+    font-size:18px;
+    color:#444;
+    padding:0;
+    display: flex;
+    overflow: hidden auto;
+    background-color: #fafafa;
+}
+.container, .content-container {
+    flex: 1 0 0;
+    display: flex;
+    flex-direction: column;
+}
+.heading {
+    padding-bottom: 0;
+    margin-bottom: 0;
+    line-height:1.2;
+    font-size: 2rem;
+}
+.heading small {
+    font-size: 1rem;
+    color: #888;
+}
+.heading, .subheading, .loading  {
+    text-align: center;
+}
+.heading, .subheading,  {
+    flex-shrink: 0;
+}
+.content {
+    flex: 1 0;
+    display: flex;
+    flex-direction: row;
+}
+.subheading {
+    margin-top: 0;
+}
+.content-container {
+    overflow: hidden;
+}
+.editor, .preview {
+    flex: 1 0 0;
+    padding: 0.5rem;
+    background-color: #fafafa;
+    border: 0;
+    border-top: 0.25rem solid #efefef;
+    resize: none;
+    outline: none;
+    min-height: 400px;
+    overflow: hidden auto;
+    margin: 0;
+}
+
+.tabs {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: row;
+    padding: 0 0.5rem;
+}
+.tab {
+    height: 2rem;
+    border: 0;
+    border-radius: 5px 5px 0 0;
+    padding: 0 1rem;
+    background-color: transparent;
+    cursor: pointer;
+    color: graytext;
+    outline: none;
+}
+.tab:disabled {
+    cursor: auto;
+    background-color: #efefef;
+    color: #444;
+}
+.tab:hover, .tab:focus, .tab:active {
+    color: #444;
+}
+.preview {
+    font-size: 16px;
+}
+pre {
+    overflow: auto;
+}
+pre, code {
+    background: #efefef;
+}
 	</style>
 </head>
-<script src="elm.js"></script>
 <body>
-	<script>Elm.Main.fullscreen()</script>
+		<h1>Elm Markdown <small>v2.0.5</small></h1>
+		<p class="subheading"><a href="http://package.elm-lang.org/packages/pablohirafuji/elm-markdown/latest">Package</a> / <a href="https://github.com/pablohirafuji/elm-markdown">GitHub</a> / <a href="https://github.com/pablohirafuji/elm-markdown/blob/master/demo/Main.elm">Source</a></p>
+		<div id="main"><h2>Loading...</h2></div>
+		<script src="elm.js"></script>
+		<script>
+		var node = document.getElementById('main');
+		while (node.firstChild) {
+			node.removeChild(node.firstChild);
+		}
+		var app = Elm.Main.init({
+			node: node
+		});
+		</script>
 </body>
 </html>
