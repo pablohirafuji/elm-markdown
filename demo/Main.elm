@@ -286,8 +286,7 @@ render : Markdown.Config.Options -> Bool -> String -> Html Msg
 render options showToC md =
     let
         blocks =
-            Debug.log "x" "run"
-                |> (\_ -> Block.parse (Just options) md)
+            Block.parse (Just options) md
 
         blocksView =
             List.concatMap customHtmlBlock blocks
