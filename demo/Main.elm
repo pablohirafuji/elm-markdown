@@ -119,74 +119,58 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    div [ class "container" ]
-        [ h1 [ class "heading" ]
-            [ text "Elm Markdown "
-            , small [] [ text "v2.0.5" ]
-            ]
-        , p [ class "subheading" ]
-            [ a [ href "http://package.elm-lang.org/packages/pablohirafuji/elm-markdown/latest" ]
-                [ text "Package" ]
-            , text " / "
-            , a [ href "https://github.com/pablohirafuji/elm-markdown" ]
-                [ text "GitHub" ]
-            , text " / "
-            , a [ href "https://github.com/pablohirafuji/elm-markdown/blob/master/demo/Main.elm" ]
-                [ text "Source" ]
-            ]
-        , div [ class "content" ]
-            [ div [ class "content-container" ]
-                [ div [ class "tabs" ]
-                    [ button
-                        [ class "tab"
-                        , onClick (ChangeTab Editor)
-                        , disabled (model.selectedTab == Editor)
-                        ]
-                        [ text "Edit"
-                        ]
-                    , button
-                        [ class "tab"
-                        , onClick (ChangeTab Options)
-                        , disabled (model.selectedTab == Options)
-                        ]
-                        [ text "Options"
-                        ]
+    div [ class "content" ]
+        [ div [ class "content-container" ]
+            [ div [ class "tabs" ]
+                [ button
+                    [ class "tab"
+                    , onClick (ChangeTab Editor)
+                    , disabled (model.selectedTab == Editor)
                     ]
-                , if model.selectedTab == Editor then
-                    editorView model.textarea
-
-                  else
-                    optionsView model
+                    [ text "Edit"
+                    ]
+                , button
+                    [ class "tab"
+                    , onClick (ChangeTab Options)
+                    , disabled (model.selectedTab == Options)
+                    ]
+                    [ text "Options"
+                    ]
                 ]
-            , div [ class "content-container" ]
-                [ div [ class "tabs" ]
-                    [ button
-                        [ class "tab"
-                        , onClick (ChangePreviewTab RealTime)
-                        , disabled (model.selectedPreviewTab == RealTime)
-                        ]
-                        [ text "Real-Time"
-                        ]
-                    , button
+            , if model.selectedTab == Editor then
+                editorView model.textarea
+
+              else
+                optionsView model
+            ]
+        , div [ class "content-container" ]
+            [ div [ class "tabs" ]
+                [ button
+                    [ class "tab"
+                    , onClick (ChangePreviewTab RealTime)
+                    , disabled (model.selectedPreviewTab == RealTime)
+                    ]
+                    [ text "Real-Time"
+                    ]
+                , button
+                    [ class "tab"
+                    , onClick (ChangePreviewTab OnDemand)
+                    , disabled (model.selectedPreviewTab == OnDemand)
+                    ]
+                    [ text "On-Demand"
+                    ]
+                , if model.selectedPreviewTab == OnDemand then
+                    button
                         [ class "tab"
                         , onClick (ChangePreviewTab OnDemand)
-                        , disabled (model.selectedPreviewTab == OnDemand)
                         ]
-                        [ text "On-Demand"
+                        [ text "Render"
                         ]
-                    , if model.selectedPreviewTab == OnDemand then
-                        button
-                            [ class "tab"
-                            , onClick (ChangePreviewTab OnDemand)
-                            ]
-                            [ text "Render"
-                            ]
 
-                      else
-                        text ""
-                    ]
-                , markdownView model
+                  else
+                    text ""
                 ]
+            , markdownView model
             ]
         ]
 
