@@ -1,4 +1,4 @@
-module View exposing (..)
+module TestView exposing (..)
 
 import Html exposing (..)
 import Html.Attributes exposing (checked, href, style, type_)

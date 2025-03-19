@@ -25,10 +25,24 @@ import Test.ListItem
 import Test.Paragraph
 import Test.SetextHeading
 import Test.ThematicBreak
+import Test exposing (..)
+import Test.Helpers exposing (Output, toTest)
+
+
 
 
 
 -- Based on http://spec.commonmark.org/0.27/
+
+
+run : Test
+run =
+    List.map
+        (\( description, outputs ) ->
+            describe description (List.map toTest outputs)
+        )
+        all
+        |> describe "Elm Markdown Test Suite"
 
 
 all : List ( String, List (Output msg) )

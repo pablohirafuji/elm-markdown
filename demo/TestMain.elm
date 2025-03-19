@@ -1,4 +1,4 @@
-module Main exposing (..)
+module TestMain exposing (..)
 
 import Browser exposing (Document)
 import Html exposing (..)
@@ -6,7 +6,7 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
 import Markdown
 import Markdown.Config as Config exposing (defaultOptions)
-import View
+import TestView
 
 
 main : Program () Model Msg
@@ -23,20 +23,20 @@ main =
 
 type alias Model =
     { textarea : String
-    , testModel : View.Model
+    , testModel : TestView.Model
     }
 
 
 init : Model
 init =
     { textarea = ""
-    , testModel = View.initModel
+    , testModel = TestView.initModel
     }
 
 
 type Msg
     = TextAreaInput String
-    | TestMsg View.Msg
+    | TestMsg TestView.Msg
     | NoOp
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -50,7 +50,7 @@ update msg model =
         TestMsg testMsg ->
             ( { model
                 | testModel =
-                    View.update testMsg model.testModel
+                    TestView.update testMsg model.testModel
               }
             , Cmd.none
             )
@@ -73,7 +73,7 @@ view model =
     , div [] <|
         Markdown.toHtml (Just customOptions) model.textarea
     , Html.map TestMsg <|
-        View.view model.testModel
+        TestView.view model.testModel
     ]
 
 
