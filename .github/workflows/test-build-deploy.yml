@@ -1,0 +1,48 @@
+name: Test, Build, Deploy and Publish
+on:
+  push: 
+    branches: 
+      - master
+permissions:
+  contents: write
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+
+    - uses: nixbuild/nix-quick-install-action@v30
+    - run: nix build --version
+
+    - uses: actions/cache@v4
+      id: elm-cache
+      with:
+        path: ~/.elm
+        key: ${{ runner.os }}-elm--home-${{ hashFiles('**/elm.json') }}
+
+    - uses: nix-community/cache-nix-action@v6
+      with:
+        # restore and save a cache using this key
+        primary-key: nix-${{ runner.os }}-${{ hashFiles('**/*.nix', '**/flake.lock') }}
+        # if there's no cache hit, restore a cache by this prefix
+        restore-prefixes-first-match: nix-${{ runner.os }}-
+        # collect garbage until Nix store size (in bytes) is at most this number
+        # before trying to save a new cache
+        # 1 GB = 1073741824 B
+        gc-max-store-size-linux: 1073741824
+
+    - name: Test
+      run: nix develop --command elm-test
+
+    - name: Build demo
+      run: nix develop --command build-demo
+
+    - name: Deploy demo
+      uses: JamesIves/github-pages-deploy-action@v4
+      with:
+        branch: gh-pages
+        folder: demo/build
+        clean: true

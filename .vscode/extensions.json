@@ -1,0 +1,7 @@
+{
+    "recommendations": [
+        "mkhl.direnv",
+        "jnoortheen.nix-ide",
+        "elmtooling.elm-ls-vscode"
+    ]
+}

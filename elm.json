@@ -3,7 +3,7 @@
     "name": "pablohirafuji/elm-markdown",
     "summary": "Pure Elm markdown parsing and rendering.",
     "license": "BSD-3-Clause",
-    "version": "2.0.5",
+    "version": "2.0.6",
     "exposed-modules": [
         "Markdown",
         "Markdown.Block",
@@ -18,7 +18,7 @@
         "elm/url": "1.0.0 <= v < 2.0.0"
     },
     "test-dependencies": {
-        "elm-explorations/test": "2.2.0 <= v < 3.0.0",
-        "elm/browser": "1.0.2 <= v < 2.0.0"
+        "elm/browser": "1.0.2 <= v < 2.0.0",
+        "elm-explorations/test": "2.2.0 <= v < 3.0.0"
     }
 }

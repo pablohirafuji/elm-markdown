@@ -1,5 +1,9 @@
 # Changelog
 
+### 2.0.6
+
+Fix recursion crash (#9 by @brian-carroll)
+
 ### 2.0.5
 
 Update to 0.19
