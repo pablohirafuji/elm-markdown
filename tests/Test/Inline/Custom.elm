@@ -52,6 +52,12 @@ run =
             , text "bazinga"
             ]
         ]
+    , testEq 1005
+        [ p [] [ text "Tail call optimization in block parsing" ] ]
+        ("Hello" ++ String.repeat 10000 "\n" ++ "World")
+        [ p [] [ text "Hello" ]
+        , p [] [ text "World" ]
+        ]
 
     -- TODO
     --, testEqDefaultOptions 1005

@@ -105,9 +105,9 @@ view model =
         [ h1 []
             [ text <|
                 "Tests ("
-                    ++ toString (successTestCount tests)
+                    ++ String.fromInt (successTestCount tests)
                     ++ "/"
-                    ++ toString (totalTestCount tests)
+                    ++ String.fromInt (totalTestCount tests)
                     ++ ")"
             ]
         , p []
@@ -139,40 +139,45 @@ view model =
 
 
 totalTestCount : List ( String, List (Output msg) ) -> Int
-totalTestCount tests =
+totalTestCount allTests =
     let
         sumTests : ( String, List (Output msg) ) -> Int -> Int
         sumTests ( _, outputs ) count =
             List.length outputs
                 |> (+) count
     in
-    List.foldl sumTests 0 tests
+    List.foldl sumTests 0 allTests
 
 
 successTestCount : List ( String, List (Output msg) ) -> Int
-successTestCount tests =
+successTestCount allTests =
     let
         sumSuccessTests : ( String, List (Output msg) ) -> Int -> Int
         sumSuccessTests ( _, outputs ) count =
             List.filter
-                (\result ->
-                    case result of
-                        Result.Ok _ ->
-                            True
-
-                        Result.Err _ ->
-                            False
+                (\ { result, expectedResult } ->
+                    result == expectedResult
                 )
                 outputs
                 |> List.length
                 |> (+) count
     in
-    List.foldl sumSuccessTests 0 tests
+    List.foldl sumSuccessTests 0 allTests
+
+
+outputToResult : Output msg -> Result (Html msg) (Html msg)
+outputToResult { result, expectedResult } =
+    if result == expectedResult then
+        Result.Ok (div [] result)
+    else
+        Result.Err (div [] result)
+
+
 
 
 showTests : Model -> List ( String, List (Output Msg) ) -> List (Html Msg)
-showTests model tests =
-    List.map (showTest model) tests
+showTests model allTests =
+        List.map (showTest model) allTests
 
 
 showTest : Model -> ( String, List (Output msg) ) -> Html msg
@@ -200,9 +205,9 @@ showTest model ( testTitle, outputs ) =
             , span bgStyle
                 [ text <|
                     "("
-                        ++ toString passed
+                        ++ String.fromInt passed
                         ++ "/"
-                        ++ toString (List.length outputs)
+                        ++ String.fromInt (List.length outputs)
                         ++ ")"
                 ]
             ]
@@ -210,19 +215,19 @@ showTest model ( testTitle, outputs ) =
         ]
 
 
-testView : Model -> Result (Html msg) (Html msg) -> Html msg
-testView model result =
-    case result of
-        Result.Ok view ->
+testView : Model -> Output msg -> Html msg
+testView model output =
+    case outputToResult output of
+        Result.Ok html ->
             if model.showSucceed then
-                li [] [ view ]
+                li [] [ html ]
 
             else
                 text ""
 
-        Result.Err view ->
+        Result.Err html ->
             if model.showFailed then
-                li [] [ view ]
+                li [] [ html ]
 
             else
                 text ""

@@ -1,6 +1,6 @@
 module Main exposing (..)
 
-import Browser exposing (Page)
+import Browser exposing (Document)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
@@ -11,12 +11,13 @@ import View
 
 main : Program () Model Msg
 main =
-    Browser.fullscreen
-        { init = \_ -> ( init, Cmd.none )
+    Browser.application
+        { init = \_ _ _ -> ( init, Cmd.none )
         , view = page
         , update = update
         , subscriptions = \_ -> Sub.none
-        , onNavigation = Nothing
+        , onUrlRequest = \_ -> NoOp
+        , onUrlChange = \_ -> NoOp
         }
 
 
@@ -36,7 +37,7 @@ init =
 type Msg
     = TextAreaInput String
     | TestMsg View.Msg
-
+    | NoOp
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
@@ -54,11 +55,15 @@ update msg model =
             , Cmd.none
             )
 
+        NoOp ->
+            ( model, Cmd.none )
 
-page : Model -> Page Msg
+
+page : Model -> Document Msg
 page model =
-    Page "Elm Markdown Tests" (view model)
-
+    { title = "Elm Markdown Tests"
+    , body = view model
+    }
 
 view : Model -> List (Html Msg)
 view model =
