@@ -159,8 +159,11 @@ incorporateLines rawLines ast =
             ast
 
         rawLine :: rawLinesTail ->
-            incorporateLine rawLine ast
-                |> incorporateLines rawLinesTail
+            -- To get tail call optimization, use parentheses, not |> or <|.
+            -- Technically |> and <| are function calls.
+            -- If you use them, they will be in tail position, not the recursive call!
+            incorporateLines rawLinesTail
+                (incorporateLine rawLine ast)
 
 
 incorporateLine : String -> List (Block b i) -> List (Block b i)
